@@ -29,4 +29,33 @@ public sealed class PartyTests
         Assert.False(party.HasActiveRoomCode);
         Assert.NotNull(party.CompletedAt);
     }
+
+    [Fact]
+    public void Active_game_moves_party_to_playing_then_back_to_lobby()
+    {
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        var gameInstanceId = Guid.NewGuid();
+
+        party.StartGame(gameInstanceId, "estimate", DateTimeOffset.UtcNow);
+
+        Assert.Equal(PartyStatus.Playing, party.Status);
+        Assert.Equal(gameInstanceId, party.CurrentGameInstanceId);
+        Assert.Equal("estimate", party.CurrentGameKey);
+
+        party.ReturnToLobby(gameInstanceId);
+
+        Assert.Equal(PartyStatus.Lobby, party.Status);
+        Assert.Null(party.CurrentGameInstanceId);
+        Assert.Null(party.CurrentGameKey);
+    }
+
+    [Fact]
+    public void A_second_game_cannot_start_while_one_is_active()
+    {
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        party.StartGame(Guid.NewGuid(), "estimate", DateTimeOffset.UtcNow);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            party.StartGame(Guid.NewGuid(), "estimate", DateTimeOffset.UtcNow));
+    }
 }

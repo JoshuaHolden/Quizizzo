@@ -57,6 +57,8 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
             index.Properties.Select(property => property.Name).SequenceEqual([nameof(Party.HostUserId)]));
         var display = dbContext.Model.FindEntityType(typeof(DisplaySession))!;
         var player = dbContext.Model.FindEntityType(typeof(Player))!;
+        var currentGameKey = party.FindProperty(nameof(Party.CurrentGameKey))!;
+        var currentGameInstanceId = party.FindProperty(nameof(Party.CurrentGameInstanceId))!;
 
         Assert.True(roomCodeIndex.IsUnique);
         Assert.Equal(
@@ -75,6 +77,9 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Contains(player.GetIndexes(), index =>
             index.Properties.Select(property => property.Name)
                 .SequenceEqual([nameof(Player.PartyId), nameof(Player.Status)]));
+        Assert.Equal(64, currentGameKey.GetMaxLength());
+        Assert.True(currentGameKey.IsNullable);
+        Assert.True(currentGameInstanceId.IsNullable);
     }
 
     [Fact]

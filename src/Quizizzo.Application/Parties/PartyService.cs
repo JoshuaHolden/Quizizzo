@@ -87,5 +87,7 @@ public sealed class PartyService(
         party.RoomCode.Value,
         party.Status,
         party.CreatedAt,
-        party.CompletedAt);
+        party.CompletedAt,
+        party.CurrentGameInstanceId,
+        party.CurrentGameKey);
 }

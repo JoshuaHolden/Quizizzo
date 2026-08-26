@@ -33,6 +33,15 @@ public sealed class GameModuleCatalog
             : throw new KeyNotFoundException($"No game module is registered for key '{key}'.");
     }
 
+    public IGameAction DecodeAction(
+        string gameKey,
+        string actionKind,
+        System.Text.Json.JsonElement payload)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionKind);
+        return GetRequired(gameKey).DecodeAction(actionKind.Trim(), payload);
+    }
+
     private static void Validate(GameDescriptor descriptor)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(descriptor.Key);

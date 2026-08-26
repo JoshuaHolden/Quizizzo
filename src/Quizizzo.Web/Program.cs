@@ -3,10 +3,13 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Quizizzo.Application;
+using Quizizzo.Application.Abstractions;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Players;
 using Quizizzo.Infrastructure;
 using Quizizzo.GameEngine;
+using Quizizzo.GameContracts;
+using Quizizzo.Games.Estimate;
 using Quizizzo.Web.Components;
 using Quizizzo.Web.Components.Account;
 using Quizizzo.Infrastructure.Health;
@@ -14,6 +17,7 @@ using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Web.Endpoints;
 using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
+using Quizizzo.Web.Games;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +41,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddQuizizzoApplication();
 builder.Services.AddQuizizzoInfrastructure(connectionString);
 builder.Services.AddQuizizzoGameEngine();
+builder.Services.AddSingleton<IGameModule, EstimateGameModule>();
+builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
+builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
 builder.Services.Configure<RealtimePresenceOptions>(
     builder.Configuration.GetSection(RealtimePresenceOptions.SectionName));

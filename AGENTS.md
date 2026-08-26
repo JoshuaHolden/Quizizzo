@@ -155,9 +155,22 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build with zero warnings, and pass all 61 tests.
 - [x] Stop before implementing Estimate or any other concrete game rules.
 
+### Milestone 7 — Estimate (completed 2026-08-27)
+
+- [x] Implement a discoverable three-round Estimate module with explicit answering, results, and completed phases.
+- [x] Add server-owned number limits, UTC answer deadlines, hidden submissions, closest-answer rankings, tie handling, and cumulative score awards.
+- [x] Add transport-safe action decoding and keep invalid, late, repeated-command, and repeated-submission validation authoritative and idempotent.
+- [x] Add generic player controller view contracts and a reusable number controller selected by controller kind rather than game name.
+- [x] Add host start/advance/finish controls, player submission/waiting views, and display answering/result/score views.
+- [x] Authenticate player mutations from the durable HttpOnly session cookie and authorize host/display/player role views against durable identities.
+- [x] Publish game-state hints over SignalR while every role reloads a complete authoritative role snapshot.
+- [x] Persist the active game pointer in PostgreSQL and persist final scores before returning the same players to the lobby for another game.
+- [x] Add the PostgreSQL active-game migration plus domain, application, engine, composition, persistence-model, secrecy, deadline, scoring, and full-loop tests.
+- [x] Restore, build with zero warnings, and pass all 73 tests.
+- [x] Stop before Phaser presentation work.
+
 ### Remaining milestones
 
-- [ ] Milestone 7 — Estimate: complete number-controller round loop as the engine proof.
 - [ ] Milestone 8 — Phaser presentation: long-lived canvas, characters, join/disconnect/score/result animations, particles.
 - [ ] Milestone 9 — Reusable drawing framework: JS canvas interop, strokes/tools/frames/onion skin/drafts/assets.
 - [ ] Milestone 10 — Animate This: prompt, three frames, secure submission, playback, voting, reveal, scoring.

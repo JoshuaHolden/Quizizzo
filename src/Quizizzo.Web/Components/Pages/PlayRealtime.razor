@@ -1,7 +1,13 @@
+@using System.Text.Json
+@using Microsoft.JSInterop
+@using Quizizzo.Application.Games
 @using Quizizzo.Application.Players
+@using Quizizzo.GameContracts
 @inject PlayerService Players
+@inject PartyGameService Games
 
-<PartyRealtimeConnection Role="Player"
+<PartyRealtimeConnection @ref="partyConnection"
+                         Role="Player"
                          PartyId="player.PartyId"
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus" />
@@ -11,26 +17,112 @@
     <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
         <span aria-hidden="true">:)</span>
     </div>
-    <h1>You're in, @player.DisplayName!</h1>
-    <p>Your character is ready. Keep this page open.</p>
-    <p class="badge text-bg-success">@player.Status</p>
+    <h1>@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
     <p><span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span></p>
+
+    @if (!string.IsNullOrWhiteSpace(actionError))
+    {
+        <div class="alert alert-danger" role="alert">@actionError</div>
+    }
+
+    @if (gameView is null || game is null)
+    {
+        <p>Your character is ready. Keep this page open.</p>
+        <p class="badge text-bg-success">@player.Status</p>
+        <p>Score: <strong>@player.Score.ToString("N0")</strong></p>
+    }
+    else
+    {
+        <section class="player-game-panel">
+            <p class="lead">@game.Instructions</p>
+            @if (gameView.PhaseEndsAtUtc is not null)
+            {
+                <p class="fs-5"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+            }
+
+            @switch (game.Controller.Kind)
+            {
+                case PlayerControllerKind.Number:
+                    var configuration = game.Controller.Configuration.Deserialize<NumberControllerConfiguration>();
+                    if (configuration is not null)
+                    {
+                        <NumberController Configuration="configuration"
+                                          SubmitLabel="game.Controller.SubmitLabel"
+                                          Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                          Submitted="SubmitNumberAsync" />
+                    }
+                    break;
+                case PlayerControllerKind.Waiting:
+                    <div class="waiting-controller" aria-live="polite">
+                        <span class="waiting-pulse" aria-hidden="true"></span>
+                        <p>Waiting for the other players or the host...</p>
+                    </div>
+                    break;
+                default:
+                    <p>This controller is not available yet.</p>
+                    break;
+            }
+
+            <p class="mt-4">Total score: <strong>@PlayerScore.ToString("N0")</strong></p>
+        </section>
+    }
 </main>
 
 @code {
     [Parameter, EditorRequired] public PlayerView InitialPlayer { get; set; } = default!;
 
+    private PartyRealtimeConnection? partyConnection;
     private PlayerView player = default!;
+    private PartyGameView? gameView;
+    private PlayerGameViewPayload? game;
     private string connectionStatus = "Connecting";
+    private string? actionError;
+    private bool submitting;
+    private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
+        ? score
+        : player.Score;
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
 
-    protected override void OnInitialized() => player = InitialPlayer;
+    protected override async Task OnInitializedAsync()
+    {
+        player = InitialPlayer;
+        await LoadAsync();
+    }
 
-    private async Task RefreshFromServerAsync(string reason)
+    private async Task SubmitNumberAsync(long value)
+    {
+        if (partyConnection is null || game?.Controller.ActionKind is not { Length: > 0 } actionKind)
+        {
+            return;
+        }
+
+        submitting = true;
+        actionError = null;
+        try
+        {
+            await partyConnection.InvokeAsync(
+                "SubmitPlayerAction", Guid.NewGuid(), actionKind, new { value });
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            actionError = exception.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
+    private async Task RefreshFromServerAsync(string reason) => await LoadAsync();
+
+    private async Task LoadAsync()
     {
         player = await Players.GetByIdAsync(player.PlayerId);
+        gameView = await Games.GetPlayerViewAsync(player.PlayerId);
+        game = gameView?.Data.Deserialize<PlayerGameViewPayload>();
     }
 
     private Task SetConnectionStatus(string status)

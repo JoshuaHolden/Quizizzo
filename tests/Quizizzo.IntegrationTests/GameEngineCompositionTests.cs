@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Quizizzo.GameEngine;
+using Quizizzo.Games.Estimate;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -22,6 +23,8 @@ public sealed class GameEngineCompositionTests : IClassFixture<WebApplicationFac
 
         Assert.Same(firstRuntime, secondRuntime);
         Assert.IsType<InMemoryGameStateStore>(stateStore);
-        Assert.Empty(firstRuntime.ListGames());
+        var game = Assert.Single(firstRuntime.ListGames());
+        Assert.Equal(EstimateGameModule.GameKey, game.Key);
+        Assert.Equal("Estimate", game.DisplayName);
     }
 }

@@ -2,14 +2,21 @@
 @rendermode InteractiveServer
 @attribute [Authorize]
 @using System.Security.Claims
+@using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
+@using Quizizzo.Application.Games
 @using Quizizzo.Application.Parties
 @using Quizizzo.Application.Players
+@using Quizizzo.Domain.Parties
+@using Quizizzo.GameContracts
+@using Quizizzo.Games.Estimate
 @using Quizizzo.Web.Realtime
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject PartyService Parties
 @inject PlayerService Players
+@inject PartyGameService Games
 @inject PartyConnectionRegistry Connections
+@inject IPartyRealtimeNotifier Realtime
 
 <PageTitle>Party controls</PageTitle>
 
@@ -31,31 +38,98 @@ else
         <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
     </header>
 
-    <section class="card p-4">
-        <h2>Lobby</h2>
-        <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
-        <p aria-live="polite">
-            @presence.Players player@(presence.Players == 1 ? string.Empty : "s") online
-            · Display @(presence.DisplayConnected ? "connected" : "not connected")
-        </p>
-        @if (players.Count == 0)
-        {
-            <p>No players have joined yet.</p>
-        }
-        else
-        {
-            <ul class="list-group mb-3">
-                @foreach (var player in players)
+    @if (!string.IsNullOrWhiteSpace(actionError))
+    {
+        <div class="alert alert-danger" role="alert">@actionError</div>
+    }
+
+    @if (gameView is not null && game is not null)
+    {
+        <section class="game-panel card p-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <p class="text-uppercase text-muted mb-1">@gameView.Phase</p>
+                    <h2>@game.Title</h2>
+                </div>
+                @if (gameView.PhaseEndsAtUtc is not null)
                 {
-                    <li class="list-group-item d-flex justify-content-between">
-                        <span>@player.DisplayName</span>
-                        <span>@player.Status</span>
-                    </li>
+                    <span class="badge text-bg-warning fs-6"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></span>
                 }
-            </ul>
-        }
-        <small class="text-muted">Last update: @lastUpdateReason</small>
-    </section>
+            </div>
+            <p class="lead">@game.Prompt</p>
+            <p>@game.PhaseMessage</p>
+
+            @if (game.Entries.Count > 0)
+            {
+                <div class="list-group mb-3">
+                    @foreach (var entry in game.Entries)
+                    {
+                        <div class="list-group-item d-flex justify-content-between gap-3">
+                            <span><strong>@entry.Label</strong> @entry.Value</span>
+                            @if (entry.Rank is not null)
+                            {
+                                <span>#@entry.Rank · +@entry.PointsAwarded.ToString("N0")</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @if (game.CanAdvance && game.AdvanceActionKind is not null)
+            {
+                <button class="btn btn-primary btn-lg"
+                        disabled="@actionPending"
+                        @onclick="AdvanceGameAsync">
+                    @(actionPending ? "Working..." : game.AdvanceLabel)
+                </button>
+            }
+
+            <h3 class="h5 mt-4">Scores</h3>
+            <ol class="scoreboard">
+                @foreach (var score in gameView.Scores.OrderByDescending(pair => pair.Value))
+                {
+                    <li><span>@PlayerName(score.Key)</span><strong>@score.Value.ToString("N0")</strong></li>
+                }
+            </ol>
+        </section>
+    }
+    else
+    {
+        <section class="card p-4">
+            <h2>Lobby</h2>
+            <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
+            <p aria-live="polite">
+                @presence.Players player@(presence.Players == 1 ? string.Empty : "s") online
+                · Display @(presence.DisplayConnected ? "connected" : "not connected")
+            </p>
+            @if (players.Count == 0)
+            {
+                <p>No players have joined yet.</p>
+            }
+            else
+            {
+                <ul class="list-group mb-3">
+                    @foreach (var player in players)
+                    {
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>@player.DisplayName</span>
+                            <span>@player.Status · @player.Score.ToString("N0") points</span>
+                        </li>
+                    }
+                </ul>
+            }
+            <button class="btn btn-primary btn-lg"
+                    disabled="@(players.Count < 2 || actionPending || party.Status != PartyStatus.Lobby)"
+                    @onclick="StartEstimateAsync">
+                @(actionPending ? "Starting..." : "Start Estimate")
+            </button>
+            @if (players.Count < 2)
+            {
+                <small class="text-muted d-block mt-2">Estimate needs at least two players.</small>
+            }
+            <small class="text-muted d-block mt-3">Last update: @lastUpdateReason</small>
+        </section>
+    }
 }
 
 @code {
@@ -63,11 +137,15 @@ else
 
     private PartyView? party;
     private IReadOnlyList<PlayerView> players = [];
+    private PartyGameView? gameView;
+    private HostGameViewPayload? game;
     private PartyPresenceSnapshot presence = new(0, 0, 0);
     private string? hostUserId;
     private string message = "Loading party...";
     private string connectionStatus = "Connecting";
     private string lastUpdateReason = "Initial state";
+    private string? actionError;
+    private bool actionPending;
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
@@ -92,6 +170,52 @@ else
         }
     }
 
+    private async Task StartEstimateAsync()
+    {
+        await RunActionAsync(async () =>
+        {
+            await Games.StartAsync(PartyId, hostUserId!, EstimateGameModule.GameKey);
+            await Realtime.PartyChangedAsync(PartyId, "GameStarted");
+        });
+    }
+
+    private async Task AdvanceGameAsync()
+    {
+        if (game?.AdvanceActionKind is not { } actionKind)
+        {
+            return;
+        }
+        await RunActionAsync(async () =>
+        {
+            var result = await Games.ExecuteHostActionAsync(
+                PartyId, hostUserId!, Guid.NewGuid(), actionKind, GameJson.Empty);
+            if (!result.Applied)
+            {
+                throw new InvalidOperationException(result.ErrorMessage ?? "The action was rejected.");
+            }
+            await Realtime.PartyChangedAsync(PartyId, result.IsComplete ? "GameCompleted" : "GameAdvanced");
+        });
+    }
+
+    private async Task RunActionAsync(Func<Task> action)
+    {
+        actionPending = true;
+        actionError = null;
+        try
+        {
+            await action();
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or GameRuleViolationException)
+        {
+            actionError = exception.Message;
+        }
+        finally
+        {
+            actionPending = false;
+        }
+    }
+
     private async Task RefreshFromServerAsync(string reason)
     {
         lastUpdateReason = reason;
@@ -103,7 +227,12 @@ else
         party = await Parties.GetOwnedAsync(PartyId, hostUserId!);
         players = await Players.ListForHostAsync(PartyId, hostUserId!);
         presence = Connections.GetSnapshot(PartyId);
+        gameView = await Games.GetHostViewAsync(PartyId, hostUserId!);
+        game = gameView?.Data.Deserialize<HostGameViewPayload>();
     }
+
+    private string PlayerName(Guid playerId) =>
+        players.FirstOrDefault(player => player.PlayerId == playerId)?.DisplayName ?? "Player";
 
     private Task SetConnectionStatus(string status)
     {

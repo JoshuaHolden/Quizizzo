@@ -1,8 +1,12 @@
+@using System.Text.Json
 @using Quizizzo.Application.Displays
+@using Quizizzo.Application.Games
 @using Quizizzo.Application.Players
+@using Quizizzo.GameContracts
 @using Quizizzo.Web.Presentation
 @inject DisplaySessionService DisplaySessions
 @inject PlayerService Players
+@inject PartyGameService Games
 @inject NavigationManager Navigation
 @inject QrCodeService QrCodes
 
@@ -25,6 +29,40 @@
         <p class="display-4 fw-bold">@session.PairingCode</p>
         <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
     }
+    else if (gameView is not null && game is not null)
+    {
+        <section class="display-game-panel">
+            <p class="text-uppercase mt-4 mb-1">@game.Title</p>
+            <h2 class="display-4 fw-bold">@game.Prompt</h2>
+            <p class="fs-3">@game.PhaseMessage</p>
+            @if (gameView.PhaseEndsAtUtc is not null)
+            {
+                <p class="display-6"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+            }
+
+            <div class="display-results">
+                @foreach (var entry in game.Entries)
+                {
+                    <article class="display-result-card">
+                        <h3>@entry.Label</h3>
+                        <p>@entry.Value</p>
+                        @if (entry.Rank is not null)
+                        {
+                            <strong>#@entry.Rank · +@entry.PointsAwarded.ToString("N0") points</strong>
+                        }
+                    </article>
+                }
+            </div>
+
+            <h3 class="mt-4">Scores</h3>
+            <ol class="scoreboard display-scoreboard">
+                @foreach (var score in gameView.Scores.OrderByDescending(pair => pair.Value))
+                {
+                    <li><span>@PlayerName(score.Key)</span><strong>@score.Value.ToString("N0")</strong></li>
+                }
+            </ol>
+        </section>
+    }
     else
     {
         <h2>JOIN THE PARTY</h2>
@@ -43,6 +81,7 @@
                     <div class="player-chip" style="border-color: @player.Character.PrimaryColour">
                         <span class="character-dot" style="background-color: @player.Character.PrimaryColour"></span>
                         <strong>@player.DisplayName</strong>
+                        <span>@player.Score.ToString("N0")</span>
                     </div>
                 }
             </div>
@@ -56,6 +95,8 @@
 
     private DisplaySessionView session = default!;
     private IReadOnlyList<PlayerView> players = [];
+    private PartyGameView? gameView;
+    private DisplayGameViewPayload? game;
     private string connectionStatus = "Connecting";
     private string PairingPath => $"host/pair-display/{session.PairingCode}";
     private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
@@ -64,10 +105,11 @@
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         session = InitialSession;
         players = InitialPlayers;
+        await LoadGameAsync();
     }
 
     private async Task RefreshFromServerAsync(string reason)
@@ -76,7 +118,19 @@
         players = session.PartyId is { } partyId
             ? await Players.ListForDisplayAsync(partyId)
             : [];
+        await LoadGameAsync();
     }
+
+    private async Task LoadGameAsync()
+    {
+        gameView = session.PartyId is { } partyId
+            ? await Games.GetDisplayViewAsync(partyId, session.DisplaySessionId.ToString("N"))
+            : null;
+        game = gameView?.Data.Deserialize<DisplayGameViewPayload>();
+    }
+
+    private string PlayerName(Guid playerId) =>
+        players.FirstOrDefault(player => player.PlayerId == playerId)?.DisplayName ?? "Player";
 
     private Task SetConnectionStatus(string status)
     {

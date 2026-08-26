@@ -21,6 +21,22 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void Persisted_party_score_can_be_updated_by_game_orchestration()
+    {
+        var player = Player.Create(
+            PartyId.New(),
+            PlayerName.Parse("Joshua"),
+            Character,
+            "HASH",
+            DateTimeOffset.UtcNow);
+
+        player.SetScore(1600);
+
+        Assert.Equal(1600, player.Score);
+        Assert.Throws<ArgumentOutOfRangeException>(() => player.SetScore(-1));
+    }
+
+    [Fact]
     public void Player_can_reconnect_with_the_same_identity_and_character()
     {
         var now = new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero);

@@ -10,6 +10,7 @@ internal sealed class GameInstanceActor : IAsyncDisposable
     private readonly IGameModule module;
     private readonly IGameStateStore store;
     private readonly TimeProvider timeProvider;
+    private readonly IReadOnlyList<IGameRuntimeObserver> observers;
     private readonly Channel<WorkItem> queue;
     private readonly CancellationTokenSource lifetime = new();
     private readonly object timerGate = new();
@@ -21,12 +22,14 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         GameRuntimeSnapshot snapshot,
         IGameModule module,
         IGameStateStore store,
-        TimeProvider timeProvider)
+        TimeProvider timeProvider,
+        IReadOnlyList<IGameRuntimeObserver> observers)
     {
         this.snapshot = snapshot;
         this.module = module;
         this.store = store;
         this.timeProvider = timeProvider;
+        this.observers = observers;
         queue = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(256)
         {
             SingleReader = true,
@@ -169,6 +172,13 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         await store.SaveAsync(updated, snapshot.Revision, lifetime.Token);
         snapshot = updated;
         ScheduleDeadline();
+        _ = NotifyObserversAsync(new GameRuntimeChange(
+            snapshot.GameInstanceId,
+            snapshot.PartyId,
+            snapshot.GameKey,
+            result,
+            snapshot.ModuleState.IsComplete,
+            snapshot.Scores.ToDictionary()));
         return result;
     }
 
@@ -377,6 +387,21 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
             $"{gameInstanceId.Value:N}:{deadline.UtcTicks}:{revision}"));
         return new GameCommandId(new Guid(bytes.AsSpan(0, 16)));
+    }
+
+    private async Task NotifyObserversAsync(GameRuntimeChange change)
+    {
+        foreach (var observer in observers)
+        {
+            try
+            {
+                await observer.StateChangedAsync(change);
+            }
+            catch
+            {
+                // An observer is a notification side effect; the authoritative snapshot is already saved.
+            }
+        }
     }
 
     public async ValueTask DisposeAsync()

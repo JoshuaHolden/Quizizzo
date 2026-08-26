@@ -21,6 +21,7 @@ internal sealed class PartyConfiguration : IEntityTypeConfiguration<Party>
             .IsFixedLength()
             .IsRequired();
         builder.Property(party => party.Status).HasConversion<int>();
+        builder.Property(party => party.CurrentGameKey).HasMaxLength(64);
         builder.HasOne<ApplicationUser>()
             .WithMany()
             .HasForeignKey(party => party.HostUserId)

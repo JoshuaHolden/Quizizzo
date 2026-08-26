@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Parties;
 using Quizizzo.Application.Players;
+using Quizizzo.Application.Games;
 
 namespace Quizizzo.Application;
 
@@ -13,6 +14,7 @@ public static class DependencyInjection
         services.AddScoped<PartyService>();
         services.AddScoped<DisplaySessionService>();
         services.AddScoped<PlayerService>();
+        services.AddScoped<PartyGameService>();
         return services;
     }
 }

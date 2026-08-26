@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quizizzo.GameEngine\Quizizzo.GameEngine.csproj" />
+    <ProjectReference Include="..\..\src\Quizizzo.Games.Estimate\Quizizzo.Games.Estimate.csproj" />
   </ItemGroup>
 
 </Project>

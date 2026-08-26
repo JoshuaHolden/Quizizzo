@@ -73,6 +73,14 @@ internal sealed class TestGameModule(TimeSpan? initialDeadline = null) : IGameMo
         };
     }
 
+    public IGameAction DecodeAction(string actionKind, JsonElement payload) => actionKind switch
+    {
+        "test.increment" => payload.Deserialize<IncrementAction>() ?? new IncrementAction(),
+        "test.reject" => new RejectAction(),
+        "test.complete" => new CompleteAction(),
+        _ => throw new GameRuleViolationException("unsupported-action", "Unsupported test action.")
+    };
+
     private sealed record TestState(int Count, string Secret);
 }
 

@@ -1,8 +1,10 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Parties;
 using Quizizzo.Application.Players;
+using Quizizzo.Application.Games;
 using Quizizzo.Web.Endpoints;
 
 namespace Quizizzo.Web.Realtime;
@@ -11,6 +13,7 @@ public sealed class PartyHub(
     PartyService parties,
     PlayerService players,
     DisplaySessionService displays,
+    PartyGameService games,
     PartyConnectionRegistry connections) : Hub<IPartyClient>
 {
     public async Task ConnectHost(Guid partyId)
@@ -55,6 +58,26 @@ public sealed class PartyHub(
             RealtimeRole.Display,
             display.DisplaySessionId.ToString(),
             Context.ConnectionAborted);
+    }
+
+    public async Task<PartyGameCommandView> SubmitPlayerAction(
+        Guid commandId,
+        string actionKind,
+        JsonElement payload)
+    {
+        var token = GetCookie(PlayerSessionEndpoints.PlayerCookieName);
+        var player = await players.ReconnectAsync(token, Context.ConnectionAborted);
+        var result = await games.ExecutePlayerActionAsync(
+            player.PlayerId,
+            commandId,
+            actionKind,
+            payload,
+            Context.ConnectionAborted);
+        if (!result.Applied)
+        {
+            throw new HubException(result.ErrorMessage ?? "The game action was rejected.");
+        }
+        return result;
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

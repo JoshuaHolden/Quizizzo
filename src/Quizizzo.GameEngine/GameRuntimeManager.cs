@@ -5,11 +5,13 @@ namespace Quizizzo.GameEngine;
 public sealed class GameRuntimeManager(
     GameModuleCatalog modules,
     IGameStateStore stateStore,
-    TimeProvider timeProvider) : IAsyncDisposable
+    TimeProvider timeProvider,
+    IEnumerable<IGameRuntimeObserver>? observers = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Dictionary<GameInstanceId, GameInstanceActor> actors = [];
     private bool disposed;
+    private readonly IReadOnlyList<IGameRuntimeObserver> runtimeObservers = observers?.ToArray() ?? [];
 
     public IReadOnlyList<GameDescriptor> ListGames() => modules.List();
 
@@ -58,7 +60,7 @@ public sealed class GameRuntimeManager(
                 now);
 
             await stateStore.CreateAsync(snapshot, cancellationToken);
-            var actor = new GameInstanceActor(snapshot, module, stateStore, timeProvider);
+            var actor = new GameInstanceActor(snapshot, module, stateStore, timeProvider, runtimeObservers);
             actors.Add(request.GameInstanceId, actor);
             return await actor.GetStatusAsync(cancellationToken);
         }
@@ -112,7 +114,7 @@ public sealed class GameRuntimeManager(
                 ?? throw new GameInstanceNotFoundException(gameInstanceId);
             var module = modules.GetRequired(snapshot.GameKey);
             GameStateValidator.Validate(snapshot.ModuleState, snapshot.GameKey);
-            var recovered = new GameInstanceActor(snapshot, module, stateStore, timeProvider);
+            var recovered = new GameInstanceActor(snapshot, module, stateStore, timeProvider, runtimeObservers);
             actors.Add(gameInstanceId, recovered);
             return recovered;
         }

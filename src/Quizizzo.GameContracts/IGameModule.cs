@@ -14,6 +14,8 @@ public interface IGameModule
     GameViewPayload CreateView(
         GameModuleState state,
         GameViewContext context);
+
+    IGameAction DecodeAction(string actionKind, System.Text.Json.JsonElement payload);
 }
 
 public sealed class GameRuleViolationException(string code, string message) : Exception(message)

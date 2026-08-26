@@ -1,0 +1,43 @@
+@using Quizizzo.GameContracts
+
+<div class="number-controller">
+    <label for="estimate-value" class="form-label fw-semibold">Your estimate</label>
+    <div class="input-group input-group-lg">
+        <input id="estimate-value"
+               class="form-control text-center"
+               type="number"
+               min="@Configuration.Minimum"
+               max="@Configuration.Maximum"
+               step="@Configuration.Step"
+               disabled="@Disabled"
+               @bind="value" />
+        @if (!string.IsNullOrWhiteSpace(Configuration.Suffix))
+        {
+            <span class="input-group-text">@Configuration.Suffix</span>
+        }
+    </div>
+    <p class="form-text">From @Configuration.Minimum.ToString("N0") to @Configuration.Maximum.ToString("N0")</p>
+    <button class="btn btn-primary btn-lg w-100"
+            disabled="@(Disabled || value is null || value < Configuration.Minimum || value > Configuration.Maximum)"
+            @onclick="SubmitAsync">
+        @SubmitLabel
+    </button>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public NumberControllerConfiguration Configuration { get; set; } = default!;
+    [Parameter] public string SubmitLabel { get; set; } = "Submit";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<long> Submitted { get; set; }
+
+    private long? value;
+
+    protected override void OnParametersSet()
+    {
+        value ??= Configuration.SubmittedValue;
+    }
+
+    private Task SubmitAsync() => value is { } submitted
+        ? Submitted.InvokeAsync(submitted)
+        : Task.CompletedTask;
+}

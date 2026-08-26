@@ -101,3 +101,72 @@ h1:focus {
     padding: 0.75rem;
     width: min(35vh, 280px);
 }
+
+.game-panel,
+.player-game-panel,
+.display-game-panel {
+    border-radius: 1.25rem;
+}
+
+.number-controller {
+    margin: 1.5rem auto 0;
+    max-width: 24rem;
+}
+
+.waiting-controller {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-top: 2rem;
+}
+
+.waiting-pulse {
+    animation: waiting-pulse 1.2s ease-in-out infinite;
+    background: #6f42c1;
+    border-radius: 50%;
+    height: 2.5rem;
+    width: 2.5rem;
+}
+
+.display-results {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    margin: 2rem auto;
+    max-width: 75rem;
+}
+
+.display-result-card {
+    background: rgba(255, 255, 255, 0.94);
+    border-radius: 1rem;
+    color: #171717;
+    padding: 1rem;
+}
+
+.scoreboard {
+    list-style-position: inside;
+    margin: 0;
+    padding: 0;
+}
+
+.scoreboard li {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.35rem 0;
+}
+
+.display-scoreboard {
+    margin: 0 auto;
+    max-width: 34rem;
+}
+
+@keyframes waiting-pulse {
+    0%, 100% { opacity: 0.45; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .waiting-pulse { animation: none; }
+}

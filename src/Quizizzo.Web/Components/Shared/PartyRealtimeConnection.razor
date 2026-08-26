@@ -36,6 +36,15 @@
     [JSInvokable]
     public Task SetConnectionStatus(string status) => ConnectionStatusChanged.InvokeAsync(status);
 
+    public async Task InvokeAsync(string method, params object?[] arguments)
+    {
+        if (reference is null)
+        {
+            throw new InvalidOperationException("The realtime connection is not ready.");
+        }
+        await JavaScript.InvokeVoidAsync("quizizzoRealtime.invoke", connectionKey, method, arguments);
+    }
+
     public async ValueTask DisposeAsync()
     {
         if (reference is not null)

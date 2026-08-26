@@ -1,0 +1,44 @@
+@implements IAsyncDisposable
+
+@if (EndsAtUtc is { } deadline)
+{
+    <span aria-live="off">@FormatRemaining(deadline)</span>
+}
+
+@code {
+    [Parameter] public DateTimeOffset? EndsAtUtc { get; set; }
+
+    private readonly CancellationTokenSource cancellation = new();
+
+    protected override void OnInitialized() => _ = TickAsync();
+
+    private async Task TickAsync()
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+        try
+        {
+            while (await timer.WaitForNextTickAsync(cancellation.Token))
+            {
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+        {
+        }
+    }
+
+    private static string FormatRemaining(DateTimeOffset deadline)
+    {
+        var remaining = deadline - DateTimeOffset.UtcNow;
+        return remaining <= TimeSpan.Zero
+            ? "Time's up"
+            : $"{Math.Ceiling(remaining.TotalSeconds):N0}s remaining";
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        cancellation.Cancel();
+        cancellation.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

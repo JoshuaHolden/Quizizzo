@@ -6,7 +6,7 @@ The game engine is a transport-neutral runtime. SignalR, Blazor, EF Core, Phaser
 
 An `IGameModule` supplies a descriptor, creates its initial explicit state, applies semantic `IGameAction` values, and builds role-specific view payloads. Module state is an opaque versioned JSON document wrapped by engine-owned phase, deadline, and completion metadata. This lets the runtime snapshot any game without referencing its assembly or switching on a game name.
 
-`GameModuleCatalog` discovers all registered `IGameModule` implementations by key and fails immediately on duplicate or invalid descriptors. Concrete game registration starts with Estimate in Milestone 7.
+`GameModuleCatalog` discovers all registered `IGameModule` implementations by key and fails immediately on duplicate or invalid descriptors. Estimate is the first registered module and proves the complete number-controller round loop.
 
 ## Command flow
 

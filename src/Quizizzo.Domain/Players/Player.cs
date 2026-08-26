@@ -69,4 +69,13 @@ public sealed class Player
             LastSeenAt = seenAt;
         }
     }
+
+    public void SetScore(int score)
+    {
+        if (score < 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(score), "Player scores cannot be negative.");
+        }
+        Score = score;
+    }
 }

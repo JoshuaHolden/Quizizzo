@@ -7,4 +7,6 @@ public sealed record PartyView(
     string RoomCode,
     PartyStatus Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    Guid? CurrentGameInstanceId,
+    string? CurrentGameKey);
