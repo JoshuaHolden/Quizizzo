@@ -1,0 +1,56 @@
+@page "/host/party/{PartyId:guid}"
+@rendermode InteractiveServer
+@attribute [Authorize]
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Authorization
+@using Quizizzo.Application.Parties
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject PartyService Parties
+
+<PageTitle>Party controls</PageTitle>
+
+@if (party is null)
+{
+    <p>@message</p>
+}
+else
+{
+    <header class="text-center my-4">
+        <p class="text-uppercase mb-1">Room code</p>
+        <h1 class="display-1 fw-bold letter-spacing-wide">@party.RoomCode</h1>
+        <p class="lead">Party status: @party.Status</p>
+    </header>
+
+    <section class="card p-4">
+        <h2>Lobby</h2>
+        <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
+        <p>Player joining arrives in Milestone 3. SignalR lobby updates arrive in Milestone 4.</p>
+    </section>
+}
+
+@code {
+    [Parameter] public Guid PartyId { get; set; }
+
+    private PartyView? party;
+    private string message = "Loading party…";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var hostUserId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new InvalidOperationException("An authenticated host ID is required.");
+
+        try
+        {
+            party = await Parties.GetOwnedAsync(PartyId, hostUserId);
+        }
+        catch (PartyNotFoundException)
+        {
+            message = "Party not found.";
+        }
+        catch (PartyAccessDeniedException)
+        {
+            message = "You do not have permission to control this party.";
+        }
+    }
+}

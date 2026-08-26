@@ -5,7 +5,7 @@ public sealed class ArchitectureTests
     [Fact]
     public void Application_references_only_inward_Quizizzo_layers()
     {
-        var references = typeof(Quizizzo.Application.Class1).Assembly.GetReferencedAssemblies()
+        var references = typeof(Quizizzo.Application.Parties.PartyService).Assembly.GetReferencedAssemblies()
             .Select(reference => reference.Name)
             .Where(name => name?.StartsWith("Quizizzo.", StringComparison.Ordinal) == true)
             .ToHashSet(StringComparer.Ordinal);

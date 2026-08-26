@@ -1,0 +1,42 @@
+@page "/display"
+@using Quizizzo.Application.Displays
+@inject NavigationManager Navigation
+
+<PageTitle>Quizizzo display</PageTitle>
+
+<main class="display-stage text-center">
+    <h1 class="display-2 fw-bold">QUIZIZZO</h1>
+
+    @if (session is null)
+    {
+        <p>Unable to initialise this display.</p>
+    }
+    else if (!session.IsPaired)
+    {
+        <h2>Pair this screen</h2>
+        <p>Open this address on the host's phone:</p>
+        <p class="fs-4"><a href="@PairingPath">@PairingUrl</a></p>
+        <p>Pairing code</p>
+        <p class="display-4 fw-bold">@session.PairingCode</p>
+        <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
+    }
+    else
+    {
+        <h2>JOIN THE PARTY</h2>
+        <p class="display-1 fw-bold">@session.RoomCode</p>
+        <p>Display paired. Player joining arrives in the next milestone.</p>
+    }
+</main>
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+
+    private DisplaySessionView? session;
+    private string PairingPath => $"host/pair-display/{session?.PairingCode}";
+    private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
+
+    protected override void OnInitialized()
+    {
+        session = HttpContext?.Items["Quizizzo.DisplaySession"] as DisplaySessionView;
+    }
+}

@@ -51,4 +51,10 @@ For a VPS already hosting another website, follow [the coexistence deployment gu
 
 Dependencies point inward from the Web composition root toward Application, Domain, GameContracts, and GameEngine. Infrastructure implements persistence and external-service concerns. Games are isolated modules discovered through registration rather than game-name conditionals. See [architecture decisions](docs/adr/README.md).
 
+## Party and display foundation
+
+Authenticated hosts use `/host` to create or resume their active party and `/host/party/{partyId}` for the lobby foundation. Active room codes are four unambiguous characters and are protected by a PostgreSQL partial unique index. Host ownership is checked in the application layer and backed by the Identity user foreign key.
+
+Opening `/display` creates or restores a durable display session using an HttpOnly browser cookie. Only a SHA-256 token hash is stored. The screen supplies a short-lived pairing code and host link; `/host/pair-display/{pairingCode}` allows only the owning host to attach it to a party. Until SignalR arrives, refresh the display after pairing to reconstruct its persisted lobby view.
+
 Adding games, the drawing subsystem, Phaser integration, CI/CD, and Hetzner deployment are deliberately scheduled in later milestones in `AGENTS.md`; they are not part of Foundation.

@@ -84,9 +84,21 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build, run tests, and fix all failures.
 - [x] Stop and report Milestone 1; do not start party/game functionality in the same chunk.
 
+### Milestone 2 — Party infrastructure (completed 2026-08-26)
+
+- [x] Add `Party`, `PartyId`, `RoomCode`, `PartyStatus`, `DisplaySession`, and `DisplaySessionId` domain types.
+- [x] Generate normalized four-character room codes without `0`, `O`, `1`, `I`, or `L`.
+- [x] Enforce unique active room codes and one active party per host in PostgreSQL.
+- [x] Add authenticated party creation, resume/recent views, and server-side owner authorization.
+- [x] Add durable display credentials using a secure browser token with only its SHA-256 hash persisted.
+- [x] Add short-lived display pairing codes and owner-authorized party pairing.
+- [x] Add `/host`, `/host/party/{partyId}`, `/host/pair-display/{pairingCode}`, and `/display` UI foundations.
+- [x] Add the PostgreSQL party/display migration plus domain, application, persistence-model, health, and authorization tests.
+- [x] Restore, build, run tests, and fix all failures.
+- [x] Stop before anonymous player sessions and SignalR.
+
 ### Remaining milestones
 
-- [ ] Milestone 2 — Party infrastructure: party creation, room codes, ownership, lobby, display sessions.
 - [ ] Milestone 3 — Anonymous player sessions: QR join, names, secure credentials, lobby roster, identity recovery.
 - [ ] Milestone 4 — SignalR: thin host/player/display connections, groups, status, reconnect handling.
 - [ ] Milestone 5 — Recovery gate: prove player/display/host refresh and `ConnectionId` replacement before proceeding.
