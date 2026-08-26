@@ -4,6 +4,7 @@ using Quizizzo.Application.Abstractions;
 using Quizizzo.Infrastructure.Displays;
 using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Infrastructure.Parties;
+using Quizizzo.Infrastructure.Players;
 
 namespace Quizizzo.Infrastructure;
 
@@ -18,8 +19,11 @@ public static class DependencyInjection
                 postgres.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
         services.AddScoped<IPartyRepository, PartyRepository>();
         services.AddScoped<IDisplaySessionRepository, DisplaySessionRepository>();
+        services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddSingleton<IRoomCodeGenerator, CryptographicRoomCodeGenerator>();
         services.AddSingleton<IDisplayCredentialService, DisplayCredentialService>();
+        services.AddSingleton<IPlayerCredentialService, PlayerCredentialService>();
+        services.AddSingleton<ICharacterGenerator, RandomCharacterGenerator>();
         return services;
     }
 }

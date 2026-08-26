@@ -1,0 +1,51 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@inject IJSRuntime JavaScript
+
+@code {
+    [Parameter, EditorRequired] public string Role { get; set; } = string.Empty;
+    [Parameter] public Guid? PartyId { get; set; }
+    [Parameter] public EventCallback<string> StateChanged { get; set; }
+    [Parameter] public EventCallback<string> ConnectionStatusChanged { get; set; }
+
+    private readonly string connectionKey = Guid.NewGuid().ToString("N");
+    private DotNetObjectReference<PartyRealtimeConnection>? reference;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        reference = DotNetObjectReference.Create(this);
+        try
+        {
+            await JavaScript.InvokeVoidAsync(
+                "quizizzoRealtime.start", connectionKey, reference, Role, PartyId);
+        }
+        catch (JSException)
+        {
+            await ConnectionStatusChanged.InvokeAsync("Disconnected");
+        }
+    }
+
+    [JSInvokable]
+    public Task HandleStateChanged(string reason) => StateChanged.InvokeAsync(reason);
+
+    [JSInvokable]
+    public Task SetConnectionStatus(string status) => ConnectionStatusChanged.InvokeAsync(status);
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JavaScript.InvokeVoidAsync("quizizzoRealtime.stop", connectionKey);
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+
+        reference?.Dispose();
+    }
+}

@@ -1,0 +1,86 @@
+@using Quizizzo.Application.Displays
+@using Quizizzo.Application.Players
+@using Quizizzo.Web.Presentation
+@inject DisplaySessionService DisplaySessions
+@inject PlayerService Players
+@inject NavigationManager Navigation
+@inject QrCodeService QrCodes
+
+<PartyRealtimeConnection Role="Display"
+                         PartyId="session.PartyId"
+                         StateChanged="RefreshFromServerAsync"
+                         ConnectionStatusChanged="SetConnectionStatus" />
+
+<main class="display-stage text-center">
+    <h1 class="display-2 fw-bold">QUIZIZZO</h1>
+    <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
+
+    @if (!session.IsPaired)
+    {
+        <h2>Pair this screen</h2>
+        <p>Open this address on the host's phone:</p>
+        <img class="qr-code" src="@QrCodes.CreatePngDataUri(PairingUrl)" alt="QR code to pair this display" width="280" height="280" />
+        <p class="fs-4"><a href="@PairingPath">@PairingUrl</a></p>
+        <p>Pairing code</p>
+        <p class="display-4 fw-bold">@session.PairingCode</p>
+        <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
+    }
+    else
+    {
+        <h2>JOIN THE PARTY</h2>
+        <p class="display-1 fw-bold">@session.RoomCode</p>
+        <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
+        <p><a href="@JoinUrl">@JoinUrl</a></p>
+        @if (players.Count == 0)
+        {
+            <p>Waiting for players...</p>
+        }
+        else
+        {
+            <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
+                @foreach (var player in players)
+                {
+                    <div class="player-chip" style="border-color: @player.Character.PrimaryColour">
+                        <span class="character-dot" style="background-color: @player.Character.PrimaryColour"></span>
+                        <strong>@player.DisplayName</strong>
+                    </div>
+                }
+            </div>
+        }
+    }
+</main>
+
+@code {
+    [Parameter, EditorRequired] public DisplaySessionView InitialSession { get; set; } = default!;
+    [Parameter, EditorRequired] public PlayerView[] InitialPlayers { get; set; } = [];
+
+    private DisplaySessionView session = default!;
+    private IReadOnlyList<PlayerView> players = [];
+    private string connectionStatus = "Connecting";
+    private string PairingPath => $"host/pair-display/{session.PairingCode}";
+    private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
+    private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
+    private string ConnectionBadgeClass => connectionStatus == "Connected"
+        ? "text-bg-success"
+        : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+
+    protected override void OnInitialized()
+    {
+        session = InitialSession;
+        players = InitialPlayers;
+    }
+
+    private async Task RefreshFromServerAsync(string reason)
+    {
+        session = await DisplaySessions.GetByIdAsync(session.DisplaySessionId);
+        players = session.PartyId is { } partyId
+            ? await Players.ListForDisplayAsync(partyId)
+            : [];
+    }
+
+    private Task SetConnectionStatus(string status)
+    {
+        connectionStatus = status;
+        return Task.CompletedTask;
+    }
+}

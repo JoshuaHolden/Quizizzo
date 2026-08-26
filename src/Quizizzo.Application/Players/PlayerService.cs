@@ -83,6 +83,30 @@ public sealed class PlayerService(
         return Map(player, party.RoomCode);
     }
 
+    public async Task<PlayerView> GetByIdAsync(
+        Guid playerId,
+        CancellationToken cancellationToken = default)
+    {
+        var player = await players.GetByIdAsync(new PlayerId(playerId), cancellationToken)
+            ?? throw new PlayerSessionNotFoundException();
+        var party = await parties.GetByIdAsync(player.PartyId, cancellationToken)
+            ?? throw new PartyNotFoundException();
+        return Map(player, party.RoomCode);
+    }
+
+    public async Task<PlayerView> MarkDisconnectedAsync(
+        Guid playerId,
+        CancellationToken cancellationToken = default)
+    {
+        var player = await players.GetByIdAsync(new PlayerId(playerId), cancellationToken)
+            ?? throw new PlayerSessionNotFoundException();
+        var party = await parties.GetByIdAsync(player.PartyId, cancellationToken)
+            ?? throw new PartyNotFoundException();
+        player.MarkDisconnected(timeProvider.GetUtcNow());
+        await players.SaveChangesAsync(cancellationToken);
+        return Map(player, party.RoomCode);
+    }
+
     public async Task<IReadOnlyList<PlayerView>> ListForHostAsync(
         Guid partyId,
         string hostUserId,

@@ -97,10 +97,37 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build, run tests, and fix all failures.
 - [x] Stop before anonymous player sessions and SignalR.
 
+### Milestone 3 — Anonymous player sessions (completed 2026-08-26)
+
+- [x] Add durable `Player`, `PlayerId`, `PlayerName`, status, score, and persistent character domain models.
+- [x] Centralize the 12-player and 24-character name limits and validate hostile/invalid input.
+- [x] Add QR-driven `/join`, `/join/{roomCode}`, and reconstructable `/play` flows.
+- [x] Issue a 256-bit anonymous player credential in an HttpOnly cookie and store only its SHA-256 hash.
+- [x] Restore the same player ID, name, character, score, and party after refresh without asking for the name again.
+- [x] Prevent a repeated same-browser join from creating a duplicate player.
+- [x] Add antiforgery validation and per-IP join rate limiting.
+- [x] Show the persisted lobby roster to the authorized host and paired display.
+- [x] Add the PostgreSQL player migration with party, status, time, and unique token-hash indexes.
+- [x] Add domain/application/persistence/QR/authorization tests and pass the full build/test gate.
+- [x] Stop before SignalR connection tracking and realtime roster updates.
+
+### Milestone 4 — SignalR (completed 2026-08-26)
+
+- [x] Add a thin party hub whose host, player, and display registration delegates identity and ownership checks to application services.
+- [x] Keep durable host user IDs, player IDs, and display session IDs independent from transient SignalR `ConnectionId` values.
+- [x] Add party and role-specific groups plus a dedicated unpaired-display session group.
+- [x] Track presence by durable subject across multiple tabs/connections and expose host/player/display snapshots.
+- [x] Add a configurable player disconnect grace period; cancel pending disconnects when the durable player reconnects.
+- [x] Publish state-change hints for player join/reconnect, display pairing, and role presence changes.
+- [x] Add a locally served, pinned SignalR browser client with automatic reconnect and Connected/Reconnecting/Disconnected UI status.
+- [x] Refresh host, player, and display views from authoritative application state after each hint instead of treating messages as state history.
+- [x] Document WebSocket proxy requirements without changing the existing `logiagraph.com` route or unrelated Docker resources.
+- [x] Add presence, multi-connection identity, reconnect-grace, hub negotiation, local-client-asset, and DI lifetime tests.
+- [x] Restore, build, run all 41 tests, and fix all failures.
+- [x] Stop before the explicit refresh/connection-replacement recovery gate.
+
 ### Remaining milestones
 
-- [ ] Milestone 3 — Anonymous player sessions: QR join, names, secure credentials, lobby roster, identity recovery.
-- [ ] Milestone 4 — SignalR: thin host/player/display connections, groups, status, reconnect handling.
 - [ ] Milestone 5 — Recovery gate: prove player/display/host refresh and `ConnectionId` replacement before proceeding.
 - [ ] Milestone 6 — Game engine: contracts, discoverable modules, commands, explicit state machines, channel serialization, timers, views, scoring, state-store abstraction.
 - [ ] Milestone 7 — Estimate: complete number-controller round loop as the engine proof.

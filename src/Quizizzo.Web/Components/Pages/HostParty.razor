@@ -4,8 +4,12 @@
 @using System.Security.Claims
 @using Microsoft.AspNetCore.Authorization
 @using Quizizzo.Application.Parties
+@using Quizizzo.Application.Players
+@using Quizizzo.Web.Realtime
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject PartyService Parties
+@inject PlayerService Players
+@inject PartyConnectionRegistry Connections
 
 <PageTitle>Party controls</PageTitle>
 
@@ -15,16 +19,42 @@
 }
 else
 {
+    <PartyRealtimeConnection Role="Host"
+                             PartyId="PartyId"
+                             StateChanged="RefreshFromServerAsync"
+                             ConnectionStatusChanged="SetConnectionStatus" />
+
     <header class="text-center my-4">
         <p class="text-uppercase mb-1">Room code</p>
         <h1 class="display-1 fw-bold letter-spacing-wide">@party.RoomCode</h1>
         <p class="lead">Party status: @party.Status</p>
+        <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
     </header>
 
     <section class="card p-4">
         <h2>Lobby</h2>
         <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
-        <p>Player joining arrives in Milestone 3. SignalR lobby updates arrive in Milestone 4.</p>
+        <p aria-live="polite">
+            @presence.Players player@(presence.Players == 1 ? string.Empty : "s") online
+            · Display @(presence.DisplayConnected ? "connected" : "not connected")
+        </p>
+        @if (players.Count == 0)
+        {
+            <p>No players have joined yet.</p>
+        }
+        else
+        {
+            <ul class="list-group mb-3">
+                @foreach (var player in players)
+                {
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>@player.DisplayName</span>
+                        <span>@player.Status</span>
+                    </li>
+                }
+            </ul>
+        }
+        <small class="text-muted">Last update: @lastUpdateReason</small>
     </section>
 }
 
@@ -32,17 +62,25 @@ else
     [Parameter] public Guid PartyId { get; set; }
 
     private PartyView? party;
-    private string message = "Loading party…";
+    private IReadOnlyList<PlayerView> players = [];
+    private PartyPresenceSnapshot presence = new(0, 0, 0);
+    private string? hostUserId;
+    private string message = "Loading party...";
+    private string connectionStatus = "Connecting";
+    private string lastUpdateReason = "Initial state";
+    private string ConnectionBadgeClass => connectionStatus == "Connected"
+        ? "text-bg-success"
+        : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
 
     protected override async Task OnParametersSetAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        var hostUserId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
+        hostUserId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new InvalidOperationException("An authenticated host ID is required.");
 
         try
         {
-            party = await Parties.GetOwnedAsync(PartyId, hostUserId);
+            await LoadAsync();
         }
         catch (PartyNotFoundException)
         {
@@ -52,5 +90,24 @@ else
         {
             message = "You do not have permission to control this party.";
         }
+    }
+
+    private async Task RefreshFromServerAsync(string reason)
+    {
+        lastUpdateReason = reason;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        party = await Parties.GetOwnedAsync(PartyId, hostUserId!);
+        players = await Players.ListForHostAsync(PartyId, hostUserId!);
+        presence = Connections.GetSnapshot(PartyId);
+    }
+
+    private Task SetConnectionStatus(string status)
+    {
+        connectionStatus = status;
+        return Task.CompletedTask;
     }
 }

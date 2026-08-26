@@ -1,0 +1,28 @@
+@page "/play"
+@using Quizizzo.Application.Players
+@using Quizizzo.Web.Endpoints
+
+<PageTitle>Player controller</PageTitle>
+
+@if (player is null)
+{
+    <main class="join-panel mx-auto text-center">
+        <h1>No active player</h1>
+        <p>Join a party to use this phone as your controller.</p>
+        <a class="btn btn-primary btn-lg" href="/join">Join a party</a>
+    </main>
+}
+else
+{
+    <PlayRealtime InitialPlayer="player" @rendermode="InteractiveServer" />
+}
+
+@code {
+    [CascadingParameter] private HttpContext? HttpContext { get; set; }
+    private PlayerView? player;
+
+    protected override void OnInitialized()
+    {
+        player = HttpContext?.Items[PlayerSessionEndpoints.PlayerContextItem] as PlayerView;
+    }
+}

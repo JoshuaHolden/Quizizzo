@@ -71,6 +71,29 @@ public sealed class DisplaySessionService(
         return await MapAsync(displaySession, cancellationToken);
     }
 
+    public async Task<DisplaySessionView> ReconnectAsync(
+        string sessionToken,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionToken);
+        var displaySession = await displaySessions.GetBySessionTokenHashAsync(
+            credentials.HashSessionToken(sessionToken), cancellationToken)
+            ?? throw new InvalidOperationException("No valid display session was found.");
+        displaySession.MarkSeen(timeProvider.GetUtcNow());
+        await displaySessions.SaveChangesAsync(cancellationToken);
+        return await MapAsync(displaySession, cancellationToken);
+    }
+
+    public async Task<DisplaySessionView> GetByIdAsync(
+        Guid displaySessionId,
+        CancellationToken cancellationToken = default)
+    {
+        var displaySession = await displaySessions.GetByIdAsync(
+            new DisplaySessionId(displaySessionId), cancellationToken)
+            ?? throw new InvalidOperationException("No valid display session was found.");
+        return await MapAsync(displaySession, cancellationToken);
+    }
+
     private async Task<string> AllocatePairingCodeAsync(CancellationToken cancellationToken)
     {
         for (var attempt = 0; attempt < PairingCodeAttempts; attempt++)

@@ -69,6 +69,9 @@ public sealed class DisplaySessionServiceTests
         public Task<DisplaySession?> GetBySessionTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
             Task.FromResult(Sessions.SingleOrDefault(session => session.SessionTokenHash == tokenHash));
 
+        public Task<DisplaySession?> GetByIdAsync(DisplaySessionId displaySessionId, CancellationToken cancellationToken) =>
+            Task.FromResult(Sessions.SingleOrDefault(session => session.Id == displaySessionId));
+
         public Task<DisplaySession?> GetByPairingCodeAsync(string pairingCode, CancellationToken cancellationToken) =>
             Task.FromResult(Sessions.SingleOrDefault(session => session.PairingCode == pairingCode));
 
@@ -84,6 +87,8 @@ public sealed class DisplaySessionServiceTests
         public Task AddAsync(Party party, CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<Party?> GetByIdAsync(PartyId partyId, CancellationToken cancellationToken) =>
             Task.FromResult(Parties.SingleOrDefault(party => party.Id == partyId));
+        public Task<Party?> GetByRoomCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+            Task.FromResult(Parties.SingleOrDefault(party => party.RoomCode == roomCode && party.HasActiveRoomCode));
         public Task<Party?> GetActiveByHostAsync(string hostUserId, CancellationToken cancellationToken) =>
             Task.FromResult(Parties.SingleOrDefault(party => party.HostUserId == hostUserId && party.HasActiveRoomCode));
         public Task<IReadOnlyList<Party>> ListRecentByHostAsync(string hostUserId, int limit, CancellationToken cancellationToken) =>

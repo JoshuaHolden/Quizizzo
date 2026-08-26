@@ -12,6 +12,8 @@ docker compose --project-name quizizzo up -d --build
 
 Point only the new Quizizzo hostname in the existing Nginx/Caddy configuration to `http://127.0.0.1:8081`. Keep the `logiagraph.com` hostname, TLS configuration, and upstream unchanged. Verify `/health/live` and `/health/ready` before enabling public traffic.
 
+SignalR requires the new Quizizzo route to support WebSocket upgrades. For Nginx, set `proxy_http_version 1.1`, forward `Upgrade` and `Connection`, and keep a suitably long `proxy_read_timeout` inside only the Quizizzo `server` block. Caddy's standard `reverse_proxy 127.0.0.1:8081` handles WebSocket upgrades automatically. These settings do not belong in, and must not change, the existing `logiagraph.com` route.
+
 ## Containerized reverse proxy
 
 If the existing reverse proxy is a container, discover its existing external Docker network without changing it. Set `QUIZIZZO_PROXY_NETWORK` to that exact network name and run:
@@ -21,6 +23,8 @@ docker compose --project-name quizizzo -f compose.yaml -f compose.proxy.yaml up 
 ```
 
 Add a separate Quizizzo hostname route to `http://quizizzo-web:8080` from that proxy. Do not edit the `logiagraph.com` router/service definition. The override only attaches the Quizizzo web service; PostgreSQL remains on its private network.
+
+Whichever proxy is used, verify the browser can negotiate `/hubs/party` and upgrade to WebSockets after deployment. Long polling remains a fallback, but a working WebSocket route is the production target.
 
 ## Safe operations
 

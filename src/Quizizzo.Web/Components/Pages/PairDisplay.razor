@@ -9,6 +9,7 @@
 @inject PartyService Parties
 @inject DisplaySessionService DisplaySessions
 @inject NavigationManager Navigation
+@inject Quizizzo.Web.Realtime.IPartyRealtimeNotifier Realtime
 
 <PageTitle>Pair display</PageTitle>
 
@@ -70,7 +71,9 @@
         working = true;
         try
         {
-            await DisplaySessions.PairAsync(PairingCode, activeParty.PartyId, hostUserId);
+            var display = await DisplaySessions.PairAsync(PairingCode, activeParty.PartyId, hostUserId);
+            await Realtime.DisplaySessionChangedAsync(display.DisplaySessionId, "DisplayPaired");
+            await Realtime.PartyChangedAsync(activeParty.PartyId, "DisplayPaired");
             paired = true;
             message = $"Display paired with room {activeParty.RoomCode}.";
         }

@@ -1,0 +1,53 @@
+@page "/join/{RoomCode}"
+@using Quizizzo.Application.Parties
+@using Quizizzo.Application.Players
+@using Quizizzo.Domain
+@inject PlayerService Players
+
+<PageTitle>Join @RoomCode</PageTitle>
+
+<main class="join-panel mx-auto">
+    @if (party is null)
+    {
+        <h1>Can't join</h1>
+        <p>@loadError</p>
+        <a class="btn btn-outline-primary" href="/join">Try another code</a>
+    }
+    else
+    {
+        <p class="text-uppercase mb-1">Joining room</p>
+        <h1 class="display-3 fw-bold">@party.RoomCode</h1>
+        <p>@party.PlayerCount / @party.MaximumPlayers players</p>
+        @if (!string.IsNullOrWhiteSpace(Error))
+        {
+            <div class="alert alert-danger">@Error</div>
+        }
+        <form method="post" action="/join-player">
+            <AntiforgeryToken />
+            <input type="hidden" name="roomCode" value="@party.RoomCode" />
+            <label class="form-label" for="display-name">Your name</label>
+            <input id="display-name" name="displayName" class="form-control form-control-lg"
+                   maxlength="@QuizizzoLimits.PlayerNameLength" autocomplete="nickname" required />
+            <button class="btn btn-primary btn-lg w-100 mt-3" type="submit">Join</button>
+        </form>
+    }
+</main>
+
+@code {
+    [Parameter] public string RoomCode { get; set; } = string.Empty;
+    [SupplyParameterFromQuery(Name = "error")] public string? Error { get; set; }
+    private JoinPartyView? party;
+    private string loadError = "Looking for that party…";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        try
+        {
+            party = await Players.GetJoinPartyAsync(RoomCode);
+        }
+        catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or PartyNotFoundException)
+        {
+            loadError = exception.Message;
+        }
+    }
+}

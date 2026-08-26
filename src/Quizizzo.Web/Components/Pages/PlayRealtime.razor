@@ -1,0 +1,41 @@
+@using Quizizzo.Application.Players
+@inject PlayerService Players
+
+<PartyRealtimeConnection Role="Player"
+                         PartyId="player.PartyId"
+                         StateChanged="RefreshFromServerAsync"
+                         ConnectionStatusChanged="SetConnectionStatus" />
+
+<main class="join-panel mx-auto text-center">
+    <p class="text-uppercase mb-1">Room @player.RoomCode</p>
+    <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
+        <span aria-hidden="true">:)</span>
+    </div>
+    <h1>You're in, @player.DisplayName!</h1>
+    <p>Your character is ready. Keep this page open.</p>
+    <p class="badge text-bg-success">@player.Status</p>
+    <p><span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span></p>
+</main>
+
+@code {
+    [Parameter, EditorRequired] public PlayerView InitialPlayer { get; set; } = default!;
+
+    private PlayerView player = default!;
+    private string connectionStatus = "Connecting";
+    private string ConnectionBadgeClass => connectionStatus == "Connected"
+        ? "text-bg-success"
+        : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+
+    protected override void OnInitialized() => player = InitialPlayer;
+
+    private async Task RefreshFromServerAsync(string reason)
+    {
+        player = await Players.GetByIdAsync(player.PlayerId);
+    }
+
+    private Task SetConnectionStatus(string status)
+    {
+        connectionStatus = status;
+        return Task.CompletedTask;
+    }
+}

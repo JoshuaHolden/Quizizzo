@@ -22,6 +22,15 @@ public sealed class PartyRepository(ApplicationDbContext dbContext) : IPartyRepo
     public Task<Party?> GetByIdAsync(PartyId partyId, CancellationToken cancellationToken) =>
         dbContext.Parties.SingleOrDefaultAsync(party => party.Id == partyId, cancellationToken);
 
+    public Task<Party?> GetByRoomCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+        dbContext.Parties.SingleOrDefaultAsync(
+            party => party.RoomCode == roomCode &&
+                (party.Status == PartyStatus.Created ||
+                 party.Status == PartyStatus.Lobby ||
+                 party.Status == PartyStatus.Playing ||
+                 party.Status == PartyStatus.Paused),
+            cancellationToken);
+
     public Task<Party?> GetActiveByHostAsync(string hostUserId, CancellationToken cancellationToken) =>
         dbContext.Parties
             .Where(party => party.HostUserId == hostUserId &&

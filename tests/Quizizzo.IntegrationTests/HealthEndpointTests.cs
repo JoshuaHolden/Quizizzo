@@ -1,9 +1,13 @@
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Domain.Displays;
 using Quizizzo.Domain.Parties;
+using Quizizzo.Domain.Players;
+using Quizizzo.Web.Presentation;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -14,8 +18,9 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
 
     public HealthEndpointTests(WebApplicationFactory<Program> factory)
     {
-        this.factory = factory;
-        client = factory.CreateClient(new WebApplicationFactoryClientOptions
+        this.factory = factory.WithWebHostBuilder(builder =>
+            builder.ConfigureLogging(logging => logging.ClearProviders()));
+        client = this.factory.CreateClient(new WebApplicationFactoryClientOptions
         {
             AllowAutoRedirect = false,
             BaseAddress = new Uri("https://localhost")
@@ -51,6 +56,7 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         var activeHostIndex = party.GetIndexes().Single(index =>
             index.Properties.Select(property => property.Name).SequenceEqual([nameof(Party.HostUserId)]));
         var display = dbContext.Model.FindEntityType(typeof(DisplaySession))!;
+        var player = dbContext.Model.FindEntityType(typeof(Player))!;
 
         Assert.True(roomCodeIndex.IsUnique);
         Assert.Equal(
@@ -64,6 +70,11 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
             index.IsUnique && index.Properties.Single().Name == nameof(DisplaySession.SessionTokenHash));
         Assert.Contains(display.GetIndexes(), index =>
             index.IsUnique && index.Properties.Single().Name == nameof(DisplaySession.PairingCode));
+        Assert.Contains(player.GetIndexes(), index =>
+            index.IsUnique && index.Properties.Single().Name == nameof(Player.SessionTokenHash));
+        Assert.Contains(player.GetIndexes(), index =>
+            index.Properties.Select(property => property.Name)
+                .SequenceEqual([nameof(Player.PartyId), nameof(Player.Status)]));
     }
 
     [Fact]
@@ -71,7 +82,21 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     {
         using var response = await client.GetAsync("/host");
 
-        Assert.Equal(System.Net.HttpStatusCode.Redirect, response.StatusCode);
+        var responseBody = await response.Content.ReadAsStringAsync();
+        Assert.True(
+            response.StatusCode == System.Net.HttpStatusCode.Redirect,
+            $"Expected redirect but received {response.StatusCode}: {responseBody}");
         Assert.Equal("/Account/Login", response.Headers.Location?.AbsolutePath);
+    }
+
+    [Fact]
+    public void Qr_code_service_generates_a_png_data_uri()
+    {
+        var qrCodes = new QrCodeService();
+
+        var dataUri = qrCodes.CreatePngDataUri("https://quizizzo.example/join/K7XM");
+
+        Assert.StartsWith("data:image/png;base64,", dataUri);
+        Assert.True(Convert.FromBase64String(dataUri.Split(',')[1]).Length > 100);
     }
 }

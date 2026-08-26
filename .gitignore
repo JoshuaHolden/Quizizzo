@@ -13,3 +13,5 @@ obj/
 .env
 appsettings.Production.json
 artifacts/
+node_modules/
+.npm-cache/

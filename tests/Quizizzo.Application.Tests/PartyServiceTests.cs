@@ -79,6 +79,9 @@ public sealed class PartyServiceTests
         public Task<Party?> GetByIdAsync(PartyId partyId, CancellationToken cancellationToken) =>
             Task.FromResult(Parties.SingleOrDefault(party => party.Id == partyId));
 
+        public Task<Party?> GetByRoomCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
+            Task.FromResult(Parties.SingleOrDefault(party => party.RoomCode == roomCode && party.HasActiveRoomCode));
+
         public Task<Party?> GetActiveByHostAsync(string hostUserId, CancellationToken cancellationToken) =>
             Task.FromResult(Parties.LastOrDefault(party => party.HostUserId == hostUserId && party.HasActiveRoomCode));
 

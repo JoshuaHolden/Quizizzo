@@ -13,6 +13,12 @@ public sealed class DisplaySessionRepository(ApplicationDbContext dbContext) : I
     public async Task AddAsync(DisplaySession displaySession, CancellationToken cancellationToken) =>
         await dbContext.DisplaySessions.AddAsync(displaySession, cancellationToken);
 
+    public Task<DisplaySession?> GetByIdAsync(
+        DisplaySessionId displaySessionId,
+        CancellationToken cancellationToken) =>
+        dbContext.DisplaySessions.SingleOrDefaultAsync(
+            session => session.Id == displaySessionId, cancellationToken);
+
     public Task<DisplaySession?> GetBySessionTokenHashAsync(string tokenHash, CancellationToken cancellationToken) =>
         dbContext.DisplaySessions.SingleOrDefaultAsync(
             session => session.SessionTokenHash == tokenHash, cancellationToken);

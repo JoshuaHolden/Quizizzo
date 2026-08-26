@@ -265,6 +265,51 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                     b.ToTable("Parties", (string)null);
                 });
 
+            modelBuilder.Entity("Quizizzo.Domain.Players.Player", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)");
+
+                    b.Property<DateTimeOffset>("JoinedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SessionTokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character(64)")
+                        .IsFixedLength();
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("JoinedAt");
+
+                    b.HasIndex("LastSeenAt");
+
+                    b.HasIndex("SessionTokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("PartyId", "Status");
+
+                    b.ToTable("Players", (string)null);
+                });
+
             modelBuilder.Entity("Quizizzo.Infrastructure.Identity.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -446,6 +491,53 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                         .WithMany()
                         .HasForeignKey("HostUserId")
                         .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Quizizzo.Domain.Players.Player", b =>
+                {
+                    b.HasOne("Quizizzo.Domain.Parties.Party", null)
+                        .WithMany()
+                        .HasForeignKey("PartyId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.OwnsOne("Quizizzo.Domain.Players.CharacterDefinition", "Character", b1 =>
+                        {
+                            b1.Property<Guid>("PlayerId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<int>("Accessory")
+                                .HasColumnType("integer")
+                                .HasColumnName("CharacterAccessory");
+
+                            b1.Property<int>("BodyType")
+                                .HasColumnType("integer")
+                                .HasColumnName("CharacterBodyType");
+
+                            b1.Property<int>("Eyes")
+                                .HasColumnType("integer")
+                                .HasColumnName("CharacterEyes");
+
+                            b1.Property<int>("Mouth")
+                                .HasColumnType("integer")
+                                .HasColumnName("CharacterMouth");
+
+                            b1.Property<string>("PrimaryColour")
+                                .IsRequired()
+                                .HasMaxLength(7)
+                                .HasColumnType("character varying(7)")
+                                .HasColumnName("CharacterPrimaryColour");
+
+                            b1.HasKey("PlayerId");
+
+                            b1.ToTable("Players");
+
+                            b1.WithOwner()
+                                .HasForeignKey("PlayerId");
+                        });
+
+                    b.Navigation("Character")
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

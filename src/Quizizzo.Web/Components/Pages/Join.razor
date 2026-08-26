@@ -1,0 +1,35 @@
+@page "/join"
+@rendermode InteractiveServer
+@using Quizizzo.Domain.Parties
+@inject NavigationManager Navigation
+
+<PageTitle>Join a party</PageTitle>
+
+<main class="join-panel mx-auto">
+    <h1>Join the party</h1>
+    <p>Enter the four-character code shown on the big screen.</p>
+    <label class="form-label" for="room-code">Room code</label>
+    <input id="room-code" class="form-control form-control-lg text-uppercase" maxlength="4"
+           autocomplete="off" inputmode="text" @bind="roomCode" @bind:event="oninput" />
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <p class="text-danger mt-2">@error</p>
+    }
+    <button class="btn btn-primary btn-lg w-100 mt-3" @onclick="Continue">Continue</button>
+</main>
+
+@code {
+    private string roomCode = string.Empty;
+    private string? error;
+
+    private void Continue()
+    {
+        if (!RoomCode.TryCreate(roomCode, out var parsed))
+        {
+            error = "Enter a valid four-character room code.";
+            return;
+        }
+
+        Navigation.NavigateTo($"/join/{parsed.Value}");
+    }
+}
