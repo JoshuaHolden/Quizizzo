@@ -126,9 +126,21 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build, run all 41 tests, and fix all failures.
 - [x] Stop before the explicit refresh/connection-replacement recovery gate.
 
+### Milestone 5 — Recovery gate (completed 2026-08-26)
+
+- [x] Exercise the production Razor page pipeline, cookie middleware, application services, SignalR hub, groups, and presence registry in an isolated integration-test host.
+- [x] Prove an authenticated host refresh reconstructs the same owned party and room code.
+- [x] Prove a paired display refresh reconstructs the same display session, party, room code, and roster.
+- [x] Prove a player refresh reconstructs the same player ID, party, name, character, score, and status.
+- [x] Prove distinct host, display, and player SignalR connection IDs collapse to one durable role identity and that replacing one transport does not remove another.
+- [x] Prove player replacement within the disconnect grace period cancels disconnection and refresh after grace expiry reconnects the same player.
+- [x] Fix prerender disposal so a realtime component that never started JavaScript interop can be safely discarded during refresh.
+- [x] Document the recovery proof matrix and the test-only long-polling transport choice.
+- [x] Restore, build with zero warnings, and pass all 44 tests.
+- [x] Stop before game-engine implementation.
+
 ### Remaining milestones
 
-- [ ] Milestone 5 — Recovery gate: prove player/display/host refresh and `ConnectionId` replacement before proceeding.
 - [ ] Milestone 6 — Game engine: contracts, discoverable modules, commands, explicit state machines, channel serialization, timers, views, scoring, state-store abstraction.
 - [ ] Milestone 7 — Estimate: complete number-controller round loop as the engine proof.
 - [ ] Milestone 8 — Phaser presentation: long-lived canvas, characters, join/disconnect/score/result animations, particles.

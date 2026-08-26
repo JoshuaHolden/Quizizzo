@@ -66,4 +66,6 @@ The paired display renders a QR code for `/join/{roomCode}`. A player enters a v
 
 Opening or refreshing `/play` validates that credential and reconstructs the player's ID, party, name, character, status, and score. Rejoining the same party from the same browser restores that identity instead of creating a duplicate. Host, display, and player views use a thin SignalR hub for change hints and always reload authoritative state from application services. Transport connection IDs are never application identities, and short player disconnects are absorbed by a configurable grace period.
 
+The automated [Milestone 5 recovery gate](docs/testing/recovery-gate.md) exercises the real HTTP page and SignalR hub pipelines for host, display, and player refreshes and transport replacement before game-engine work begins.
+
 Adding games, the drawing subsystem, Phaser integration, CI/CD, and Hetzner deployment are deliberately scheduled in later milestones in `AGENTS.md`; they are not part of Foundation.

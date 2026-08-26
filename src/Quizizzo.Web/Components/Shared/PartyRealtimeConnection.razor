@@ -38,14 +38,17 @@
 
     public async ValueTask DisposeAsync()
     {
-        try
+        if (reference is not null)
         {
-            await JavaScript.InvokeVoidAsync("quizizzoRealtime.stop", connectionKey);
-        }
-        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
-        {
-        }
+            try
+            {
+                await JavaScript.InvokeVoidAsync("quizizzoRealtime.stop", connectionKey);
+            }
+            catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+            {
+            }
 
-        reference?.Dispose();
+            reference.Dispose();
+        }
     }
 }
