@@ -169,9 +169,22 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build with zero warnings, and pass all 73 tests.
 - [x] Stop before Phaser presentation work.
 
+### Milestone 8 — Phaser presentation (completed 2026-08-27)
+
+- [x] Pin Phaser 3.90.0 through npm, serve it locally without a runtime CDN, and include it in the multi-stage container asset build.
+- [x] Add one long-lived 1280×720 Phaser scene that survives pairing, lobby, game, results, and return-to-lobby state changes.
+- [x] Keep Blazor authoritative for display state, accessible HTML, SignalR, and orchestration while Phaser receives only reconstructable semantic snapshots.
+- [x] Generate persistent recognizable characters from each player's body, colour, eyes, mouth, and accessory traits without external image dependencies.
+- [x] Animate player joins, departures, disconnect/reconnect status, server score changes, result winners, camera flashes, and confetti particles.
+- [x] Use Phaser `FIT` scaling and centred letterboxing in a dedicated full-screen display layout for 720p, 1080p, and 4K output.
+- [x] Respect reduced-motion preferences and retain the complete logical display as an accessible HTML fallback when canvas rendering is unavailable.
+- [x] Document the presentation lifecycle, authority boundary, semantic snapshot, generated assets, recovery behavior, and local dependency pipeline.
+- [x] Add snapshot-mapping, local-asset, script-order, reduced-motion, fallback-render, and display-refresh integration coverage.
+- [x] Run npm clean install/audit and client build, validate JavaScript syntax, restore, build with zero warnings, and pass all 77 tests.
+- [x] Stop before reusable drawing-framework work.
+
 ### Remaining milestones
 
-- [ ] Milestone 8 — Phaser presentation: long-lived canvas, characters, join/disconnect/score/result animations, particles.
 - [ ] Milestone 9 — Reusable drawing framework: JS canvas interop, strokes/tools/frames/onion skin/drafts/assets.
 - [ ] Milestone 10 — Animate This: prompt, three frames, secure submission, playback, voting, reveal, scoring.
 - [ ] Milestone 11 — Majority Rules: prove reusable text and vote flows.

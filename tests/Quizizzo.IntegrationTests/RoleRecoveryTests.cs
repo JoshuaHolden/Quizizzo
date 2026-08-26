@@ -39,6 +39,7 @@ public sealed class RoleRecoveryTests
         await original.StopAsync();
         Assert.Equal(1, GetPresence(factory).Hosts);
         await replacement.StopAsync();
+        await WaitUntilAsync(() => GetPresence(factory).Hosts == 0);
         Assert.Equal(0, GetPresence(factory).Hosts);
     }
 
@@ -57,6 +58,7 @@ public sealed class RoleRecoveryTests
 
         Assert.Contains("K7XM", firstPage);
         Assert.Contains("Recovery Player", firstPage);
+        Assert.Contains("phaser-presentation", firstPage);
         Assert.Contains("K7XM", refreshedPage);
         Assert.Equal(displaySessionId, factory.State.Display.Id);
 
@@ -77,6 +79,7 @@ public sealed class RoleRecoveryTests
         await original.StopAsync();
         Assert.Equal(1, GetPresence(factory).Displays);
         await replacement.StopAsync();
+        await WaitUntilAsync(() => GetPresence(factory).Displays == 0);
         Assert.Equal(0, GetPresence(factory).Displays);
         Assert.Equal(displaySessionId, factory.State.Display.Id);
     }

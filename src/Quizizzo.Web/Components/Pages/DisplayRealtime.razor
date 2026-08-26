@@ -16,77 +16,79 @@
                          ConnectionStatusChanged="SetConnectionStatus" />
 
 <main class="display-stage text-center">
-    <h1 class="display-2 fw-bold">QUIZIZZO</h1>
-    <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
+    <PhaserPresentation Snapshot="PresentationSnapshot" />
+    <div class="display-overlay">
+        <h1 class="display-2 fw-bold">QUIZIZZO</h1>
+        <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
 
-    @if (!session.IsPaired)
-    {
-        <h2>Pair this screen</h2>
-        <p>Open this address on the host's phone:</p>
-        <img class="qr-code" src="@QrCodes.CreatePngDataUri(PairingUrl)" alt="QR code to pair this display" width="280" height="280" />
-        <p class="fs-4"><a href="@PairingPath">@PairingUrl</a></p>
-        <p>Pairing code</p>
-        <p class="display-4 fw-bold">@session.PairingCode</p>
-        <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
-    }
-    else if (gameView is not null && game is not null)
-    {
-        <section class="display-game-panel">
-            <p class="text-uppercase mt-4 mb-1">@game.Title</p>
-            <h2 class="display-4 fw-bold">@game.Prompt</h2>
-            <p class="fs-3">@game.PhaseMessage</p>
-            @if (gameView.PhaseEndsAtUtc is not null)
-            {
-                <p class="display-6"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
-            }
-
-            <div class="display-results">
-                @foreach (var entry in game.Entries)
-                {
-                    <article class="display-result-card">
-                        <h3>@entry.Label</h3>
-                        <p>@entry.Value</p>
-                        @if (entry.Rank is not null)
-                        {
-                            <strong>#@entry.Rank · +@entry.PointsAwarded.ToString("N0") points</strong>
-                        }
-                    </article>
-                }
-            </div>
-
-            <h3 class="mt-4">Scores</h3>
-            <ol class="scoreboard display-scoreboard">
-                @foreach (var score in gameView.Scores.OrderByDescending(pair => pair.Value))
-                {
-                    <li><span>@PlayerName(score.Key)</span><strong>@score.Value.ToString("N0")</strong></li>
-                }
-            </ol>
-        </section>
-    }
-    else
-    {
-        <h2>JOIN THE PARTY</h2>
-        <p class="display-1 fw-bold">@session.RoomCode</p>
-        <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
-        <p><a href="@JoinUrl">@JoinUrl</a></p>
-        @if (players.Count == 0)
+        @if (!session.IsPaired)
         {
-            <p>Waiting for players...</p>
+            <section class="display-card display-pairing-card">
+                <h2>Pair this screen</h2>
+                <p>Open this address on the host's phone:</p>
+                <img class="qr-code" src="@QrCodes.CreatePngDataUri(PairingUrl)" alt="QR code to pair this display" width="280" height="280" />
+                <p class="fs-4"><a href="@PairingPath">@PairingUrl</a></p>
+                <p>Pairing code</p>
+                <p class="display-4 fw-bold">@session.PairingCode</p>
+                <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
+            </section>
+        }
+        else if (gameView is not null && game is not null)
+        {
+            <section class="display-game-panel">
+                <p class="text-uppercase mt-4 mb-1">@game.Title</p>
+                <h2 class="display-4 fw-bold">@game.Prompt</h2>
+                <p class="fs-3">@game.PhaseMessage</p>
+                @if (gameView.PhaseEndsAtUtc is not null)
+                {
+                    <p class="display-6"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+                }
+
+                <div class="display-results">
+                    @foreach (var entry in game.Entries)
+                    {
+                        <article class="display-result-card">
+                            <h3>@entry.Label</h3>
+                            <p>@entry.Value</p>
+                            @if (entry.Rank is not null)
+                            {
+                                <strong>#@entry.Rank - +@entry.PointsAwarded.ToString("N0") points</strong>
+                            }
+                        </article>
+                    }
+                </div>
+
+                <div class="display-score-panel">
+                    <h3>Scores</h3>
+                    <ol class="scoreboard display-scoreboard">
+                        @foreach (var score in gameView.Scores.OrderByDescending(pair => pair.Value))
+                        {
+                            <li><span>@PlayerName(score.Key)</span><strong>@score.Value.ToString("N0")</strong></li>
+                        }
+                    </ol>
+                </div>
+            </section>
         }
         else
         {
-            <div class="d-flex flex-wrap justify-content-center gap-3 mt-4">
-                @foreach (var player in players)
+            <section class="display-lobby-panel">
+                <h2>JOIN THE PARTY</h2>
+                <p class="display-1 fw-bold">@session.RoomCode</p>
+                <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
+                <p><a href="@JoinUrl">@JoinUrl</a></p>
+                @if (players.Count == 0)
                 {
-                    <div class="player-chip" style="border-color: @player.Character.PrimaryColour">
-                        <span class="character-dot" style="background-color: @player.Character.PrimaryColour"></span>
-                        <strong>@player.DisplayName</strong>
-                        <span>@player.Score.ToString("N0")</span>
-                    </div>
+                    <p>Waiting for players...</p>
                 }
-            </div>
+                else
+                {
+                    <p class="visually-hidden" aria-live="polite">
+                        @players.Count players joined: @string.Join(", ", players.Select(player => player.DisplayName))
+                    </p>
+                }
+            </section>
         }
-    }
+    </div>
 </main>
 
 @code {
@@ -101,6 +103,8 @@
     private string PairingPath => $"host/pair-display/{session.PairingCode}";
     private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
+    private PhaserPresentationSnapshot PresentationSnapshot =>
+        PhaserPresentationMapper.Create(session, players, gameView, game);
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";

@@ -1,0 +1,78 @@
+using Quizizzo.Application.Displays;
+using Quizizzo.Application.Games;
+using Quizizzo.Application.Players;
+using Quizizzo.GameContracts;
+
+namespace Quizizzo.Web.Presentation;
+
+public sealed record PhaserPresentationSnapshot(
+    string Mode,
+    string? GameKey,
+    string Phase,
+    long Revision,
+    IReadOnlyList<PhaserPlayerSnapshot> Players,
+    IReadOnlyList<PhaserResultSnapshot> Results);
+
+public sealed record PhaserPlayerSnapshot(
+    string PlayerId,
+    string DisplayName,
+    int Score,
+    string Status,
+    PhaserCharacterSnapshot Character);
+
+public sealed record PhaserCharacterSnapshot(
+    string BodyType,
+    string PrimaryColour,
+    string Eyes,
+    string Mouth,
+    string Accessory);
+
+public sealed record PhaserResultSnapshot(
+    string PlayerId,
+    int Rank,
+    int PointsAwarded);
+
+public static class PhaserPresentationMapper
+{
+    public static PhaserPresentationSnapshot Create(
+        DisplaySessionView session,
+        IReadOnlyList<PlayerView> players,
+        PartyGameView? gameView,
+        DisplayGameViewPayload? game)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ArgumentNullException.ThrowIfNull(players);
+
+        var mode = !session.IsPaired
+            ? "Pairing"
+            : gameView is null ? "Lobby" : "Game";
+        var presentationPlayers = players.Select(player => new PhaserPlayerSnapshot(
+            player.PlayerId.ToString("N"),
+            player.DisplayName,
+            gameView?.Scores.TryGetValue(player.PlayerId, out var gameScore) == true
+                ? gameScore
+                : player.Score,
+            player.Status.ToString(),
+            new PhaserCharacterSnapshot(
+                player.Character.BodyType.ToString(),
+                player.Character.PrimaryColour,
+                player.Character.Eyes.ToString(),
+                player.Character.Mouth.ToString(),
+                player.Character.Accessory.ToString()))).ToArray();
+        var results = game?.Entries
+            .Where(entry => entry.Rank.HasValue)
+            .Select(entry => new PhaserResultSnapshot(
+                entry.PlayerId.ToString("N"),
+                entry.Rank!.Value,
+                entry.PointsAwarded))
+            .ToArray() ?? [];
+
+        return new PhaserPresentationSnapshot(
+            mode,
+            gameView?.GameKey,
+            gameView?.Phase ?? mode,
+            gameView?.Revision ?? 0,
+            presentationPlayers,
+            results);
+    }
+}

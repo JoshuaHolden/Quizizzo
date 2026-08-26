@@ -1,0 +1,59 @@
+@implements IAsyncDisposable
+@using Microsoft.JSInterop
+@using Quizizzo.Web.Presentation
+@inject IJSRuntime JavaScript
+
+<div id="@elementId" class="phaser-presentation" aria-hidden="true"></div>
+
+@code {
+    [Parameter, EditorRequired] public PhaserPresentationSnapshot Snapshot { get; set; } = default!;
+
+    private readonly string presentationKey = Guid.NewGuid().ToString("N");
+    private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
+    private bool started;
+    private bool updatePending = true;
+
+    protected override void OnParametersSet() => updatePending = true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            if (firstRender)
+            {
+                await JavaScript.InvokeVoidAsync(
+                    "quizizzoPresentation.start", presentationKey, elementId, Snapshot);
+                started = true;
+                updatePending = false;
+                return;
+            }
+
+            if (started && updatePending)
+            {
+                await JavaScript.InvokeVoidAsync(
+                    "quizizzoPresentation.update", presentationKey, Snapshot);
+                updatePending = false;
+            }
+        }
+        catch (JSException)
+        {
+            // Accessible HTML remains usable if canvas rendering is unavailable.
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!started)
+        {
+            return;
+        }
+
+        try
+        {
+            await JavaScript.InvokeVoidAsync("quizizzoPresentation.stop", presentationKey);
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+    }
+}

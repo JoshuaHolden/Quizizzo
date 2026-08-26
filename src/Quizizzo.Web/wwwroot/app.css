@@ -102,6 +102,84 @@ h1:focus {
     width: min(35vh, 280px);
 }
 
+.display-shell {
+    background: #101735;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    width: 100vw;
+}
+
+.display-stage {
+    background: #101735;
+    color: white;
+    height: 100%;
+    isolation: isolate;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.phaser-presentation {
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    z-index: 0;
+}
+
+.phaser-presentation canvas {
+    display: block !important;
+}
+
+.display-overlay {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: clamp(1rem, 2vw, 2.5rem);
+    pointer-events: none;
+    position: relative;
+    text-shadow: 0 0.15rem 0.5rem rgba(14, 5, 31, 0.65);
+    z-index: 1;
+}
+
+.display-overlay a,
+.display-overlay .qr-code {
+    pointer-events: auto;
+}
+
+.display-card {
+    align-self: center;
+    background: rgba(18, 10, 44, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 1.5rem;
+    box-shadow: 0 1rem 3rem rgba(7, 2, 22, 0.35);
+    margin: auto;
+    max-width: 44rem;
+    padding: clamp(1rem, 2.5vh, 2rem);
+}
+
+.display-card a,
+.display-lobby-panel a {
+    color: #bde8ff;
+}
+
+.display-lobby-panel,
+.display-game-panel {
+    flex: 1;
+}
+
+.display-lobby-panel .qr-code {
+    height: min(28vh, 250px);
+    width: min(28vh, 250px);
+}
+
+.display-game-panel > h2 {
+    font-size: clamp(2rem, 4.2vw, 4.75rem);
+    margin-inline: auto;
+    max-width: 70rem;
+}
+
 .game-panel,
 .player-game-panel,
 .display-game-panel {

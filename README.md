@@ -72,4 +72,10 @@ The automated [Milestone 5 recovery gate](docs/testing/recovery-gate.md) exercis
 
 The [game engine](docs/architecture/game-engine.md) discovers isolated `IGameModule` implementations and runs each game instance through one bounded, single-consumer command channel. It validates durable actors and UTC deadlines, records idempotent accepted/rejected results, applies shared score awards, persists versioned snapshots behind `IGameStateStore`, reconstructs role-specific views, and can recover an actor from its stored snapshot. SignalR remains a notification transport rather than authoritative state.
 
-Estimate is the first complete game proof: the host starts it from the existing party lobby, phones receive the reusable number controller, and the display reveals three server-scored rounds before returning everyone to the same lobby with persistent scores. The drawing subsystem, Phaser integration, remaining games, CI/CD, and Hetzner deployment remain scheduled in `AGENTS.md`.
+Estimate is the first complete game proof: the host starts it from the existing party lobby, phones receive the reusable number controller, and the display reveals three server-scored rounds before returning everyone to the same lobby with persistent scores.
+
+## Display presentation
+
+The shared display uses one [long-lived Phaser presentation](docs/architecture/phaser-presentation.md) across pairing, lobby, game, results, and return-to-lobby states. Blazor sends reconstructable semantic snapshots while Phaser owns generated character art, responsive 1280×720 scene scaling, tweens, camera effects, and particles. The accessible HTML overlay remains usable without canvas rendering, and reduced-motion preferences disable presentation animation. Phaser 3.90.0 and SignalR are pinned npm dependencies copied to local static assets by `npm run build:client`; no runtime CDN is required.
+
+The drawing subsystem, remaining games, CI/CD, and Hetzner deployment remain scheduled in `AGENTS.md`.

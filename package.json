@@ -2,9 +2,10 @@
   "name": "quizizzo-web-assets",
   "private": true,
   "scripts": {
-    "build:client": "node scripts/copy-signalr.mjs"
+    "build:client": "node scripts/copy-client-assets.mjs"
   },
   "dependencies": {
-    "@microsoft/signalr": "10.0.11"
+    "@microsoft/signalr": "10.0.11",
+    "phaser": "3.90.0"
   }
 }

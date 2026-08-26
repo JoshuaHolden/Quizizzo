@@ -8,7 +8,7 @@ RUN npm run build:client
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY . .
-COPY --from=frontend /frontend/src/Quizizzo.Web/wwwroot/vendor/signalr.min.js src/Quizizzo.Web/wwwroot/vendor/signalr.min.js
+COPY --from=frontend /frontend/src/Quizizzo.Web/wwwroot/vendor/ src/Quizizzo.Web/wwwroot/vendor/
 RUN dotnet restore Quizizzo.sln
 RUN dotnet publish src/Quizizzo.Web/Quizizzo.Web.csproj -c Release -o /app/publish --no-restore
 
