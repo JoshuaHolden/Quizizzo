@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+.idea/
+.dotnet/
+.dotnet-home/
+.tools/
+*.user
+*.suo
+*.db
+*.db-shm
+*.db-wal
+.env
+appsettings.Production.json
+artifacts/

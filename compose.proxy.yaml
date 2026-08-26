@@ -1,0 +1,12 @@
+services:
+  quizizzo:
+    networks:
+      quizizzo-private:
+      reverse-proxy:
+        aliases:
+          - quizizzo-web
+
+networks:
+  reverse-proxy:
+    external: true
+    name: ${QUIZIZZO_PROXY_NETWORK}
