@@ -139,9 +139,24 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Restore, build with zero warnings, and pass all 44 tests.
 - [x] Stop before game-engine implementation.
 
+### Milestone 6 — Game engine (completed 2026-08-27)
+
+- [x] Define transport-, UI-, persistence-, and concrete-game-neutral module, action, actor, state, transition, event, score, and view contracts.
+- [x] Add a case-insensitive module catalog that discovers registered games and rejects duplicate or invalid descriptors during composition.
+- [x] Run each game instance through one bounded `Channel<GameCommand>` with a single mutation consumer.
+- [x] Validate party ownership, participant identity, terminal state, current phase deadline, system actions, and module rules on the server.
+- [x] Persist accepted and rejected command results in snapshots so retries cannot repeat transitions, events, or score awards.
+- [x] Schedule deterministic UTC deadline actions through the same command channel and reject early or late actions authoritatively.
+- [x] Add versioned opaque module state, shared score accumulation, semantic events, explicit completion, and role-specific host/display/player views.
+- [x] Add `IGameStateStore`, optimistic revision checks, an in-process adapter, and lazy actor reconstruction from stored snapshots without coupling modules to storage.
+- [x] Register one process-wide runtime/catalog/store in the Web composition root while keeping SignalR outside the engine.
+- [x] Document the module boundary, command flow, timer ordering, idempotency, views, snapshots, and recovery model.
+- [x] Add architecture, discovery, 100-command concurrency, authorization, invalid/late/duplicate action, scoring, timer, completion, store-concurrency, view-secrecy, and recovery tests.
+- [x] Restore, build with zero warnings, and pass all 61 tests.
+- [x] Stop before implementing Estimate or any other concrete game rules.
+
 ### Remaining milestones
 
-- [ ] Milestone 6 — Game engine: contracts, discoverable modules, commands, explicit state machines, channel serialization, timers, views, scoring, state-store abstraction.
 - [ ] Milestone 7 — Estimate: complete number-controller round loop as the engine proof.
 - [ ] Milestone 8 — Phaser presentation: long-lived canvas, characters, join/disconnect/score/result animations, particles.
 - [ ] Milestone 9 — Reusable drawing framework: JS canvas interop, strokes/tools/frames/onion skin/drafts/assets.

@@ -68,4 +68,8 @@ Opening or refreshing `/play` validates that credential and reconstructs the pla
 
 The automated [Milestone 5 recovery gate](docs/testing/recovery-gate.md) exercises the real HTTP page and SignalR hub pipelines for host, display, and player refreshes and transport replacement before game-engine work begins.
 
-Adding games, the drawing subsystem, Phaser integration, CI/CD, and Hetzner deployment are deliberately scheduled in later milestones in `AGENTS.md`; they are not part of Foundation.
+## Game engine foundation
+
+The [game engine](docs/architecture/game-engine.md) discovers isolated `IGameModule` implementations and runs each game instance through one bounded, single-consumer command channel. It validates durable actors and UTC deadlines, records idempotent accepted/rejected results, applies shared score awards, persists versioned snapshots behind `IGameStateStore`, reconstructs role-specific views, and can recover an actor from its stored snapshot. SignalR remains a notification transport rather than authoritative state.
+
+Concrete games, the drawing subsystem, Phaser integration, CI/CD, and Hetzner deployment are deliberately scheduled in later milestones in `AGENTS.md`.

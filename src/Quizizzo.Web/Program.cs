@@ -6,6 +6,7 @@ using Quizizzo.Application;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Players;
 using Quizizzo.Infrastructure;
+using Quizizzo.GameEngine;
 using Quizizzo.Web.Components;
 using Quizizzo.Web.Components.Account;
 using Quizizzo.Infrastructure.Health;
@@ -35,6 +36,7 @@ builder.Services.AddAuthentication(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddQuizizzoApplication();
 builder.Services.AddQuizizzoInfrastructure(connectionString);
+builder.Services.AddQuizizzoGameEngine();
 builder.Services.AddSingleton<QrCodeService>();
 builder.Services.Configure<RealtimePresenceOptions>(
     builder.Configuration.GetSection(RealtimePresenceOptions.SectionName));
