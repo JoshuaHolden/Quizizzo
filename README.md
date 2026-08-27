@@ -19,6 +19,7 @@ Quizizzo is a real-time browser party-game platform built around a shared displa
 5. Run: `dotnet run --project src/Quizizzo.Web`.
 
 The template connection string in `appsettings.json` is local-development-only. Environment variables override it in containers and production.
+The sample `.env` opts into the Development environment for local Compose use; VPS deployments must set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production` (the Compose default).
 
 ## Authentication and database
 
@@ -37,6 +38,7 @@ Never use `EnsureCreated()` for deployed environments.
 ```powershell
 npm install
 npm run build:client
+npm run test:client
 dotnet restore Quizizzo.sln
 dotnet build Quizizzo.sln --no-restore
 dotnet test Quizizzo.sln --no-build
@@ -74,8 +76,14 @@ The [game engine](docs/architecture/game-engine.md) discovers isolated `IGameMod
 
 Estimate is the first complete game proof: the host starts it from the existing party lobby, phones receive the reusable number controller, and the display reveals three server-scored rounds before returning everyone to the same lobby with persistent scores.
 
+## Drawing framework
+
+The [reusable drawing framework](docs/architecture/drawing-framework.md) provides a fixed-logical-coordinate Pointer Events canvas for touch, stylus, and mouse. It supports configurable one-to-twelve-frame documents; single-image games use the same controller in one-frame mode with navigation and onion skin automatically removed. Vector strokes, pen/eraser tools, per-frame undo/clear, previous-frame onion skin, and identity-scoped local draft recovery remain in browser JavaScript rather than crossing SignalR point by point.
+
+Large rendered assets are stored through `IDrawingAssetStore`. The initial bounded WebP/PNG adapter uses the persistent, stack-specific `quizizzo-drawing-assets` Compose volume and can later be replaced with object storage. Assets expire after one day by default and an hourly worker removes expired files. The image bytes never enter PostgreSQL; Milestone 10 will attach the same expiry to submission metadata so those records are cleaned up too. Animate This will add authoritative submission and game rules in Milestone 10.
+
 ## Display presentation
 
 The shared display uses one [long-lived Phaser presentation](docs/architecture/phaser-presentation.md) across pairing, lobby, game, results, and return-to-lobby states. Blazor sends reconstructable semantic snapshots while Phaser owns generated character art, responsive 1280×720 scene scaling, tweens, camera effects, and particles. The accessible HTML overlay remains usable without canvas rendering, and reduced-motion preferences disable presentation animation. Phaser 3.90.0 and SignalR are pinned npm dependencies copied to local static assets by `npm run build:client`; no runtime CDN is required.
 
-The drawing subsystem, remaining games, CI/CD, and Hetzner deployment remain scheduled in `AGENTS.md`.
+Animate This, the remaining games, CI/CD, and Hetzner deployment remain scheduled in `AGENTS.md`.

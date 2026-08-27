@@ -26,6 +26,13 @@ public sealed record NumberControllerConfiguration(
     string? Suffix,
     long? SubmittedValue);
 
+public sealed record DrawingControllerConfiguration(
+    int LogicalWidth,
+    int LogicalHeight,
+    int FrameCount,
+    string DraftScope,
+    bool OnionSkinEnabled = true);
+
 public sealed record PlayerGameViewPayload(
     string Heading,
     string Instructions,

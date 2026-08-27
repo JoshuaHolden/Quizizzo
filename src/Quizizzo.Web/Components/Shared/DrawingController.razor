@@ -1,0 +1,262 @@
+@using Quizizzo.Web.Drawing
+@implements IAsyncDisposable
+@inject IJSRuntime JavaScript
+
+<section class="drawing-controller" aria-label="Drawing controller">
+    @if (!string.IsNullOrWhiteSpace(Prompt))
+    {
+        <p class="drawing-prompt">@Prompt</p>
+    }
+    @if (EndsAtUtc is not null)
+    {
+        <DeadlineCountdown EndsAtUtc="EndsAtUtc" />
+    }
+
+    <div class="drawing-canvas-stack" style="aspect-ratio: @Options.LogicalWidth / @Options.LogicalHeight">
+        <canvas @ref="onionCanvas" class="drawing-canvas drawing-onion-canvas" aria-hidden="true"></canvas>
+        <canvas @ref="drawingCanvas"
+                class="drawing-canvas drawing-input-canvas"
+                aria-label="Draw here using touch, a stylus, or a mouse"></canvas>
+    </div>
+
+    <div class="drawing-toolbar" aria-label="Drawing tools">
+        <button type="button" class="drawing-tool-button" @onclick="TogglePalette" aria-expanded="@paletteOpen">
+            <span class="drawing-colour-swatch" style="background-color: @state.SelectedColour"></span>
+            <span>Colour</span>
+        </button>
+        <button type="button" class="drawing-tool-button" @onclick="ToggleSizes" aria-expanded="@sizesOpen">
+            <span class="drawing-size-dot" style="width: @SizePreview; height: @SizePreview"></span>
+            <span>Size</span>
+        </button>
+        <button type="button"
+                class="drawing-tool-button @(state.Tool == "eraser" ? "active" : null)"
+                aria-pressed="@(state.Tool == "eraser")"
+                @onclick="ToggleEraserAsync">
+            Eraser
+        </button>
+        <button type="button" class="drawing-tool-button" disabled="@(!state.CanUndo)" @onclick="UndoAsync">Undo</button>
+        <button type="button"
+                class="drawing-tool-button @(clearArmed ? "drawing-clear-armed" : null)"
+                disabled="@(!state.CanUndo)"
+                @onclick="ClearAsync">
+            @(clearArmed ? "Tap to clear" : "Clear")
+        </button>
+    </div>
+
+    @if (paletteOpen)
+    {
+        <div class="drawing-picker" aria-label="Pen colours">
+            @foreach (var colour in Options.Colours)
+            {
+                <button type="button"
+                        class="drawing-palette-choice @(colour == state.SelectedColour ? "selected" : null)"
+                        style="background-color: @colour"
+                        aria-label="Use colour @colour"
+                        aria-pressed="@(colour == state.SelectedColour)"
+                        @onclick="() => SelectColourAsync(colour)"></button>
+            }
+        </div>
+    }
+    @if (sizesOpen)
+    {
+        <div class="drawing-picker drawing-size-picker" aria-label="Brush sizes">
+            @foreach (var width in Options.Widths)
+            {
+                <button type="button"
+                        class="drawing-size-choice @(width == state.SelectedWidth ? "selected" : null)"
+                        aria-label="Use brush size @width"
+                        aria-pressed="@(width == state.SelectedWidth)"
+                        @onclick="() => SelectWidthAsync(width)">
+                    <span style="width: @($"{Math.Clamp(width, 4, 28)}px"); height: @($"{Math.Clamp(width, 4, 28)}px")"></span>
+                </button>
+            }
+        </div>
+    }
+
+    @if (Options.FrameCount > 1)
+    {
+        <div class="drawing-frame-controls" aria-label="Animation frames">
+            <button type="button" disabled="@(state.CurrentFrame <= 1)" @onclick="PreviousFrameAsync">Previous</button>
+            <span>Frame @state.CurrentFrame of @state.FrameCount</span>
+            <button type="button" disabled="@(state.CurrentFrame >= state.FrameCount)" @onclick="NextFrameAsync">Next</button>
+            <label class="drawing-onion-toggle">
+                <input type="checkbox"
+                       checked="@state.OnionSkinEnabled"
+                       disabled="@(state.CurrentFrame <= 1)"
+                       @onchange="SetOnionSkinAsync" />
+                Onion skin
+            </label>
+        </div>
+    }
+
+    @if (showRestoredMessage)
+    {
+        <p class="drawing-draft-message" role="status">Your saved drawing draft was restored.</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public DrawingControllerOptions Options { get; set; } = default!;
+    [Parameter] public string? Prompt { get; set; }
+    [Parameter] public DateTimeOffset? EndsAtUtc { get; set; }
+    [Parameter] public EventCallback<DrawingStateSummary> StateChanged { get; set; }
+
+    private ElementReference drawingCanvas;
+    private ElementReference onionCanvas;
+    private IJSObjectReference? module;
+    private IJSObjectReference? controller;
+    private DotNetObjectReference<DrawingController>? dotNetReference;
+    private DrawingStateSummary state = new(
+        1, 1, [false], false, DrawingControllerOptions.DefaultColours[0],
+        DrawingControllerOptions.DefaultWidths[1], "pen", false, false, DateTimeOffset.UtcNow);
+    private bool paletteOpen;
+    private bool sizesOpen;
+    private bool clearArmed;
+    private bool showRestoredMessage;
+    private string SizePreview => $"{Math.Clamp(state.SelectedWidth, 5, 22)}px";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        Options.Validate();
+        state = state with { FrameCount = Options.FrameCount, OnionSkinEnabled = Options.FrameCount > 1 && Options.OnionSkinEnabled };
+        module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./js/drawingCanvas.js");
+        dotNetReference = DotNetObjectReference.Create(this);
+        controller = await module.InvokeAsync<IJSObjectReference>(
+            "create",
+            drawingCanvas,
+            onionCanvas,
+            new
+            {
+                Options.LogicalWidth,
+                Options.LogicalHeight,
+                Options.FrameCount,
+                Options.Colours,
+                Options.Widths,
+                identity = new
+                {
+                    partyId = Options.Identity.PartyId.ToString("N"),
+                    gameSessionId = Options.Identity.GameSessionId.ToString("N"),
+                    roundId = Options.Identity.RoundId,
+                    playerId = Options.Identity.PlayerId.ToString("N")
+                },
+                Options.OnionSkinEnabled,
+                Options.DraftKey,
+                Options.DraftFamilyPrefix,
+                draftPlayerSuffix = $":{Options.Identity.PlayerId:N}"
+            },
+            dotNetReference);
+    }
+
+    [JSInvokable]
+    public async Task HandleDrawingStateChanged(DrawingStateSummary nextState)
+    {
+        state = nextState;
+        clearArmed = false;
+        showRestoredMessage = nextState.RestoredDraft;
+        await StateChanged.InvokeAsync(nextState);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask<object?> GetDocumentAsync() => controller is null
+        ? null
+        : await controller.InvokeAsync<object>("getDocument");
+
+    public async ValueTask ClearDraftAsync()
+    {
+        if (controller is not null)
+        {
+            await controller.InvokeVoidAsync("clearDraft");
+        }
+    }
+
+    private void TogglePalette()
+    {
+        paletteOpen = !paletteOpen;
+        sizesOpen = false;
+        clearArmed = false;
+    }
+
+    private void ToggleSizes()
+    {
+        sizesOpen = !sizesOpen;
+        paletteOpen = false;
+        clearArmed = false;
+    }
+
+    private async Task SelectColourAsync(string colour)
+    {
+        paletteOpen = false;
+        clearArmed = false;
+        await InvokeControllerAsync("setColour", colour);
+    }
+
+    private async Task SelectWidthAsync(int width)
+    {
+        sizesOpen = false;
+        clearArmed = false;
+        await InvokeControllerAsync("setWidth", width);
+    }
+
+    private Task ToggleEraserAsync() => InvokeControllerAsync("setTool", state.Tool == "eraser" ? "pen" : "eraser");
+
+    private Task UndoAsync() => InvokeControllerAsync("undo");
+
+    private async Task ClearAsync()
+    {
+        if (!clearArmed)
+        {
+            clearArmed = true;
+            return;
+        }
+        clearArmed = false;
+        await InvokeControllerAsync("clearFrame");
+    }
+
+    private Task PreviousFrameAsync() => SetFrameAsync(state.CurrentFrame - 2);
+
+    private Task NextFrameAsync() => SetFrameAsync(state.CurrentFrame);
+
+    private async Task SetFrameAsync(int zeroBasedIndex)
+    {
+        clearArmed = false;
+        paletteOpen = false;
+        sizesOpen = false;
+        await InvokeControllerAsync("setFrame", zeroBasedIndex);
+    }
+
+    private Task SetOnionSkinAsync(ChangeEventArgs args) =>
+        InvokeControllerAsync("setOnionSkin", args.Value is true || args.Value?.ToString() == "true");
+
+    private async Task InvokeControllerAsync(string method, params object?[] args)
+    {
+        if (controller is not null)
+        {
+            await controller.InvokeVoidAsync(method, args);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (controller is not null)
+            {
+                await controller.InvokeVoidAsync("dispose");
+                await controller.DisposeAsync();
+            }
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+        dotNetReference?.Dispose();
+    }
+}

@@ -183,10 +183,24 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Run npm clean install/audit and client build, validate JavaScript syntax, restore, build with zero warnings, and pass all 77 tests.
 - [x] Stop before reusable drawing-framework work.
 
+### Milestone 9 — Reusable drawing framework (completed 2026-08-27)
+
+- [x] Add a bounded vector document model with fixed logical coordinates and configurable 1–12 frame support.
+- [x] Treat one-frame image games as a first-class mode with the same APIs, no frame navigation, and no onion dependency.
+- [x] Handle touch, stylus, and mouse through Pointer Events in JavaScript without sending per-point traffic to Blazor or SignalR.
+- [x] Add compact persistent colour/size controls, pen/eraser restoration, stroke undo, and two-step current-frame clear.
+- [x] Add safe frame navigation and a separate previous-frame-only onion layer that is never baked into drawing data.
+- [x] Add identity-scoped local drafts, strict restoration validation, later-round cleanup, and a successful-submission clear seam.
+- [x] Add the reusable Blazor `Drawing` controller selected by controller kind rather than concrete game name.
+- [x] Add `IDrawingAssetStore` plus a bounded, path-safe filesystem adapter, one-day TTL/hourly cleanup, and isolated persistent Compose volume.
+- [x] Document framework authority, recovery, single-frame behavior, storage, and the Milestone 10 submission boundary.
+- [x] Add JavaScript model tests plus .NET configuration, local-asset, health, and asset-store boundary tests.
+- [x] Run npm clean install/audit/build/client tests, validate JavaScript syntax, restore, build with zero warnings, and pass all .NET tests.
+- [x] Stop before Animate This rules, submission endpoints, playback, voting, reveal, or scoring.
+
 ### Remaining milestones
 
-- [ ] Milestone 9 — Reusable drawing framework: JS canvas interop, strokes/tools/frames/onion skin/drafts/assets.
-- [ ] Milestone 10 — Animate This: prompt, three frames, secure submission, playback, voting, reveal, scoring.
+- [ ] Milestone 10 — Animate This: prompt, three frames, secure submission, playback, voting, reveal, scoring; persist asset expiry and delete expired submission metadata so PostgreSQL does not accumulate drawing rows.
 - [ ] Milestone 11 — Majority Rules: prove reusable text and vote flows.
 - [ ] Milestone 12 — Bullshit: prove hidden-state, shuffled-choice, and advanced scoring support.
 - [ ] Milestone 13 — CI/CD: GitHub Actions, image publishing, Hetzner deployment, migrations, rollback, health verification.

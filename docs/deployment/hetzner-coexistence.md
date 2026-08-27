@@ -4,7 +4,7 @@ Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL service h
 
 ## Host-based reverse proxy
 
-Set an unused loopback port in `.env`, for example `QUIZIZZO_HTTP_PORT=8081`, then run only:
+Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production` and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`, then run only:
 
 ```text
 docker compose --project-name quizizzo up -d --build
@@ -33,5 +33,5 @@ Whichever proxy is used, verify the browser can negotiate `/hubs/party` and upgr
 - Inspect the rendered model first with `docker compose --project-name quizizzo config`.
 - Never run global `docker system prune`, broad container stop/remove commands, or reuse another stack's volume.
 - Do not publish PostgreSQL port 5432 on the VPS.
-- Back up `quizizzo-postgres-data` before migrations and deploy immutable image tags.
+- Back up `quizizzo-postgres-data` before migrations and `quizizzo-drawing-assets` before asset-affecting deployments; deploy immutable image tags.
 - A rollback changes only the Quizizzo image tag and stack; it must not modify `logiagraph.com` containers or its proxy route.

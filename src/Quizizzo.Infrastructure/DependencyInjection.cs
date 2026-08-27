@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Quizizzo.Application.Abstractions;
 using Quizizzo.Infrastructure.Displays;
+using Quizizzo.Infrastructure.Drawings;
 using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Infrastructure.Parties;
 using Quizizzo.Infrastructure.Players;
@@ -24,6 +25,8 @@ public static class DependencyInjection
         services.AddSingleton<IDisplayCredentialService, DisplayCredentialService>();
         services.AddSingleton<IPlayerCredentialService, PlayerCredentialService>();
         services.AddSingleton<ICharacterGenerator, RandomCharacterGenerator>();
+        services.AddSingleton<IDrawingAssetStore, FileSystemDrawingAssetStore>();
+        services.AddHostedService<DrawingAssetCleanupService>();
         return services;
     }
 }

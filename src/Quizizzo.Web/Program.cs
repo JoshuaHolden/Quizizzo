@@ -14,6 +14,7 @@ using Quizizzo.Web.Components;
 using Quizizzo.Web.Components.Account;
 using Quizizzo.Infrastructure.Health;
 using Quizizzo.Infrastructure.Identity;
+using Quizizzo.Infrastructure.Drawings;
 using Quizizzo.Web.Endpoints;
 using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
@@ -39,6 +40,22 @@ builder.Services.AddAuthentication(options =>
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddQuizizzoApplication();
+builder.Services.AddOptions<DrawingAssetStoreOptions>()
+    .Bind(builder.Configuration.GetSection(DrawingAssetStoreOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), "Drawing asset root path is required.")
+    .Validate(
+        options => options.MaximumAssetBytes is >= DrawingAssetStoreOptions.MinimumAssetBytes and
+            <= DrawingAssetStoreOptions.MaximumConfiguredAssetBytes,
+        "Drawing asset size limit is outside the supported range.")
+    .Validate(
+        options => options.RetentionPeriod >= TimeSpan.FromMinutes(1) &&
+            options.RetentionPeriod <= TimeSpan.FromDays(30),
+        "Drawing asset retention must be between one minute and 30 days.")
+    .Validate(
+        options => options.CleanupInterval >= TimeSpan.FromMinutes(1) &&
+            options.CleanupInterval <= TimeSpan.FromDays(1),
+        "Drawing asset cleanup interval must be between one minute and one day.")
+    .ValidateOnStart();
 builder.Services.AddQuizizzoInfrastructure(connectionString);
 builder.Services.AddQuizizzoGameEngine();
 builder.Services.AddSingleton<IGameModule, EstimateGameModule>();
@@ -62,6 +79,7 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHealthChecks()
     .AddCheck("application", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
+    .AddCheck<DrawingAssetStoreHealthCheck>("drawing-assets", tags: ["ready"])
     .AddCheck<PostgreSqlHealthCheck>("postgresql", tags: ["ready"]);
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>

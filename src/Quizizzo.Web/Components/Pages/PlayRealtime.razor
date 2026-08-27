@@ -3,6 +3,7 @@
 @using Quizizzo.Application.Games
 @using Quizizzo.Application.Players
 @using Quizizzo.GameContracts
+@using Quizizzo.Web.Drawing
 @inject PlayerService Players
 @inject PartyGameService Games
 
@@ -50,6 +51,14 @@
                                           SubmitLabel="game.Controller.SubmitLabel"
                                           Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           Submitted="SubmitNumberAsync" />
+                    }
+                    break;
+                case PlayerControllerKind.Drawing:
+                    var drawingConfiguration = game.Controller.Configuration.Deserialize<DrawingControllerConfiguration>();
+                    if (drawingConfiguration is not null)
+                    {
+                        <DrawingController @key="DrawingControllerKey(drawingConfiguration)"
+                                           Options="CreateDrawingOptions(drawingConfiguration)" />
                     }
                     break;
                 case PlayerControllerKind.Waiting:
@@ -130,4 +139,22 @@
         connectionStatus = status;
         return Task.CompletedTask;
     }
+
+    private DrawingControllerOptions CreateDrawingOptions(DrawingControllerConfiguration configuration) => new()
+    {
+        Identity = new DrawingDraftIdentity(
+            player.PartyId,
+            gameView!.GameInstanceId,
+            configuration.DraftScope,
+            player.PlayerId),
+        LogicalWidth = configuration.LogicalWidth,
+        LogicalHeight = configuration.LogicalHeight,
+        FrameCount = configuration.FrameCount,
+        OnionSkinEnabled = configuration.OnionSkinEnabled
+    };
+
+    private string DrawingControllerKey(DrawingControllerConfiguration configuration) =>
+        $"{gameView!.GameInstanceId:N}:{configuration.DraftScope}:" +
+        $"{configuration.LogicalWidth}x{configuration.LogicalHeight}:{configuration.FrameCount}:" +
+        configuration.OnionSkinEnabled;
 }

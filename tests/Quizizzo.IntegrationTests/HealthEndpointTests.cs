@@ -8,6 +8,8 @@ using Quizizzo.Domain.Displays;
 using Quizizzo.Domain.Parties;
 using Quizizzo.Domain.Players;
 using Quizizzo.Web.Presentation;
+using Microsoft.Extensions.Hosting;
+using Quizizzo.Infrastructure.Drawings;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -34,6 +36,17 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
 
         response.EnsureSuccessStatusCode();
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+    }
+
+    [Theory]
+    [InlineData("/js/drawingDocument.mjs", "class DrawingDocument")]
+    [InlineData("/js/drawingCanvas.js", "pointerdown")]
+    public async Task Drawing_runtime_is_served_locally(string path, string expectedSource)
+    {
+        using var response = await client.GetAsync(path);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Contains(expectedSource, await response.Content.ReadAsStringAsync(), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -103,5 +116,13 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
 
         Assert.StartsWith("data:image/png;base64,", dataUri);
         Assert.True(Convert.FromBase64String(dataUri.Split(',')[1]).Length > 100);
+    }
+
+    [Fact]
+    public void Drawing_asset_expiry_worker_is_registered()
+    {
+        var hostedServices = factory.Services.GetServices<IHostedService>();
+
+        Assert.Contains(hostedServices, service => service is DrawingAssetCleanupService);
     }
 }
