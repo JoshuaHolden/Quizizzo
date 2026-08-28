@@ -5,6 +5,14 @@ public interface IGameAction
     string Kind { get; }
 }
 
+public sealed record InvalidGameAction(
+    string OriginalKind,
+    string ErrorCode,
+    string ErrorMessage) : IGameAction
+{
+    public string Kind => OriginalKind;
+}
+
 public sealed record DeadlineElapsedAction(DateTimeOffset ScheduledForUtc) : IGameAction
 {
     public string Kind => "engine.deadline-elapsed";

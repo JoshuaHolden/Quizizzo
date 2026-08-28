@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Quizizzo.Application\Quizizzo.Application.csproj" />
     <ProjectReference Include="..\Quizizzo.Domain\Quizizzo.Domain.csproj" />
+    <ProjectReference Include="..\Quizizzo.GameEngine\Quizizzo.GameEngine.csproj" />
   </ItemGroup>
 
   <ItemGroup>

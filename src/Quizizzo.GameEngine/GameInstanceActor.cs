@@ -1,11 +1,12 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Channels;
+using Microsoft.Extensions.Logging;
 using Quizizzo.GameContracts;
 
 namespace Quizizzo.GameEngine;
 
-internal sealed class GameInstanceActor : IAsyncDisposable
+internal sealed partial class GameInstanceActor : IAsyncDisposable
 {
     private readonly IGameModule module;
     private readonly IGameStateStore store;
@@ -15,6 +16,8 @@ internal sealed class GameInstanceActor : IAsyncDisposable
     private readonly CancellationTokenSource lifetime = new();
     private readonly object timerGate = new();
     private readonly Task processor;
+    private readonly GameRuntimeOptions options;
+    private readonly ILogger<GameInstanceActor>? logger;
     private CancellationTokenSource? deadlineCancellation;
     private GameRuntimeSnapshot snapshot;
 
@@ -23,14 +26,18 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         IGameModule module,
         IGameStateStore store,
         TimeProvider timeProvider,
-        IReadOnlyList<IGameRuntimeObserver> observers)
+        IReadOnlyList<IGameRuntimeObserver> observers,
+        GameRuntimeOptions options,
+        ILogger<GameInstanceActor>? logger)
     {
         this.snapshot = snapshot;
         this.module = module;
         this.store = store;
         this.timeProvider = timeProvider;
         this.observers = observers;
-        queue = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(256)
+        this.options = options;
+        this.logger = logger;
+        queue = Channel.CreateBounded<WorkItem>(new BoundedChannelOptions(options.CommandQueueCapacity)
         {
             SingleReader = true,
             SingleWriter = false,
@@ -113,6 +120,28 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         if (snapshot.ProcessedCommands.TryGetValue(command.CommandId, out var previous))
         {
             return previous with { IsDuplicate = true };
+        }
+        if (command.Actor.Role == GameActorRole.Player &&
+            snapshot.ProcessedCommands.Count >= options.MaximumProcessedCommands)
+        {
+            if (logger is not null)
+            {
+                LogCommandLimitReached(
+                    logger,
+                    snapshot.GameInstanceId,
+                    options.MaximumProcessedCommands);
+            }
+            return new GameCommandResult(
+                command.CommandId,
+                GameCommandOutcome.Rejected,
+                false,
+                snapshot.Revision,
+                snapshot.ModuleState.Phase,
+                snapshot.ModuleState.PhaseEndsAtUtc,
+                [],
+                [],
+                "command-capacity-exceeded",
+                "This game has reached its command safety limit.");
         }
 
         var now = timeProvider.GetUtcNow();
@@ -217,6 +246,10 @@ internal sealed class GameInstanceActor : IAsyncDisposable
 
     private (string Code, string Message)? ValidateCommand(GameCommand command, DateTimeOffset now)
     {
+        if (command.CommandId.Value == Guid.Empty)
+        {
+            return ("missing-command-id", "A non-empty idempotency command ID is required.");
+        }
         if (command.GameInstanceId != snapshot.GameInstanceId || command.PartyId != snapshot.PartyId)
         {
             return ("wrong-game-instance", "The command does not belong to this party game.");
@@ -228,6 +261,10 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         if (snapshot.ModuleState.IsComplete)
         {
             return ("game-complete", "This game is already complete.");
+        }
+        if (command.Action is InvalidGameAction invalid)
+        {
+            return (invalid.ErrorCode, invalid.ErrorMessage);
         }
 
         switch (command.Actor.Role)
@@ -377,6 +414,13 @@ internal sealed class GameInstanceActor : IAsyncDisposable
         catch (ChannelClosedException)
         {
         }
+        catch (Exception exception)
+        {
+            if (logger is not null)
+            {
+                LogDeadlineFailure(logger, exception, snapshot.GameInstanceId, revision);
+            }
+        }
     }
 
     private static GameCommandId CreateDeadlineCommandId(
@@ -397,12 +441,49 @@ internal sealed class GameInstanceActor : IAsyncDisposable
             {
                 await observer.StateChangedAsync(change);
             }
-            catch
+            catch (Exception exception)
             {
                 // An observer is a notification side effect; the authoritative snapshot is already saved.
+                if (logger is not null)
+                {
+                    LogObserverFailure(
+                        logger,
+                        exception,
+                        observer.GetType().Name,
+                        change.GameInstanceId);
+                }
             }
         }
     }
+
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Warning,
+        Message = "Game {GameInstanceId} reached its processed command limit of {CommandLimit}")]
+    private static partial void LogCommandLimitReached(
+        ILogger logger,
+        GameInstanceId gameInstanceId,
+        int commandLimit);
+
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Error,
+        Message = "Deadline processing failed for game {GameInstanceId} at revision {Revision}")]
+    private static partial void LogDeadlineFailure(
+        ILogger logger,
+        Exception exception,
+        GameInstanceId gameInstanceId,
+        long revision);
+
+    [LoggerMessage(
+        EventId = 1003,
+        Level = LogLevel.Error,
+        Message = "Runtime observer {ObserverType} failed for game {GameInstanceId}")]
+    private static partial void LogObserverFailure(
+        ILogger logger,
+        Exception exception,
+        string observerType,
+        GameInstanceId gameInstanceId);
 
     public async ValueTask DisposeAsync()
     {

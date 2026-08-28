@@ -13,7 +13,7 @@ using Quizizzo.Infrastructure.Identity;
 
 namespace Microsoft.AspNetCore.Routing;
 
-internal static class IdentityComponentsEndpointRouteBuilderExtensions
+internal static partial class IdentityComponentsEndpointRouteBuilderExtensions
 {
     // These endpoints are required by the Identity Razor components defined in the /Components/Account/Pages directory of this project.
     public static IEndpointConventionBuilder MapAdditionalIdentityEndpoints(this IEndpointRouteBuilder endpoints)
@@ -123,7 +123,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             }
 
             var userId = await userManager.GetUserIdAsync(user);
-            downloadLogger.LogInformation("User with ID '{UserId}' asked for their personal data.", userId);
+            LogPersonalDataRequest(downloadLogger, userId);
 
             // Only include personal data for download
             var personalData = new Dictionary<string, string>();
@@ -149,4 +149,10 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
 
         return accountGroup;
     }
+
+    [LoggerMessage(
+        EventId = 3001,
+        Level = LogLevel.Information,
+        Message = "User with ID '{UserId}' asked for their personal data")]
+    private static partial void LogPersonalDataRequest(ILogger logger, string userId);
 }

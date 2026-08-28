@@ -80,4 +80,45 @@ public sealed class PhaserPresentationMapperTests
         Assert.Equal(1, result.Rank);
         Assert.Equal(1000, result.PointsAwarded);
     }
+
+    [Fact]
+    public void Drawing_presentation_maps_asset_ids_to_local_playback_urls()
+    {
+        var partyId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        var assetIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() };
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var payload = new DisplayGameViewPayload(
+            "ANIMATE THIS",
+            "Vote now",
+            "Playback",
+            0,
+            1,
+            [],
+            new DrawingPresentationView(
+                "Playback",
+                150,
+                [new DrawingAnimationView(playerId, null, "A prompt", assetIds, 0, null, 0)]));
+        var game = new PartyGameView(
+            partyId,
+            Guid.NewGuid(),
+            "animate-this",
+            GameAudienceRole.Display,
+            "Voting",
+            2,
+            DateTimeOffset.UtcNow.AddSeconds(20),
+            false,
+            GameJson.From(payload),
+            new Dictionary<Guid, int>());
+
+        var snapshot = PhaserPresentationMapper.Create(session, [], game, payload);
+
+        var animation = Assert.Single(snapshot.Drawing!.Animations);
+        Assert.Equal("Playback", snapshot.Drawing.Mode);
+        Assert.Null(animation.CreatorName);
+        Assert.Equal(
+            assetIds.Select(assetId => $"/api/drawing-assets/{assetId:D}"),
+            animation.FrameUrls);
+    }
 }

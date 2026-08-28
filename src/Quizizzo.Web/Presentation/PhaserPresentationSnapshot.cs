@@ -11,7 +11,8 @@ public sealed record PhaserPresentationSnapshot(
     string Phase,
     long Revision,
     IReadOnlyList<PhaserPlayerSnapshot> Players,
-    IReadOnlyList<PhaserResultSnapshot> Results);
+    IReadOnlyList<PhaserResultSnapshot> Results,
+    PhaserDrawingPresentationSnapshot? Drawing);
 
 public sealed record PhaserPlayerSnapshot(
     string PlayerId,
@@ -30,6 +31,20 @@ public sealed record PhaserCharacterSnapshot(
 public sealed record PhaserResultSnapshot(
     string PlayerId,
     int Rank,
+    int PointsAwarded);
+
+public sealed record PhaserDrawingPresentationSnapshot(
+    string Mode,
+    int FrameDurationMilliseconds,
+    IReadOnlyList<PhaserDrawingAnimationSnapshot> Animations);
+
+public sealed record PhaserDrawingAnimationSnapshot(
+    string SubmissionPlayerId,
+    string? CreatorName,
+    string Prompt,
+    IReadOnlyList<string> FrameUrls,
+    int Votes,
+    int? Rank,
     int PointsAwarded);
 
 public static class PhaserPresentationMapper
@@ -66,6 +81,19 @@ public static class PhaserPresentationMapper
                 entry.Rank!.Value,
                 entry.PointsAwarded))
             .ToArray() ?? [];
+        var drawing = game?.Drawing is { } presentation
+            ? new PhaserDrawingPresentationSnapshot(
+                presentation.Mode,
+                presentation.FrameDurationMilliseconds,
+                presentation.Animations.Select(animation => new PhaserDrawingAnimationSnapshot(
+                    animation.SubmissionPlayerId.ToString("N"),
+                    animation.CreatorName,
+                    animation.Prompt,
+                    animation.FrameAssetIds.Select(assetId => $"/api/drawing-assets/{assetId:D}").ToArray(),
+                    animation.Votes,
+                    animation.Rank,
+                    animation.PointsAwarded)).ToArray())
+            : null;
 
         return new PhaserPresentationSnapshot(
             mode,
@@ -73,6 +101,7 @@ public static class PhaserPresentationMapper
             gameView?.Phase ?? mode,
             gameView?.Revision ?? 0,
             presentationPlayers,
-            results);
+            results,
+            drawing);
     }
 }

@@ -13,7 +13,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quizizzo.GameContracts", "s
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quizizzo.GameEngine", "src\Quizizzo.GameEngine\Quizizzo.GameEngine.csproj", "{5A0D4D0E-7FBE-484F-A419-E5B7442CEEFB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quizizzo.Games.AnimateThis", "src\Quizizzo.Games.AnimateThis\Quizizzo.Games.AnimateThis.csproj", "{3C0C0F01-3BBE-452E-A042-63B116B60E61}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quizizzo.Games.AniMates", "src\Quizizzo.Games.AniMates\Quizizzo.Games.AniMates.csproj", "{3C0C0F01-3BBE-452E-A042-63B116B60E61}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quizizzo.Games.Bullshit", "src\Quizizzo.Games.Bullshit\Quizizzo.Games.Bullshit.csproj", "{FFF5574E-F83A-46F5-8D1F-F9FCDD729B41}"
 EndProject

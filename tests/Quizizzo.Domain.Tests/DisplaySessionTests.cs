@@ -41,4 +41,16 @@ public sealed class DisplaySessionTests
         Assert.Throws<InvalidOperationException>(
             () => display.Pair(party, "host-1", Now.AddMinutes(16)));
     }
+
+    [Fact]
+    public void Pairing_lifetimes_must_be_positive_when_created_or_renewed()
+    {
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            DisplaySession.Create("HASH", "ABCDEFGH", Now, TimeSpan.Zero));
+        var display = DisplaySession.Create(
+            "HASH", "ABCDEFGH", Now, TimeSpan.FromMinutes(15));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            display.RenewPairingCode("HGFEDCBA", Now, TimeSpan.Zero));
+    }
 }

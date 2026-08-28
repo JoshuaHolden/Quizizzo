@@ -2,6 +2,9 @@ namespace Quizizzo.Application.Tests;
 
 public sealed class ArchitectureTests
 {
+    private static readonly string[] AllowedProjectReferences =
+        ["Quizizzo.Domain", "Quizizzo.GameContracts"];
+
     [Fact]
     public void Application_references_only_inward_Quizizzo_layers()
     {
@@ -11,6 +14,6 @@ public sealed class ArchitectureTests
             .ToHashSet(StringComparer.Ordinal);
 
         Assert.All(references, reference =>
-            Assert.Contains(reference, new[] { "Quizizzo.Domain", "Quizizzo.GameContracts" }));
+            Assert.Contains(reference, AllowedProjectReferences));
     }
 }

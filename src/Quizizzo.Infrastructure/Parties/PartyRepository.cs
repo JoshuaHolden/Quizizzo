@@ -23,7 +23,7 @@ public sealed class PartyRepository(ApplicationDbContext dbContext) : IPartyRepo
         dbContext.Parties.SingleOrDefaultAsync(party => party.Id == partyId, cancellationToken);
 
     public Task<Party?> GetByRoomCodeAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
-        dbContext.Parties.SingleOrDefaultAsync(
+        dbContext.Parties.AsNoTracking().SingleOrDefaultAsync(
             party => party.RoomCode == roomCode &&
                 (party.Status == PartyStatus.Created ||
                  party.Status == PartyStatus.Lobby ||

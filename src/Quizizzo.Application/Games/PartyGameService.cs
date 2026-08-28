@@ -14,6 +14,7 @@ public sealed class PartyGameService(
     IPlayerRepository players,
     IDisplaySessionRepository displays,
     IPartyGameRuntime runtime,
+    PartyMutationCoordinator partyMutations,
     TimeProvider timeProvider)
 {
     public IReadOnlyList<GameDescriptor> ListGames() => runtime.ListGames();
@@ -24,6 +25,8 @@ public sealed class PartyGameService(
         string gameKey,
         CancellationToken cancellationToken = default)
     {
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
         var party = await GetOwnedPartyAsync(partyId, hostUserId, cancellationToken);
         if (party.Status != PartyStatus.Lobby || party.CurrentGameInstanceId.HasValue)
         {
@@ -189,6 +192,11 @@ public sealed class PartyGameService(
 
         var view = await runtime.GetViewAsync(
             new GameInstanceId(instanceId), role, subjectId, cancellationToken);
+        if (view.IsComplete)
+        {
+            await FinalizeGameAsync(party, instanceId, view.Scores, cancellationToken);
+            return null;
+        }
         return new PartyGameView(
             party.Id.Value,
             view.GameInstanceId.Value,

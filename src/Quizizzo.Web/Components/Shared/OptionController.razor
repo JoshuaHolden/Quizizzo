@@ -1,0 +1,67 @@
+@using Quizizzo.GameContracts
+
+<fieldset class="vote-controller" disabled="@Disabled">
+    <legend class="visually-hidden">@Legend</legend>
+    <div class="vote-options">
+        @foreach (var option in Options)
+        {
+            <label class="vote-option @(selectedId == option.Id ? "selected" : null)">
+                <input type="radio"
+                       name="@groupName"
+                       value="@option.Id"
+                       checked="@(selectedId == option.Id)"
+                       @onchange="() => selectedId = option.Id" />
+                @if (ShowFrameAnimations && option.FrameAssetIds is { Count: > 0 } frames)
+                {
+                    <FrameAnimation FrameAssetIds="frames" AlternativeText="@option.Label" />
+                }
+                <strong>@option.Label</strong>
+                @if (!string.IsNullOrWhiteSpace(option.Detail))
+                {
+                    <span>@option.Detail</span>
+                }
+            </label>
+        }
+    </div>
+    <button type="button"
+            class="btn btn-primary btn-lg w-100 mt-2"
+            disabled="@(Disabled || string.IsNullOrWhiteSpace(selectedId))"
+            @onclick="SubmitAsync">
+        @SubmitLabel
+    </button>
+</fieldset>
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ControllerOption> Options { get; set; } = [];
+    [Parameter, EditorRequired] public string SelectionScope { get; set; } = string.Empty;
+    [Parameter] public string? SubmittedOptionId { get; set; }
+    [Parameter] public string Legend { get; set; } = "Choose one option";
+    [Parameter] public string SubmitLabel { get; set; } = "Submit";
+    [Parameter] public bool ShowFrameAnimations { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<string> Submitted { get; set; }
+
+    private readonly string groupName = $"option-{Guid.NewGuid():N}";
+    private string? selectedId;
+    private string? previousScope;
+    private string? previousSubmittedOptionId;
+
+    protected override void OnParametersSet()
+    {
+        var serverSelectionChanged =
+            !string.Equals(previousSubmittedOptionId, SubmittedOptionId, StringComparison.Ordinal);
+        var scopeChanged = !string.Equals(previousScope, SelectionScope, StringComparison.Ordinal);
+        var selectionNoLongerExists = selectedId is not null &&
+            !Options.Any(option => string.Equals(option.Id, selectedId, StringComparison.Ordinal));
+        if (scopeChanged || serverSelectionChanged || selectionNoLongerExists)
+        {
+            selectedId = SubmittedOptionId;
+        }
+        previousScope = SelectionScope;
+        previousSubmittedOptionId = SubmittedOptionId;
+    }
+
+    private Task SubmitAsync() => string.IsNullOrWhiteSpace(selectedId)
+        ? Task.CompletedTask
+        : Submitted.InvokeAsync(selectedId);
+}

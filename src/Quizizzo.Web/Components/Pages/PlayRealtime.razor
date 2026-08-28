@@ -13,7 +13,7 @@
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus" />
 
-<main class="join-panel mx-auto text-center">
+<section class="join-panel player-controller-page mx-auto text-center" aria-label="Player controller">
     <p class="text-uppercase mb-1">Room @player.RoomCode</p>
     <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
         <span aria-hidden="true">:)</span>
@@ -58,7 +58,41 @@
                     if (drawingConfiguration is not null)
                     {
                         <DrawingController @key="DrawingControllerKey(drawingConfiguration)"
-                                           Options="CreateDrawingOptions(drawingConfiguration)" />
+                                           Options="CreateDrawingOptions(drawingConfiguration)"
+                                           SubmissionEndpoint="/api/drawing-submissions/animates"
+                                           SubmitLabel="game.Controller.SubmitLabel"
+                                           Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                           Submitted="DrawingSubmittedAsync" />
+                    }
+                    break;
+                case PlayerControllerKind.Text:
+                    var textConfiguration = game.Controller.Configuration.Deserialize<TextControllerConfiguration>();
+                    if (textConfiguration is not null)
+                    {
+                        <TextController Configuration="textConfiguration"
+                                        SubmitLabel="game.Controller.SubmitLabel"
+                                        Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                        Submitted="value => SubmitPlayerActionAsync(game.Controller.ActionKind, new { value })" />
+                    }
+                    break;
+                case PlayerControllerKind.Vote:
+                    var voteConfiguration = game.Controller.Configuration.Deserialize<VoteControllerConfiguration>();
+                    if (voteConfiguration is not null)
+                    {
+                        <VoteController Configuration="voteConfiguration"
+                                        SubmitLabel="game.Controller.SubmitLabel"
+                                        Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                        Submitted="optionId => SubmitSelectionAsync(voteConfiguration.SelectionProperty, optionId)" />
+                    }
+                    break;
+                case PlayerControllerKind.Choice:
+                    var choiceConfiguration = game.Controller.Configuration.Deserialize<ChoiceControllerConfiguration>();
+                    if (choiceConfiguration is not null)
+                    {
+                        <ChoiceController Configuration="choiceConfiguration"
+                                          SubmitLabel="game.Controller.SubmitLabel"
+                                          Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                          Submitted="optionId => SubmitSelectionAsync(choiceConfiguration.SelectionProperty, optionId)" />
                     }
                     break;
                 case PlayerControllerKind.Waiting:
@@ -75,7 +109,7 @@
             <p class="mt-4">Total score: <strong>@PlayerScore.ToString("N0")</strong></p>
         </section>
     }
-</main>
+</section>
 
 @code {
     [Parameter, EditorRequired] public PlayerView InitialPlayer { get; set; } = default!;
@@ -125,7 +159,40 @@
         }
     }
 
+    private async Task SubmitSelectionAsync(string propertyName, string optionId)
+    {
+        if (partyConnection is null || game?.Controller.ActionKind is not { Length: > 0 } actionKind)
+        {
+            return;
+        }
+        await SubmitPlayerActionAsync(
+            actionKind,
+            new Dictionary<string, string> { [propertyName] = optionId });
+    }
+
+    private async Task SubmitPlayerActionAsync(string actionKind, object payload)
+    {
+        submitting = true;
+        actionError = null;
+        try
+        {
+            await partyConnection!.InvokeAsync(
+                "SubmitPlayerAction", Guid.NewGuid(), actionKind, payload);
+            await LoadAsync();
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            actionError = exception.Message;
+        }
+        finally
+        {
+            submitting = false;
+        }
+    }
+
     private async Task RefreshFromServerAsync(string reason) => await LoadAsync();
+
+    private async Task DrawingSubmittedAsync() => await LoadAsync();
 
     private async Task LoadAsync()
     {

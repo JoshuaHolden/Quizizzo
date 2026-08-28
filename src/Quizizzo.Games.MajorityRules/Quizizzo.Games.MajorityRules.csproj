@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Quizizzo.GameContracts\Quizizzo.GameContracts.csproj" />
+    <ProjectReference Include="..\Quizizzo.Domain\Quizizzo.Domain.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

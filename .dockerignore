@@ -6,3 +6,12 @@
 .dotnet-home
 tests
 *.user
+node_modules
+.npm-cache
+.env
+.env.*
+!.env.example
+.codex
+.phasering
+assets
+data-protection

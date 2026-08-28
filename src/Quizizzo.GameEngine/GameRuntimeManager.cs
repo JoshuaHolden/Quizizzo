@@ -1,4 +1,6 @@
 using Quizizzo.GameContracts;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Quizizzo.GameEngine;
 
@@ -6,12 +8,16 @@ public sealed class GameRuntimeManager(
     GameModuleCatalog modules,
     IGameStateStore stateStore,
     TimeProvider timeProvider,
-    IEnumerable<IGameRuntimeObserver>? observers = null) : IAsyncDisposable
+    IEnumerable<IGameRuntimeObserver>? observers = null,
+    IOptions<GameRuntimeOptions>? options = null,
+    ILoggerFactory? loggerFactory = null) : IAsyncDisposable
 {
     private readonly SemaphoreSlim gate = new(1, 1);
     private readonly Dictionary<GameInstanceId, GameInstanceActor> actors = [];
     private bool disposed;
     private readonly IReadOnlyList<IGameRuntimeObserver> runtimeObservers = observers?.ToArray() ?? [];
+    private readonly GameRuntimeOptions runtimeOptions = ValidateOptions(options?.Value);
+    private readonly ILoggerFactory? runtimeLoggerFactory = loggerFactory;
 
     public IReadOnlyList<GameDescriptor> ListGames() => modules.List();
 
@@ -60,7 +66,7 @@ public sealed class GameRuntimeManager(
                 now);
 
             await stateStore.CreateAsync(snapshot, cancellationToken);
-            var actor = new GameInstanceActor(snapshot, module, stateStore, timeProvider, runtimeObservers);
+            var actor = CreateActor(snapshot, module);
             actors.Add(request.GameInstanceId, actor);
             return await actor.GetStatusAsync(cancellationToken);
         }
@@ -114,7 +120,7 @@ public sealed class GameRuntimeManager(
                 ?? throw new GameInstanceNotFoundException(gameInstanceId);
             var module = modules.GetRequired(snapshot.GameKey);
             GameStateValidator.Validate(snapshot.ModuleState, snapshot.GameKey);
-            var recovered = new GameInstanceActor(snapshot, module, stateStore, timeProvider, runtimeObservers);
+            var recovered = CreateActor(snapshot, module);
             actors.Add(gameInstanceId, recovered);
             return recovered;
         }
@@ -122,6 +128,41 @@ public sealed class GameRuntimeManager(
         {
             gate.Release();
         }
+    }
+
+    public async Task ReleaseAsync(GameInstanceId gameInstanceId)
+    {
+        GameInstanceActor? actor;
+        await gate.WaitAsync();
+        try
+        {
+            if (disposed || !actors.Remove(gameInstanceId, out actor))
+            {
+                return;
+            }
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        await actor.DisposeAsync();
+    }
+
+    private GameInstanceActor CreateActor(GameRuntimeSnapshot snapshot, IGameModule module) => new(
+        snapshot,
+        module,
+        stateStore,
+        timeProvider,
+        runtimeObservers,
+        runtimeOptions,
+        runtimeLoggerFactory?.CreateLogger<GameInstanceActor>());
+
+    private static GameRuntimeOptions ValidateOptions(GameRuntimeOptions? options)
+    {
+        var value = options ?? new GameRuntimeOptions();
+        value.Validate();
+        return value;
     }
 
     private static void ValidateStartRequest(GameStartRequest request)

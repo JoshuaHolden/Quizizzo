@@ -42,10 +42,7 @@ public sealed class DisplaySession
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sessionTokenHash);
         ArgumentException.ThrowIfNullOrWhiteSpace(pairingCode);
-        if (pairingLifetime <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(nameof(pairingLifetime));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(pairingLifetime, TimeSpan.Zero);
 
         return new DisplaySession(
             DisplaySessionId.New(),
@@ -65,6 +62,7 @@ public sealed class DisplaySession
         }
 
         ArgumentException.ThrowIfNullOrWhiteSpace(pairingCode);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(pairingLifetime, TimeSpan.Zero);
         PairingCode = pairingCode;
         PairingExpiresAt = renewedAt.Add(pairingLifetime);
         LastSeenAt = renewedAt;

@@ -25,6 +25,9 @@ window.quizizzoPresentation = (() => {
             this.avatars = new Map();
             this.previous = null;
             this.background = null;
+            this.drawingContainer = null;
+            this.drawingTimer = null;
+            this.drawingSignature = null;
         }
 
         create() {
@@ -120,7 +123,92 @@ window.quizizzoPresentation = (() => {
             if (!initial && this.isNewResult(snapshot)) {
                 this.animateResults(snapshot.results || []);
             }
+            this.applyDrawing(snapshot.drawing);
             this.previous = cloneSnapshot(snapshot);
+        }
+
+        applyDrawing(drawing) {
+            const signature = JSON.stringify(drawing || null);
+            if (signature === this.drawingSignature) {
+                return;
+            }
+            this.drawingSignature = signature;
+            this.drawingTimer?.remove(false);
+            this.drawingTimer = null;
+            this.drawingContainer?.destroy(true);
+            this.drawingContainer = null;
+            if (!drawing?.animations?.length) {
+                return;
+            }
+
+            const expectedSignature = signature;
+            const urls = [...new Set(drawing.animations.flatMap(animation => animation.frameUrls || []))];
+            Promise.all(urls.map(url => this.loadDrawingTexture(url))).then(() => {
+                if (this.drawingSignature !== expectedSignature || !this.scene?.isActive()) {
+                    return;
+                }
+                this.startDrawingPlayback(drawing);
+            }).catch(() => { });
+        }
+
+        loadDrawingTexture(url) {
+            const key = `drawing-${url.split("/").pop()}`;
+            if (this.textures.exists(key)) {
+                return Promise.resolve(key);
+            }
+            return new Promise((resolve, reject) => {
+                const image = new Image();
+                image.decoding = "async";
+                image.onload = () => {
+                    if (!this.textures.exists(key)) {
+                        this.textures.addImage(key, image);
+                    }
+                    resolve(key);
+                };
+                image.onerror = reject;
+                image.src = url;
+            });
+        }
+
+        startDrawingPlayback(drawing) {
+            let animationIndex = 0;
+            let frameIndex = 0;
+            const panel = this.add.rectangle(0, 0, 500, 390, 0xffffff, 0.97)
+                .setStrokeStyle(8, 0x24123f, 1);
+            const frame = this.add.image(0, -20, `drawing-${drawing.animations[0].frameUrls[0].split("/").pop()}`)
+                .setDisplaySize(330, 330);
+            const caption = this.add.text(0, 172, "", {
+                color: "#24123f",
+                fontFamily: "Arial, sans-serif",
+                fontSize: "24px",
+                fontStyle: "bold",
+                align: "center",
+                wordWrap: { width: 450 }
+            }).setOrigin(0.5);
+            this.drawingContainer = this.add.container(width / 2, 275, [panel, frame, caption]).setDepth(12);
+
+            const show = () => {
+                const animation = drawing.animations[animationIndex];
+                const url = animation.frameUrls[frameIndex];
+                frame.setTexture(`drawing-${url.split("/").pop()}`);
+                const reveal = drawing.mode === "Reveal" && animation.creatorName
+                    ? `${animation.prompt}\n${animation.creatorName} — ${animation.votes} vote(s)`
+                    : animation.prompt;
+                caption.setText(reveal);
+                frameIndex += 1;
+                if (frameIndex >= animation.frameUrls.length) {
+                    frameIndex = 0;
+                    animationIndex = (animationIndex + 1) % drawing.animations.length;
+                }
+            };
+            show();
+            if (!this.controller.reducedMotion) {
+                this.drawingTimer = this.time.addEvent({
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    loop: true,
+                    callback: show
+                });
+            }
         }
 
         isNewResult(snapshot) {

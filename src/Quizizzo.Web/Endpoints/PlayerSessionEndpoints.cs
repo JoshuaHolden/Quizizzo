@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Antiforgery;
+using Microsoft.AspNetCore.Mvc;
 using Quizizzo.Application.Parties;
 using Quizizzo.Application.Players;
 using Quizizzo.Web.Realtime;
@@ -7,12 +8,14 @@ namespace Quizizzo.Web.Endpoints;
 
 public static class PlayerSessionEndpoints
 {
+    private const long MaximumJoinRequestBytes = 8 * 1024;
     public const string PlayerCookieName = "quizizzo.player";
     public const string PlayerContextItem = "Quizizzo.PlayerSession";
 
     public static IEndpointRouteBuilder MapPlayerSessionEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost("/join-player", JoinPlayerAsync)
+            .WithMetadata(new RequestSizeLimitAttribute(MaximumJoinRequestBytes))
             .RequireRateLimiting("player-join");
         return endpoints;
     }
@@ -21,8 +24,15 @@ public static class PlayerSessionEndpoints
         HttpContext context,
         IAntiforgery antiforgery,
         PlayerService players,
-        IPartyRealtimeNotifier notifier)
+        IPartyRealtimeNotifier notifier,
+        IWebHostEnvironment environment)
     {
+        if (context.Request.ContentLength is > MaximumJoinRequestBytes ||
+            !context.Request.HasFormContentType)
+        {
+            return Results.BadRequest("A bounded join form is required.");
+        }
+
         try
         {
             await antiforgery.ValidateRequestAsync(context);
@@ -43,7 +53,7 @@ public static class PlayerSessionEndpoints
                 IsEssential = true,
                 MaxAge = TimeSpan.FromDays(90),
                 SameSite = SameSiteMode.Lax,
-                Secure = context.Request.IsHttps
+                Secure = !environment.IsDevelopment() || context.Request.IsHttps
             });
 
             await notifier.PartyChangedAsync(

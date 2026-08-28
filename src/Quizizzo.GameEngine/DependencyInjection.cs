@@ -9,6 +9,7 @@ public static class DependencyInjection
     {
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IGameStateStore, InMemoryGameStateStore>();
+        services.AddOptions<GameRuntimeOptions>();
         services.TryAddSingleton<GameModuleCatalog>();
         services.TryAddSingleton<GameRuntimeManager>();
         return services;

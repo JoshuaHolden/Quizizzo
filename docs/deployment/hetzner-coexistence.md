@@ -4,13 +4,13 @@ Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL service h
 
 ## Host-based reverse proxy
 
-Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production` and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`, then run only:
+Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production`, `QUIZIZZO_ALLOWED_HOSTS` to the exact new Quizizzo hostname, and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`, then run only:
 
 ```text
 docker compose --project-name quizizzo up -d --build
 ```
 
-Point only the new Quizizzo hostname in the existing Nginx/Caddy configuration to `http://127.0.0.1:8081`. Keep the `logiagraph.com` hostname, TLS configuration, and upstream unchanged. Verify `/health/live` and `/health/ready` before enabling public traffic.
+Point only the new Quizizzo hostname in the existing Nginx/Caddy configuration to `http://127.0.0.1:8081`. Keep the `logiagraph.com` hostname, TLS configuration, and upstream unchanged. Forward the original scheme and client address. Quizizzo trusts one forwarded-header hop because its published port is loopback-only; do not expose that port on all host interfaces. Verify `/health/live` and `/health/ready` before enabling public traffic.
 
 SignalR requires the new Quizizzo route to support WebSocket upgrades. For Nginx, set `proxy_http_version 1.1`, forward `Upgrade` and `Connection`, and keep a suitably long `proxy_read_timeout` inside only the Quizizzo `server` block. Caddy's standard `reverse_proxy 127.0.0.1:8081` handles WebSocket upgrades automatically. These settings do not belong in, and must not change, the existing `logiagraph.com` route.
 
@@ -33,5 +33,5 @@ Whichever proxy is used, verify the browser can negotiate `/hubs/party` and upgr
 - Inspect the rendered model first with `docker compose --project-name quizizzo config`.
 - Never run global `docker system prune`, broad container stop/remove commands, or reuse another stack's volume.
 - Do not publish PostgreSQL port 5432 on the VPS.
-- Back up `quizizzo-postgres-data` before migrations and `quizizzo-drawing-assets` before asset-affecting deployments; deploy immutable image tags.
+- Back up `quizizzo-postgres-data` before migrations. Preserve `quizizzo-data-protection` across deployments so authentication and anonymous-session protection remain stable. Drawing assets expire after one day, so back up `quizizzo-drawing-assets` only when short-lived in-progress animations must survive a host recovery.
 - A rollback changes only the Quizizzo image tag and stack; it must not modify `logiagraph.com` containers or its proxy route.

@@ -1,5 +1,48 @@
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    overflow-x: hidden;
+    text-size-adjust: 100%;
+    -webkit-text-size-adjust: 100%;
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    min-width: 0;
+    overflow-x: clip;
+}
+
+img,
+svg,
+canvas {
+    max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+p,
+li,
+dd,
+td,
+th,
+a,
+strong,
+span {
+    overflow-wrap: anywhere;
 }
 
 a, .btn-link {
@@ -16,12 +59,44 @@ a, .btn-link {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
-.content {
-    padding-top: 1.1rem;
+.btn,
+button:not(.navbar-toggler),
+input.form-control,
+select.form-select {
+    min-height: 44px;
 }
 
-h1:focus {
-    outline: none;
+.btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    white-space: normal;
+}
+
+.skip-link {
+    background: #fff;
+    border: 3px solid #052767;
+    border-radius: 0.5rem;
+    color: #052767;
+    left: max(0.5rem, env(safe-area-inset-left));
+    padding: 0.65rem 1rem;
+    position: fixed;
+    top: max(0.5rem, env(safe-area-inset-top));
+    transform: translateY(-200%);
+    transition: transform 120ms ease-out;
+    z-index: 2000;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+
+.content {
+    margin-inline: auto;
+    max-width: 100rem;
+    min-width: 0;
+    padding: clamp(1rem, 2.5vw, 2.5rem) max(clamp(1rem, 3vw, 3rem), env(safe-area-inset-right)) max(2rem, env(safe-area-inset-bottom)) max(clamp(1rem, 3vw, 3rem), env(safe-area-inset-left));
+    width: 100%;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -59,9 +134,105 @@ h1:focus {
     text-align: start;
 }
 
+.form-control,
+.form-select,
+.input-group,
+.form-floating,
+form,
+fieldset {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.form-check-input {
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.checkbox .form-label,
+.form-check-label {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.5rem;
+    min-height: 44px;
+}
+
+.home-page {
+    padding-block: clamp(1.5rem, 5vw, 4rem);
+}
+
+.home-hero {
+    max-width: 52rem;
+}
+
+.home-actions .btn {
+    min-width: 10rem;
+}
+
+.narrow-page,
+.host-dashboard {
+    max-width: 72rem;
+}
+
+.responsive-card {
+    padding: clamp(1rem, 3vw, 1.5rem);
+}
+
+.responsive-heading-row,
+.responsive-list-row {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.75rem 1rem;
+    justify-content: space-between;
+    min-width: 0;
+}
+
+.responsive-heading-row > *,
+.responsive-list-row > * {
+    min-width: 0;
+}
+
+.responsive-list-row > :last-child {
+    text-align: right;
+}
+
+.account-management,
+.account-content,
+.account-management .row > *,
+.content .row > * {
+    min-width: 0;
+}
+
+.content > .row,
+.account-management > .row {
+    row-gap: 2rem;
+}
+
+.account-content form {
+    max-width: 42rem;
+}
+
+.account-content .table-responsive {
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+}
+
+.account-content td:last-child {
+    text-align: right;
+}
+
+.account-content td form,
+.account-content td form > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
 .join-panel {
     max-width: 30rem;
-    padding: 2rem 1rem;
+    padding: clamp(0.5rem, 3vw, 2rem) 0;
+    width: 100%;
 }
 
 .character-preview {
@@ -83,6 +254,8 @@ h1:focus {
     border-radius: 999px;
     display: flex;
     gap: 0.65rem;
+    max-width: 100%;
+    min-width: 0;
     padding: 0.65rem 1rem;
 }
 
@@ -96,10 +269,10 @@ h1:focus {
 .qr-code {
     background: white;
     border-radius: 1rem;
-    height: min(35vh, 280px);
+    height: min(35dvh, 65vw, 17.5rem);
     image-rendering: pixelated;
     padding: 0.75rem;
-    width: min(35vh, 280px);
+    width: min(35dvh, 65vw, 17.5rem);
 }
 
 .display-shell {
@@ -107,7 +280,7 @@ h1:focus {
     height: 100vh;
     height: 100dvh;
     overflow: hidden;
-    width: 100vw;
+    width: 100%;
 }
 
 .display-stage {
@@ -136,9 +309,14 @@ h1:focus {
     display: flex;
     flex-direction: column;
     height: 100%;
-    padding: clamp(1rem, 2vw, 2.5rem);
-    pointer-events: none;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: max(clamp(0.75rem, 2vw, 2.5rem), env(safe-area-inset-top)) max(clamp(0.75rem, 2vw, 2.5rem), env(safe-area-inset-right)) max(clamp(0.75rem, 2vw, 2.5rem), env(safe-area-inset-bottom)) max(clamp(0.75rem, 2vw, 2.5rem), env(safe-area-inset-left));
+    pointer-events: auto;
     position: relative;
+    scrollbar-gutter: stable;
     text-shadow: 0 0.15rem 0.5rem rgba(14, 5, 31, 0.65);
     z-index: 1;
 }
@@ -157,6 +335,7 @@ h1:focus {
     margin: auto;
     max-width: 44rem;
     padding: clamp(1rem, 2.5vh, 2rem);
+    width: min(100%, 44rem);
 }
 
 .display-card a,
@@ -167,11 +346,19 @@ h1:focus {
 .display-lobby-panel,
 .display-game-panel {
     flex: 1;
+    min-height: 0;
+    min-width: 0;
 }
 
 .display-lobby-panel .qr-code {
-    height: min(28vh, 250px);
-    width: min(28vh, 250px);
+    height: min(28dvh, 60vw, 15.625rem);
+    width: min(28dvh, 60vw, 15.625rem);
+}
+
+.display-url {
+    margin-inline: auto;
+    max-width: 100%;
+    overflow-wrap: anywhere;
 }
 
 .display-game-panel > h2 {
@@ -189,6 +376,22 @@ h1:focus {
 .number-controller {
     margin: 1.5rem auto 0;
     max-width: 24rem;
+    min-width: 0;
+}
+
+.number-controller .input-group > .form-control {
+    min-width: 0;
+}
+
+.text-controller textarea {
+    min-height: 8rem;
+    resize: vertical;
+}
+
+.controller-meta {
+    display: flex;
+    gap: 0.25rem 1rem;
+    justify-content: space-between;
 }
 
 .waiting-controller {
@@ -210,7 +413,7 @@ h1:focus {
 .display-results {
     display: grid;
     gap: 1rem;
-    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
     margin: 2rem auto;
     max-width: 75rem;
 }
@@ -220,6 +423,7 @@ h1:focus {
     border-radius: 1rem;
     color: #171717;
     padding: 1rem;
+    min-width: 0;
 }
 
 .scoreboard {
@@ -233,6 +437,15 @@ h1:focus {
     gap: 1rem;
     justify-content: space-between;
     padding: 0.35rem 0;
+}
+
+.scoreboard li > * {
+    min-width: 0;
+}
+
+.scoreboard li > :last-child {
+    flex: 0 0 auto;
+    text-align: right;
 }
 
 .display-scoreboard {
@@ -249,11 +462,34 @@ h1:focus {
     .waiting-pulse { animation: none; }
 }
 
+.drawing-display-fallback {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
+    margin: 1rem auto;
+    max-width: 72rem;
+}
+
+.drawing-display-fallback article {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 1rem;
+    color: #17112e;
+    padding: 0.65rem;
+}
+
+.drawing-display-fallback .frame-animation {
+    margin: auto;
+    max-height: 32vh;
+    max-width: 32vh;
+}
+
 .drawing-controller {
     margin: 0 auto;
     max-width: 42rem;
+    min-width: 0;
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
     position: relative;
+    width: 100%;
 }
 
 .drawing-prompt {
@@ -271,7 +507,7 @@ h1:focus {
     margin: 0.5rem auto;
     overflow: hidden;
     position: relative;
-    width: 100%;
+    width: min(100%, 68dvh);
 }
 
 .drawing-canvas {
@@ -303,6 +539,11 @@ h1:focus {
     justify-content: center;
 }
 
+.drawing-toolbar {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
 .drawing-tool-button,
 .drawing-frame-controls button,
 .drawing-palette-choice,
@@ -318,10 +559,11 @@ h1:focus {
 
 .drawing-tool-button {
     background: #fff;
-    flex: 1 1 4.25rem;
     flex-direction: column;
     font-size: 0.78rem;
+    min-width: 0;
     padding: 0.3rem 0.45rem;
+    width: 100%;
 }
 
 .drawing-tool-button.active {
@@ -391,6 +633,7 @@ h1:focus {
 }
 
 .drawing-onion-toggle input {
+    flex: 0 0 auto;
     height: 1.35rem;
     width: 1.35rem;
 }
@@ -404,11 +647,352 @@ h1:focus {
 }
 
 @media (max-width: 420px) {
-    .drawing-controller {
-        margin-inline: -0.65rem;
+    .drawing-tool-button {
+        font-size: 0.72rem;
+        padding-inline: 0.25rem;
+    }
+}
+
+.vote-controller {
+    border: 0;
+    margin: 0 auto;
+    max-width: 42rem;
+    padding: 0;
+}
+
+.vote-options {
+    display: grid;
+    gap: 0.65rem;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+.vote-option {
+    background: #fff;
+    border: 3px solid #ded9ef;
+    border-radius: 1rem;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-height: 52px;
+    min-width: 0;
+    padding: 0.65rem;
+    touch-action: manipulation;
+}
+
+.vote-option.selected {
+    border-color: #6d28d9;
+    box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.18);
+}
+
+.vote-option input {
+    align-self: flex-start;
+    height: 1.25rem;
+    width: 1.25rem;
+}
+
+.frame-animation {
+    aspect-ratio: 1;
+    background: #fff;
+    border-radius: 0.65rem;
+    overflow: hidden;
+    position: relative;
+    width: 100%;
+}
+
+.frame-animation img {
+    animation: drawing-frame-cycle var(--frame-cycle) steps(1, end) infinite;
+    animation-delay: var(--frame-delay);
+    height: 100%;
+    inset: 0;
+    object-fit: contain;
+    opacity: 0;
+    position: absolute;
+    width: 100%;
+}
+
+.frame-animation.single-frame img {
+    animation: none;
+    opacity: 1;
+}
+
+@keyframes drawing-frame-cycle {
+    0%, 33.2% { opacity: 1; }
+    33.3%, 100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .frame-animation img { animation: none; opacity: 0; }
+    .frame-animation img:first-child { opacity: 1; }
+}
+
+@media (max-width: 991.98px) {
+    .manage-navigation {
+        margin-bottom: 1.5rem;
+    }
+
+    .manage-navigation .nav {
+        flex-direction: row !important;
+        flex-wrap: nowrap;
+        gap: 0.35rem;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        padding: 0.15rem 0.15rem 0.6rem;
+        scrollbar-gutter: stable;
+    }
+
+    .manage-navigation .nav-item {
+        flex: 0 0 auto;
+    }
+
+    .manage-navigation .nav-link {
+        align-items: center;
+        display: inline-flex;
+        min-height: 44px;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 640.98px) {
+    input,
+    select,
+    textarea {
+        font-size: 1rem !important;
+    }
+
+    h1 {
+        font-size: clamp(2rem, 10vw, 3rem);
+    }
+
+    .home-page {
+        --bs-gutter-x: 0;
+    }
+
+    .home-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .home-actions .btn,
+    .host-game-actions .btn,
+    .host-dashboard > .btn,
+    .narrow-page .btn,
+    .mobile-full-width {
+        width: 100%;
+    }
+
+    .host-game-actions {
+        flex-direction: column;
+    }
+
+    .account-management > h2 {
+        font-size: 1.25rem;
+    }
+
+    .account-content .table {
+        min-width: 28rem;
+    }
+
+    .display-overlay {
+        text-shadow: 0 0.1rem 0.35rem rgba(14, 5, 31, 0.75);
+    }
+
+    .display-overlay > h1 {
+        font-size: clamp(1.5rem, 9vw, 2.5rem);
+        margin-bottom: 0.25rem;
+    }
+
+    .display-card {
+        border-radius: 1rem;
+    }
+
+    .display-game-panel > h2 {
+        font-size: clamp(1.5rem, 8vw, 2.75rem);
+    }
+
+    .display-game-panel .fs-3 {
+        font-size: clamp(1.1rem, 5vw, 1.75rem) !important;
+    }
+
+    .display-results {
+        margin-block: 1rem;
+    }
+
+    .controller-meta {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .controller-meta > :last-child {
+        align-self: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .responsive-heading-row,
+    .responsive-list-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .responsive-list-row > :last-child {
+        text-align: left;
+    }
+
+    .scoreboard li {
+        gap: 0.5rem;
+    }
+
+    .input-group-text {
+        max-width: 42%;
+        overflow-wrap: anywhere;
+        white-space: normal;
+    }
+
+    .drawing-frame-controls {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .drawing-frame-controls button {
+        min-width: 0;
+        padding-inline: 0.35rem;
+        width: 100%;
+    }
+
+    .drawing-frame-position {
+        text-align: center;
+    }
+
+    .drawing-onion-toggle {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+}
+
+@media (max-width: 360px) {
+    .content {
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+    }
+
+    .responsive-card,
+    .display-result-card {
+        padding: 0.75rem;
+    }
+
+    .character-preview {
+        font-size: 2rem;
+        height: 6.5rem;
+        width: 6.5rem;
+    }
+
+    .drawing-toolbar {
+        gap: 0.25rem;
     }
 
     .drawing-tool-button {
-        padding-inline: 0.25rem;
+        border-radius: 0.5rem;
+        font-size: 0.68rem;
+        padding-inline: 0.1rem;
+    }
+
+    .vote-option {
+        padding: 0.55rem;
+    }
+}
+
+@media (max-height: 600px) {
+    .display-overlay {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+        padding-top: max(0.5rem, env(safe-area-inset-top));
+    }
+
+    .display-overlay > h1 {
+        font-size: clamp(1.35rem, 5vh, 2rem);
+        line-height: 1;
+    }
+
+    .display-card {
+        margin-block: 0.5rem;
+        padding: 0.75rem;
+    }
+
+    .display-card p,
+    .display-game-panel > p {
+        margin-bottom: 0.35rem;
+    }
+
+    .display-results,
+    .drawing-display-fallback {
+        margin-block: 0.5rem;
+    }
+}
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .join-panel {
+        padding-block: 0;
+    }
+
+    .home-page {
+        padding-block: 0.25rem;
+    }
+
+    .home-hero > .text-uppercase {
+        margin-bottom: 0.25rem;
+    }
+
+    .home-hero h1 {
+        font-size: clamp(2rem, 10vh, 2.5rem);
+        margin-bottom: 0.25rem;
+    }
+
+    .home-hero .lead {
+        font-size: 1rem;
+        line-height: 1.35;
+        margin-top: 0.35rem !important;
+    }
+
+    .home-actions {
+        flex-wrap: nowrap !important;
+        gap: 0.5rem !important;
+        margin-top: 0.75rem !important;
+    }
+
+    .home-actions .btn {
+        flex: 1 1 0;
+        min-width: 0;
+    }
+
+    .home-page > .row {
+        margin-top: 1rem !important;
+    }
+
+    .player-controller-page .character-preview {
+        font-size: 1.5rem;
+        height: 4.5rem;
+        margin-block: 0.5rem !important;
+        width: 4.5rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .drawing-tool-button.active,
+    .drawing-palette-choice.selected,
+    .drawing-size-choice.selected,
+    .vote-option.selected {
+        outline: 3px solid CanvasText;
+        outline-offset: 2px;
     }
 }

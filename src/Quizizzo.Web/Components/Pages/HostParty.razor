@@ -9,7 +9,6 @@
 @using Quizizzo.Application.Players
 @using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
-@using Quizizzo.Games.Estimate
 @using Quizizzo.Web.Realtime
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject PartyService Parties
@@ -45,8 +44,8 @@ else
 
     @if (gameView is not null && game is not null)
     {
-        <section class="game-panel card p-4">
-            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+        <section class="game-panel responsive-card card">
+            <div class="responsive-heading-row">
                 <div>
                     <p class="text-uppercase text-muted mb-1">@gameView.Phase</p>
                     <h2>@game.Title</h2>
@@ -64,7 +63,7 @@ else
                 <div class="list-group mb-3">
                     @foreach (var entry in game.Entries)
                     {
-                        <div class="list-group-item d-flex justify-content-between gap-3">
+                        <div class="list-group-item responsive-list-row">
                             <span><strong>@entry.Label</strong> @entry.Value</span>
                             @if (entry.Rank is not null)
                             {
@@ -77,7 +76,7 @@ else
 
             @if (game.CanAdvance && game.AdvanceActionKind is not null)
             {
-                <button class="btn btn-primary btn-lg"
+                <button class="btn btn-primary btn-lg mobile-full-width"
                         disabled="@actionPending"
                         @onclick="AdvanceGameAsync">
                     @(actionPending ? "Working..." : game.AdvanceLabel)
@@ -95,7 +94,7 @@ else
     }
     else
     {
-        <section class="card p-4">
+        <section class="responsive-card card">
             <h2>Lobby</h2>
             <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
             <p aria-live="polite">
@@ -111,22 +110,25 @@ else
                 <ul class="list-group mb-3">
                     @foreach (var player in players)
                     {
-                        <li class="list-group-item d-flex justify-content-between">
+                        <li class="list-group-item responsive-list-row">
                             <span>@player.DisplayName</span>
                             <span>@player.Status · @player.Score.ToString("N0") points</span>
                         </li>
                     }
                 </ul>
             }
-            <button class="btn btn-primary btn-lg"
-                    disabled="@(players.Count < 2 || actionPending || party.Status != PartyStatus.Lobby)"
-                    @onclick="StartEstimateAsync">
-                @(actionPending ? "Starting..." : "Start Estimate")
-            </button>
-            @if (players.Count < 2)
-            {
-                <small class="text-muted d-block mt-2">Estimate needs at least two players.</small>
-            }
+            <div class="host-game-actions d-flex flex-wrap gap-2">
+                @foreach (var availableGame in Games.ListGames())
+                {
+                    <button class="btn btn-primary btn-lg"
+                            disabled="@(players.Count < availableGame.MinimumPlayers ||
+                                players.Count > availableGame.MaximumPlayers || actionPending ||
+                                party.Status != PartyStatus.Lobby)"
+                            @onclick="() => StartGameAsync(availableGame.Key)">
+                        @(actionPending ? "Starting..." : $"Start {availableGame.DisplayName}")
+                    </button>
+                }
+            </div>
             <small class="text-muted d-block mt-3">Last update: @lastUpdateReason</small>
         </section>
     }
@@ -170,11 +172,11 @@ else
         }
     }
 
-    private async Task StartEstimateAsync()
+    private async Task StartGameAsync(string gameKey)
     {
         await RunActionAsync(async () =>
         {
-            await Games.StartAsync(PartyId, hostUserId!, EstimateGameModule.GameKey);
+            await Games.StartAsync(PartyId, hostUserId!, gameKey);
             await Realtime.PartyChangedAsync(PartyId, "GameStarted");
         });
     }

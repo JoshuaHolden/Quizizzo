@@ -1,0 +1,14 @@
+root = true
+
+[*.{cs,razor}]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+
+# Underscore-separated test names document behavior clearly and are conventional in xUnit.
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+# EF migration operations are generated once and are not hot-path repeated calls.
+[src/Quizizzo.Infrastructure/Identity/Migrations/*.cs]
+dotnet_diagnostic.CA1861.severity = none

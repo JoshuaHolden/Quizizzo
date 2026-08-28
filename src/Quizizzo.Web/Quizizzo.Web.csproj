@@ -23,7 +23,7 @@
     <ProjectReference Include="..\Quizizzo.Games.Estimate\Quizizzo.Games.Estimate.csproj" />
     <ProjectReference Include="..\Quizizzo.Games.MajorityRules\Quizizzo.Games.MajorityRules.csproj" />
     <ProjectReference Include="..\Quizizzo.Games.Bullshit\Quizizzo.Games.Bullshit.csproj" />
-    <ProjectReference Include="..\Quizizzo.Games.AnimateThis\Quizizzo.Games.AnimateThis.csproj" />
+    <ProjectReference Include="..\Quizizzo.Games.AniMates\Quizizzo.Games.AniMates.csproj" />
   </ItemGroup>
 
 </Project>

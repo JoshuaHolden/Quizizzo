@@ -222,6 +222,60 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                     b.ToTable("DisplaySessions", (string)null);
                 });
 
+            modelBuilder.Entity("Quizizzo.Domain.Drawings.DrawingAssetMetadata", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTimeOffset>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FrameNumber")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("GameInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PlayerId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("RoundId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("SubmissionId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("SubmissionId", "GameInstanceId", "PlayerId", "RoundId", "FrameNumber")
+                        .IsUnique();
+
+                    b.ToTable("DrawingAssets", (string)null);
+                });
+
             modelBuilder.Entity("Quizizzo.Domain.Parties.Party", b =>
                 {
                     b.Property<Guid>("Id")
@@ -315,6 +369,41 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                     b.HasIndex("PartyId", "Status");
 
                     b.ToTable("Players", (string)null);
+                });
+
+            modelBuilder.Entity("Quizizzo.Infrastructure.Games.GameRuntimeSnapshotRecord", b =>
+                {
+                    b.Property<Guid>("GameInstanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GameKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<bool>("IsComplete")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("PartyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("GameInstanceId");
+
+                    b.HasIndex("PartyId");
+
+                    b.HasIndex("IsComplete", "UpdatedAtUtc");
+
+                    b.ToTable("GameRuntimeSnapshots", (string)null);
                 });
 
             modelBuilder.Entity("Quizizzo.Infrastructure.Identity.ApplicationUser", b =>

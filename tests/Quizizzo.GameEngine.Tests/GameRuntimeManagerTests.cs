@@ -1,5 +1,6 @@
 using Quizizzo.GameContracts;
 using Quizizzo.GameEngine;
+using Microsoft.Extensions.Options;
 
 namespace Quizizzo.GameEngine.Tests;
 
@@ -12,7 +13,7 @@ public sealed class GameRuntimeManagerTests
 
         var status = await fixture.Manager.GetStatusAsync(fixture.InstanceId);
         var host = await fixture.Manager.GetViewAsync(
-            fixture.InstanceId, GameViewRequest.Host(fixture.HostUserId));
+            fixture.InstanceId, GameViewRequest.Host(Fixture.HostUserId));
         var display = await fixture.Manager.GetViewAsync(
             fixture.InstanceId, GameViewRequest.Display("display-session"));
         var player = await fixture.Manager.GetViewAsync(
@@ -132,7 +133,7 @@ public sealed class GameRuntimeManagerTests
         await using var fixture = await Fixture.StartAsync();
 
         var completed = await fixture.Manager.ExecuteAsync(
-            fixture.Command(new CompleteAction(), GameActor.Host(fixture.HostUserId)));
+            fixture.Command(new CompleteAction(), GameActor.Host(Fixture.HostUserId)));
         var tooLate = await fixture.Manager.ExecuteAsync(fixture.Command(new IncrementAction()));
         var status = await fixture.Manager.GetStatusAsync(fixture.InstanceId);
 
@@ -243,6 +244,74 @@ public sealed class GameRuntimeManagerTests
     }
 
     [Fact]
+    public async Task Released_actor_is_recovered_from_the_store_without_losing_idempotency()
+    {
+        var module = new TestGameModule();
+        var store = new InMemoryGameStateStore();
+        await using var manager = new GameRuntimeManager(
+            new GameModuleCatalog([module]), store, TimeProvider.System);
+        var instanceId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        await manager.StartAsync(new GameStartRequest(
+            instanceId,
+            partyId,
+            "host-user",
+            module.Descriptor.Key,
+            [new GameParticipant(playerId, "Player")]));
+        var command = new GameCommand(
+            GameCommandId.New(), instanceId, partyId, GameActor.Player(playerId), new IncrementAction());
+        await manager.ExecuteAsync(command);
+
+        await manager.ReleaseAsync(instanceId);
+        var recovered = await manager.GetViewAsync(instanceId, GameViewRequest.Player(playerId));
+        var retry = await manager.ExecuteAsync(command);
+
+        Assert.Equal(1, recovered.Data.GetProperty("count").GetInt32());
+        Assert.True(retry.IsDuplicate);
+        Assert.Equal(recovered.Revision, retry.Revision);
+    }
+
+    [Fact]
+    public async Task Player_command_history_is_bounded_without_blocking_host_completion()
+    {
+        var module = new TestGameModule();
+        var options = Options.Create(new GameRuntimeOptions
+        {
+            CommandQueueCapacity = GameRuntimeOptions.MinimumQueueCapacity,
+            MaximumProcessedCommands = GameRuntimeOptions.MinimumProcessedCommands
+        });
+        await using var manager = new GameRuntimeManager(
+            new GameModuleCatalog([module]),
+            new InMemoryGameStateStore(),
+            TimeProvider.System,
+            options: options);
+        var instanceId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        await manager.StartAsync(new GameStartRequest(
+            instanceId,
+            partyId,
+            "host-user",
+            module.Descriptor.Key,
+            [new GameParticipant(playerId, "Player")]));
+        for (var index = 0; index < options.Value.MaximumProcessedCommands; index++)
+        {
+            await manager.ExecuteAsync(new GameCommand(
+                GameCommandId.New(), instanceId, partyId, GameActor.Player(playerId), new RejectAction()));
+        }
+
+        var overflow = await manager.ExecuteAsync(new GameCommand(
+            GameCommandId.New(), instanceId, partyId, GameActor.Player(playerId), new IncrementAction()));
+        var completed = await manager.ExecuteAsync(new GameCommand(
+            GameCommandId.New(), instanceId, partyId, GameActor.Host("host-user"), new CompleteAction()));
+
+        Assert.Equal("command-capacity-exceeded", overflow.ErrorCode);
+        Assert.Equal(GameCommandOutcome.Applied, completed.Outcome);
+        Assert.Equal("Completed", completed.Phase);
+    }
+
+    [Fact]
     public async Task Start_rejects_duplicate_participants_and_module_player_limit_violations()
     {
         var playerId = Guid.NewGuid();
@@ -256,7 +325,7 @@ public sealed class GameRuntimeManagerTests
             Guid.NewGuid(),
             "host-user",
             "test-game",
-            [new GameParticipant(playerId, "One"), new GameParticipant(playerId, "Duplicate")] )));
+            [new GameParticipant(playerId, "One"), new GameParticipant(playerId, "Duplicate")])));
         await Assert.ThrowsAsync<InvalidOperationException>(() => manager.StartAsync(new GameStartRequest(
             GameInstanceId.New(),
             Guid.NewGuid(),
@@ -279,7 +348,7 @@ public sealed class GameRuntimeManagerTests
         public GameInstanceId InstanceId { get; }
         public Guid PartyId { get; }
         public Guid PlayerId { get; }
-        public string HostUserId => "host-user";
+        public const string HostUserId = "host-user";
 
         public static async Task<Fixture> StartAsync(
             TimeSpan? deadline = null,

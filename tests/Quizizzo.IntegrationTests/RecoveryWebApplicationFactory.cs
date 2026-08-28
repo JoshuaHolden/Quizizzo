@@ -13,6 +13,7 @@ using Quizizzo.Domain.Displays;
 using Quizizzo.Domain.Parties;
 using Quizizzo.Domain.Players;
 using Quizizzo.Web.Realtime;
+using Quizizzo.GameEngine;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -35,6 +36,7 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
             services.RemoveAll<IDisplaySessionRepository>();
             services.RemoveAll<IPlayerCredentialService>();
             services.RemoveAll<IDisplayCredentialService>();
+            services.RemoveAll<IGameStateStore>();
 
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
             services.AddSingleton(State);
@@ -43,6 +45,7 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
             services.AddSingleton<IDisplaySessionRepository>(State);
             services.AddSingleton<IPlayerCredentialService, RecoveryPlayerCredentials>();
             services.AddSingleton<IDisplayCredentialService, RecoveryDisplayCredentials>();
+            services.AddSingleton<IGameStateStore, InMemoryGameStateStore>();
             services.Configure<RealtimePresenceOptions>(options =>
                 options.PlayerDisconnectGracePeriod = TimeSpan.FromMilliseconds(250));
             services.AddAuthentication(RecoveryAuthenticationHandler.SchemeName)
@@ -71,6 +74,17 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
                     CharacterAccessory.PartyHat),
                 RecoveryPlayerCredentials.Hash(PlayerToken),
                 now);
+            OtherPlayer = Player.Create(
+                Party.Id,
+                PlayerName.Parse("Second Player"),
+                new CharacterDefinition(
+                    CharacterBodyType.Bean,
+                    "#F97316",
+                    CharacterEyes.Googly,
+                    CharacterMouth.Smile,
+                    CharacterAccessory.BowTie),
+                RecoveryPlayerCredentials.Hash("second-player-token"),
+                now.AddSeconds(1));
             Display = DisplaySession.Create(
                 RecoveryDisplayCredentials.Hash(DisplayToken),
                 "RECOVER1",
@@ -81,6 +95,7 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
 
         public Party Party { get; }
         public Player Player { get; }
+        public Player OtherPlayer { get; }
         public DisplaySession Display { get; }
 
         public Task<bool> ActiveRoomCodeExistsAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
@@ -105,13 +120,15 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
             Task.FromResult<IReadOnlyList<Party>>(Party.HostUserId == hostUserId ? [Party] : []);
 
         public Task<int> CountMembersAsync(PartyId partyId, CancellationToken cancellationToken) =>
-            Task.FromResult(Player.PartyId == partyId && Player.IsPartyMember ? 1 : 0);
+            Task.FromResult(Player.PartyId == partyId && Player.IsPartyMember ? 2 : 0);
 
         public Task AddAsync(Player player, CancellationToken cancellationToken) =>
             throw new NotSupportedException("The recovery fixture is pre-seeded.");
 
         public Task<Player?> GetByIdAsync(PlayerId playerId, CancellationToken cancellationToken) =>
-            Task.FromResult<Player?>(Player.Id == playerId ? Player : null);
+            Task.FromResult<Player?>(Player.Id == playerId
+                ? Player
+                : OtherPlayer.Id == playerId ? OtherPlayer : null);
 
         Task<Player?> IPlayerRepository.GetBySessionTokenHashAsync(
             string tokenHash,
@@ -120,7 +137,7 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
 
         public Task<IReadOnlyList<Player>> ListMembersAsync(PartyId partyId, CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<Player>>(
-                Player.PartyId == partyId && Player.IsPartyMember ? [Player] : []);
+                Player.PartyId == partyId && Player.IsPartyMember ? [Player, OtherPlayer] : []);
 
         public Task<bool> PairingCodeExistsAsync(string pairingCode, CancellationToken cancellationToken) =>
             Task.FromResult(Display.PairingCode == pairingCode);

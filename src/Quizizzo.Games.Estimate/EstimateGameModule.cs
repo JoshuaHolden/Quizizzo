@@ -67,7 +67,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
             "unsupported-action", $"Action '{actionKind}' is not supported by Estimate.")
     };
 
-    private GameTransition Submit(
+    private static GameTransition Submit(
         GameModuleState current,
         EstimateState state,
         GameActionContext context,
@@ -303,13 +303,13 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         GameModuleState current,
         EstimateState state,
         EstimateQuestion question) => current.Phase switch
-    {
-        AnsweringPhase => $"{state.Submissions.Count}/{state.Participants.Count} estimates locked in",
-        ResultsPhase => $"Correct answer: {question.Answer:N0} {question.Suffix}",
-        _ => "Estimate complete"
-    };
+        {
+            AnsweringPhase => $"{state.Submissions.Count}/{state.Participants.Count} estimates locked in",
+            ResultsPhase => $"Correct answer: {question.Answer:N0} {question.Suffix}",
+            _ => "Estimate complete"
+        };
 
-    private static IReadOnlyList<GamePresentationEntry> CreateEntries(
+    private static GamePresentationEntry[] CreateEntries(
         GameModuleState current,
         EstimateState state,
         EstimateQuestion question)
@@ -379,7 +379,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         int RoundIndex,
         IReadOnlyList<EstimateQuestion> Questions,
         IReadOnlyList<EstimateParticipant> Participants,
-        IReadOnlyDictionary<Guid, long> Submissions,
+        Dictionary<Guid, long> Submissions,
         IReadOnlyList<EstimateResult> Results);
 
     private sealed record EstimateQuestion(

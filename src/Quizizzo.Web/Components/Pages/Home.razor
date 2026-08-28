@@ -1,7 +1,40 @@
 ﻿@page "/"
 
-<PageTitle>Home</PageTitle>
+<PageTitle>Quizizzo party games</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="container home-page">
+    <section class="home-hero text-center mx-auto">
+        <p class="text-uppercase fw-semibold text-primary">Big-screen browser party games</p>
+        <h1 class="display-2 fw-bold">Bring the room together.</h1>
+        <p class="lead mt-3">
+            Put Quizizzo on the shared screen, join from any phone, and let the server keep every
+            round, vote, drawing, and score in sync.
+        </p>
+        <div class="home-actions d-flex flex-wrap justify-content-center gap-3 mt-4">
+            <a class="btn btn-primary btn-lg" href="/join">Join a game</a>
+            <a class="btn btn-outline-primary btn-lg" href="/host">Host a party</a>
+            <a class="btn btn-outline-secondary btn-lg" href="/display">Open the display</a>
+        </div>
+    </section>
 
-Welcome to your new app.
+    <section class="row g-4 mt-5" aria-label="How Quizizzo works">
+        <article class="col-md-4">
+            <div class="card h-100 p-4">
+                <h2 class="h4">One shared screen</h2>
+                <p class="mb-0">Pair a TV or projector once, then show the room code, games, reveals, and scores.</p>
+            </div>
+        </article>
+        <article class="col-md-4">
+            <div class="card h-100 p-4">
+                <h2 class="h4">Phones are controllers</h2>
+                <p class="mb-0">Players join without accounts and reconnect to the same character after a refresh.</p>
+            </div>
+        </article>
+        <article class="col-md-4">
+            <div class="card h-100 p-4">
+                <h2 class="h4">Server-owned rules</h2>
+                <p class="mb-0">Deadlines, valid actions, hidden answers, voting, and scoring stay authoritative.</p>
+            </div>
+        </article>
+    </section>
+</div>

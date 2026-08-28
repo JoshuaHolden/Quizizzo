@@ -11,6 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddQuizizzoApplication(this IServiceCollection services)
     {
         services.AddSingleton(TimeProvider.System);
+        services.AddSingleton<PartyMutationCoordinator>();
         services.AddScoped<PartyService>();
         services.AddScoped<DisplaySessionService>();
         services.AddScoped<PlayerService>();

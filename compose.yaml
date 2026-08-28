@@ -1,4 +1,4 @@
-ddname: quizizzo
+name: quizizzo
 
 services:
   quizizzo:
@@ -7,8 +7,10 @@ services:
       dockerfile: Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
+      AllowedHosts: ${QUIZIZZO_ALLOWED_HOSTS:-localhost}
       ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD}
       DrawingAssets__RootPath: /app/assets/drawings
+      DataProtection__KeyPath: /app/data-protection
     ports:
       - "127.0.0.1:${QUIZIZZO_HTTP_PORT:-8081}:8080"
     depends_on:
@@ -17,6 +19,7 @@ services:
     restart: unless-stopped
     volumes:
       - quizizzo-drawing-assets:/app/assets/drawings
+      - quizizzo-data-protection:/app/data-protection
     networks:
       - quizizzo-private
 
@@ -43,6 +46,8 @@ volumes:
     name: quizizzo-postgres-data
   quizizzo-drawing-assets:
     name: quizizzo-drawing-assets
+  quizizzo-data-protection:
+    name: quizizzo-data-protection
 
 networks:
   quizizzo-private:

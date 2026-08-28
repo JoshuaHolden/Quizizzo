@@ -198,11 +198,69 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Run npm clean install/audit/build/client tests, validate JavaScript syntax, restore, build with zero warnings, and pass all .NET tests.
 - [x] Stop before Animate This rules, submission endpoints, playback, voting, reveal, or scoring.
 
+### Milestone 10 — Animate This (completed 2026-08-27)
+
+- [x] Implement private prompts and an explicit server-owned Drawing → Voting → Results → Completed state machine.
+- [x] Require three logical 512×512 frames while copying the latest completed frame into missing later slots.
+- [x] Export PNG frames in JavaScript and submit multipart assets without moving image bytes through Blazor or SignalR.
+- [x] Validate durable player ownership, game instance, round scope, phase/controller, dimensions, type, per-frame size, and total payload.
+- [x] Use a stable submission/command ID across refresh and make asset registration plus the semantic game command idempotent.
+- [x] Persist opaque PostgreSQL asset ownership/expiry metadata with a migration and delete expired rows alongside one-day asset TTL cleanup.
+- [x] Keep live drawings secret; provide anonymous playback/vote views, reject self-votes, reveal creators, and award popularity scores.
+- [x] Add Phaser three-frame playback at 150 ms plus accessible HTML and reduced-motion fallback presentation.
+- [x] Prove reconnect before/after submission, fallback frames, late/duplicate/invalid actions, payload limits, secrecy, scoring, and asset serving.
+- [x] Run npm audit/build/client tests, validate JavaScript, restore, build with zero warnings, and pass all 104 .NET tests.
+
+### Milestone 11 — Majority Rules (completed 2026-08-27)
+
+- [x] Implement a discoverable three-round Answering → Voting → Results → Completed state machine.
+- [x] Add bounded, normalized 200-character answers with server-owned phase and UTC deadline validation.
+- [x] Keep answer content secret during writing and use persisted opaque option IDs for anonymous voting views.
+- [x] Exclude a player's own answer from their vote options and reject forged self-votes authoritatively.
+- [x] Rank revealed answers, identify their authors, and award 500 points per vote through shared score accumulation.
+- [x] Add reusable Text and Vote phone controllers selected by controller kind rather than game name.
+- [x] Preserve full round, submission, vote, deadline, and result state in reconstructable role-specific snapshots.
+- [x] Cover normalization, payload validation, secrecy, anonymity, self-voting, scoring, deadlines, idempotency, late actions, recovery, and completion.
+- [x] Restore, build with zero warnings, and pass all 112 .NET tests.
+
+### Milestone 12 — Bullshit (completed 2026-08-27)
+
+- [x] Implement a discoverable three-round Bluffing → Choosing → Results → Completed state machine.
+- [x] Keep truths, exact-answer flags, and bluff-author mappings private until the server-owned reveal.
+- [x] Generate opaque choices, cryptographically shuffle them once, and persist their order for refresh recovery.
+- [x] Group equivalent bluffs, exclude every co-author's own choice, and reject forged self-choices server-side.
+- [x] Add the reusable Choice phone controller selected by controller kind rather than game name.
+- [x] Combine truth-choice, successful-bluff, grouped-author, and silent exact-truth bonuses into idempotent score awards.
+- [x] Handle partial deadline progression, reveal missing actions safely, and complete all three rounds under host control.
+- [x] Cover hidden views, stable shuffle, opaque IDs, duplicate bluffs, self-choice, advanced scoring, malformed/late/duplicate actions, deadlines, recovery, and completion.
+- [x] Run npm audit/build/client tests and JavaScript syntax checks; restore, build with zero warnings, and pass all 121 .NET tests.
+
+### Production-readiness review (completed 2026-08-27)
+
+- [x] Replace the production in-memory game snapshot adapter with optimistic, versioned PostgreSQL JSONB persistence while retaining the in-memory test adapter.
+- [x] Recover interrupted completed games, evict/dispose completed actors, bound per-game queues/player command history, and add retained snapshot cleanup.
+- [x] Make malformed transport actions idempotent inside the actor and add structured logging for deadline, observer, presence, and cleanup failures.
+- [x] Serialize party admission/start operations so concurrent joins cannot exceed capacity or cross a start-game transition.
+- [x] Encapsulate concurrent drawing-registration conflicts in Infrastructure, clean losing temporary assets, and fully validate PNG structure/CRC/dimensions.
+- [x] Add bounded NAT-compatible request limiting, upload/join body limits, secure production cookies, host filtering, forwarded-header constraints, and security headers.
+- [x] Run the container as non-root, persist Data Protection keys, exclude secrets/generated data from the build context, and preserve loopback/private-network VPS isolation.
+- [x] Consolidate Choice/Vote rendering behind one reusable option component with explicit round scopes so local selections recover without leaking into later rounds.
+- [x] Remove unused template pages, refresh the product home page, and document production persistence, scaling boundaries, and Hetzner coexistence.
+- [x] Enforce `latest-recommended` .NET analyzers/code style; format; pass a zero-warning strict Release build, 132 .NET tests, 9 client tests, JavaScript syntax checks, and npm/NuGet vulnerability audits.
+
+### Responsive UI hardening (completed 2026-08-28)
+
+- [x] Make the public, account, host, player, and display shells mobile-first with safe-area padding, virtual-keyboard resizing, bounded content, and no accidental page-level horizontal scrolling.
+- [x] Provide visible keyboard focus, a skip link, reduced-motion and forced-colour support, 44×44 CSS-pixel touch targets, and 16 px mobile form controls.
+- [x] Reflow host headings, rosters, results, game actions, account navigation, and dense account tables without losing content at narrow widths.
+- [x] Keep number, text, choice, vote, waiting, and drawing controllers usable down to 320 px and on short landscape phones.
+- [x] Bound the drawing canvas by both available width and dynamic viewport height, reflow its tool/frame controls, and keep a single-frame drawing continuously visible.
+- [x] Let the reconstructable display HTML overlay scroll independently of Phaser so pairing, QR, results, drawings, and scores remain reachable on portrait or short displays.
+- [x] Document the breakpoint matrix and add responsive contract tests for viewport metadata, overflow, touch sizing, safe areas, controllers, tables, and single-frame playback.
+- [x] Verify exact browser-emulated 320×568, 667×375, and 1440×900 layouts with no horizontal document overflow; build with zero warnings; pass all 136 .NET tests and 9 client tests.
+
 ### Remaining milestones
 
-- [ ] Milestone 10 — Animate This: prompt, three frames, secure submission, playback, voting, reveal, scoring; persist asset expiry and delete expired submission metadata so PostgreSQL does not accumulate drawing rows.
-- [ ] Milestone 11 — Majority Rules: prove reusable text and vote flows.
-- [ ] Milestone 12 — Bullshit: prove hidden-state, shuffled-choice, and advanced scoring support.
 - [ ] Milestone 13 — CI/CD: GitHub Actions, image publishing, Hetzner deployment, migrations, rollback, health verification.
 
 ## Verification requirements

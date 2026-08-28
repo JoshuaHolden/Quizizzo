@@ -40,7 +40,7 @@ npm install
 npm run build:client
 npm run test:client
 dotnet restore Quizizzo.sln
-dotnet build Quizizzo.sln --no-restore
+dotnet build Quizizzo.sln --no-restore -c Release -p:TreatWarningsAsErrors=true
 dotnet test Quizizzo.sln --no-build
 ```
 
@@ -48,7 +48,9 @@ Health endpoints are `/health/live` for process liveness and `/health/ready` for
 
 ## Containers
 
-`docker compose up --build` starts the isolated `quizizzo` Compose project, web application, private network, and persistent PostgreSQL volume. PostgreSQL is not published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. Apply migrations as an explicit deployment step; container startup intentionally does not mutate the schema automatically.
+`docker compose up --build` starts the isolated `quizizzo` Compose project, web application, and private PostgreSQL network. PostgreSQL is not published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. PostgreSQL data, temporary drawing assets, and ASP.NET Core Data Protection keys use separate Quizizzo-specific volumes. Apply migrations as an explicit deployment step; container startup intentionally does not mutate the schema automatically.
+
+Set `QUIZIZZO_ALLOWED_HOSTS` to the exact public Quizizzo hostname in production. The container runs as the built-in non-root `app` user, and `.dockerignore` excludes local secrets, tooling state, generated data, tests, and dependency folders from the image context.
 
 For a VPS already hosting another website, follow [the coexistence deployment guide](docs/deployment/hetzner-coexistence.md). Quizizzo commands must remain scoped to its Compose project and must never prune or stop unrelated containers.
 
@@ -72,7 +74,7 @@ The automated [Milestone 5 recovery gate](docs/testing/recovery-gate.md) exercis
 
 ## Game engine foundation
 
-The [game engine](docs/architecture/game-engine.md) discovers isolated `IGameModule` implementations and runs each game instance through one bounded, single-consumer command channel. It validates durable actors and UTC deadlines, records idempotent accepted/rejected results, applies shared score awards, persists versioned snapshots behind `IGameStateStore`, reconstructs role-specific views, and can recover an actor from its stored snapshot. SignalR remains a notification transport rather than authoritative state.
+The [game engine](docs/architecture/game-engine.md) discovers isolated `IGameModule` implementations and runs each game instance through one bounded, single-consumer command channel. It validates durable actors and UTC deadlines, records idempotent accepted/rejected results, applies shared score awards, persists versioned snapshots to PostgreSQL behind `IGameStateStore`, reconstructs role-specific views, and recovers actors after process replacement. SignalR remains a notification transport rather than authoritative state.
 
 Estimate is the first complete game proof: the host starts it from the existing party lobby, phones receive the reusable number controller, and the display reveals three server-scored rounds before returning everyone to the same lobby with persistent scores.
 
@@ -80,10 +82,26 @@ Estimate is the first complete game proof: the host starts it from the existing 
 
 The [reusable drawing framework](docs/architecture/drawing-framework.md) provides a fixed-logical-coordinate Pointer Events canvas for touch, stylus, and mouse. It supports configurable one-to-twelve-frame documents; single-image games use the same controller in one-frame mode with navigation and onion skin automatically removed. Vector strokes, pen/eraser tools, per-frame undo/clear, previous-frame onion skin, and identity-scoped local draft recovery remain in browser JavaScript rather than crossing SignalR point by point.
 
-Large rendered assets are stored through `IDrawingAssetStore`. The initial bounded WebP/PNG adapter uses the persistent, stack-specific `quizizzo-drawing-assets` Compose volume and can later be replaced with object storage. Assets expire after one day by default and an hourly worker removes expired files. The image bytes never enter PostgreSQL; Milestone 10 will attach the same expiry to submission metadata so those records are cleaned up too. Animate This will add authoritative submission and game rules in Milestone 10.
+Large rendered assets are stored through `IDrawingAssetStore`. The initial bounded WebP/PNG adapter uses the persistent, stack-specific `quizizzo-drawing-assets` Compose volume and can later be replaced with object storage. Assets expire after one day by default and an hourly worker removes expired files and PostgreSQL metadata. Image bytes never enter PostgreSQL.
+
+## Animate This
+
+[Animate This](docs/architecture/animate-this.md) assigns private action prompts and runs a server-owned drawing, anonymous playback/voting, creator reveal, and scoring state machine. Phones export validated 512×512 PNG frames through an idempotent same-origin upload rather than SignalR; PostgreSQL stores only bounded ownership/expiry metadata while the dedicated asset volume stores bytes. Phaser cycles the three frames on the shared display, and refreshes reconstruct drawing or submitted/voted state from durable player and game identities.
+
+## Majority Rules
+
+[Majority Rules](docs/architecture/majority-rules.md) runs three server-timed writing, anonymous voting, reveal, and scoring rounds. It proves the reusable text and vote controller contracts: the player page selects each controller from server state without checking the game name. Opaque persisted option IDs keep answer ownership out of voting snapshots, while results reveal authors and award 500 points for every vote received.
+
+## Bullshit
+
+[Bullshit](docs/architecture/bullshit.md) runs three server-owned bluffing, shuffled-choice, and reveal rounds. The truth and bluff-author mapping remain private module state until results; clients receive only persisted opaque shuffled choices. Its reusable Choice controller excludes a player's own bluff, and scoring can combine truth picks, successful bluffs, grouped duplicate-bluff payouts, and an exact-truth bonus.
 
 ## Display presentation
 
 The shared display uses one [long-lived Phaser presentation](docs/architecture/phaser-presentation.md) across pairing, lobby, game, results, and return-to-lobby states. Blazor sends reconstructable semantic snapshots while Phaser owns generated character art, responsive 1280×720 scene scaling, tweens, camera effects, and particles. The accessible HTML overlay remains usable without canvas rendering, and reduced-motion preferences disable presentation animation. Phaser 3.90.0 and SignalR are pinned npm dependencies copied to local static assets by `npm run build:client`; no runtime CDN is required.
 
-Animate This, the remaining games, CI/CD, and Hetzner deployment remain scheduled in `AGENTS.md`.
+## Responsive UI
+
+The [responsive UI contract](docs/architecture/responsive-ui.md) covers public, account, host, player-controller, drawing, and shared-display layouts from 320 px phones through 4K screens. It defines touch-target, safe-area, keyboard, reduced-motion, overflow, short-height, and single-frame presentation requirements plus the representative viewport verification matrix.
+
+The completed [production-readiness review](docs/architecture/production-readiness.md) records the runtime, security, persistence, cleanup, and scaling decisions that apply before CI/CD. CI/CD and Hetzner deployment remain scheduled in `AGENTS.md`.

@@ -1,9 +1,10 @@
 using Quizizzo.GameEngine;
+using Quizizzo.GameContracts;
 using Quizizzo.Web.Realtime;
 
 namespace Quizizzo.Web.Games;
 
-public sealed class GameRuntimeRealtimeObserver(
+public sealed partial class GameRuntimeRealtimeObserver(
     IPartyRealtimeNotifier notifier,
     ILogger<GameRuntimeRealtimeObserver> logger) : IGameRuntimeObserver
 {
@@ -20,11 +21,17 @@ public sealed class GameRuntimeRealtimeObserver(
         }
         catch (Exception exception)
         {
-            logger.LogError(
-                exception,
-                "Failed to publish game state change for party {PartyId} and game {GameInstanceId}",
-                change.PartyId,
-                change.GameInstanceId);
+            LogPublishFailure(logger, exception, change.PartyId, change.GameInstanceId);
         }
     }
+
+    [LoggerMessage(
+        EventId = 3101,
+        Level = LogLevel.Error,
+        Message = "Failed to publish game state change for party {PartyId} and game {GameInstanceId}")]
+    private static partial void LogPublishFailure(
+        ILogger logger,
+        Exception exception,
+        Guid partyId,
+        GameInstanceId gameInstanceId);
 }

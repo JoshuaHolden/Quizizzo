@@ -13,6 +13,10 @@ public interface IDrawingAssetStore
     Task<int> DeleteExpiredAsync(
         DateTimeOffset expiresBeforeUtc,
         CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        string key,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record DrawingAssetUpload(

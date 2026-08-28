@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quizizzo.Infrastructure.Identity;
@@ -10,6 +11,8 @@ using Quizizzo.Domain.Players;
 using Quizizzo.Web.Presentation;
 using Microsoft.Extensions.Hosting;
 using Quizizzo.Infrastructure.Drawings;
+using Quizizzo.Domain.Drawings;
+using Quizizzo.Infrastructure.Games;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -36,6 +39,8 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
 
         response.EnsureSuccessStatusCode();
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
+        Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
+        Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
     }
 
     [Theory]
@@ -93,6 +98,22 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal(64, currentGameKey.GetMaxLength());
         Assert.True(currentGameKey.IsNullable);
         Assert.True(currentGameInstanceId.IsNullable);
+        var drawingAsset = dbContext.Model.FindEntityType(typeof(DrawingAssetMetadata))!;
+        Assert.Contains(drawingAsset.GetIndexes(), index =>
+            index.Properties.Single().Name == nameof(DrawingAssetMetadata.ExpiresAtUtc));
+        Assert.Contains(drawingAsset.GetIndexes(), index => index.IsUnique &&
+            index.Properties.Select(property => property.Name).SequenceEqual([
+                nameof(DrawingAssetMetadata.SubmissionId),
+                nameof(DrawingAssetMetadata.GameInstanceId),
+                nameof(DrawingAssetMetadata.PlayerId),
+                nameof(DrawingAssetMetadata.RoundId),
+                nameof(DrawingAssetMetadata.FrameNumber)]));
+        var gameSnapshot = dbContext.Model.GetEntityTypes().Single(entity =>
+            entity.GetTableName() == "GameRuntimeSnapshots");
+        Assert.Equal("jsonb", gameSnapshot.FindProperty("SnapshotJson")!.GetColumnType());
+        Assert.Contains(gameSnapshot.GetIndexes(), index =>
+            index.Properties.Select(property => property.Name)
+                .SequenceEqual(["IsComplete", "UpdatedAtUtc"]));
     }
 
     [Fact]
@@ -119,10 +140,24 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public void Drawing_asset_expiry_worker_is_registered()
+    public void Bounded_storage_cleanup_workers_are_registered()
     {
         var hostedServices = factory.Services.GetServices<IHostedService>();
 
         Assert.Contains(hostedServices, service => service is DrawingAssetCleanupService);
+        Assert.Contains(hostedServices, service => service is GameSnapshotCleanupService);
+    }
+
+    [Fact]
+    public void Drawing_image_validator_requires_a_complete_512_square_png()
+    {
+        var png = PngTestData.Create();
+
+        Assert.True(Quizizzo.Web.Drawing.DrawingImageValidator.IsPngWithDimensions(png, 512, 512));
+        Assert.False(Quizizzo.Web.Drawing.DrawingImageValidator.IsPngWithDimensions(png, 256, 512));
+        Assert.False(Quizizzo.Web.Drawing.DrawingImageValidator.IsPngWithDimensions(
+            png.AsSpan(0, png.Length - 12), 512, 512));
+        png[0] = 0;
+        Assert.False(Quizizzo.Web.Drawing.DrawingImageValidator.IsPngWithDimensions(png, 512, 512));
     }
 }

@@ -27,7 +27,7 @@
                 <h2>Pair this screen</h2>
                 <p>Open this address on the host's phone:</p>
                 <img class="qr-code" src="@QrCodes.CreatePngDataUri(PairingUrl)" alt="QR code to pair this display" width="280" height="280" />
-                <p class="fs-4"><a href="@PairingPath">@PairingUrl</a></p>
+                <p class="fs-4 display-url"><a href="@PairingPath">@PairingUrl</a></p>
                 <p>Pairing code</p>
                 <p class="display-4 fw-bold">@session.PairingCode</p>
                 <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
@@ -58,6 +58,25 @@
                     }
                 </div>
 
+                @if (game.Drawing is { Animations.Count: > 0 } drawing)
+                {
+                    <div class="drawing-display-fallback" aria-live="polite">
+                        @foreach (var animation in drawing.Animations)
+                        {
+                            <article>
+                                <FrameAnimation FrameAssetIds="animation.FrameAssetIds"
+                                                FrameDurationMilliseconds="drawing.FrameDurationMilliseconds"
+                                                AlternativeText="@animation.Prompt" />
+                                <p>@animation.Prompt</p>
+                                @if (!string.IsNullOrWhiteSpace(animation.CreatorName))
+                                {
+                                    <strong>@animation.CreatorName — @animation.Votes vote(s)</strong>
+                                }
+                            </article>
+                        }
+                    </div>
+                }
+
                 <div class="display-score-panel">
                     <h3>Scores</h3>
                     <ol class="scoreboard display-scoreboard">
@@ -75,7 +94,7 @@
                 <h2>JOIN THE PARTY</h2>
                 <p class="display-1 fw-bold">@session.RoomCode</p>
                 <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
-                <p><a href="@JoinUrl">@JoinUrl</a></p>
+                <p class="display-url"><a href="@JoinUrl">@JoinUrl</a></p>
                 @if (players.Count == 0)
                 {
                     <p>Waiting for players...</p>

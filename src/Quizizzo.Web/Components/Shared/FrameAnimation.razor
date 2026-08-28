@@ -1,0 +1,22 @@
+@if (FrameAssetIds.Count > 0)
+{
+    <div class="frame-animation @(FrameAssetIds.Count == 1 ? "single-frame" : null)"
+         style="--frame-cycle: @(FrameAssetIds.Count * FrameDurationMilliseconds)ms"
+         role="img"
+         aria-label="@AlternativeText">
+        @for (var index = 0; index < FrameAssetIds.Count; index++)
+        {
+            var assetId = FrameAssetIds[index];
+            <img src="@($"/api/drawing-assets/{assetId:D}")"
+                 alt=""
+                 draggable="false"
+                 style="--frame-delay: @(index * FrameDurationMilliseconds)ms" />
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<Guid> FrameAssetIds { get; set; } = [];
+    [Parameter] public int FrameDurationMilliseconds { get; set; } = 150;
+    [Parameter] public string AlternativeText { get; set; } = "Drawing animation";
+}

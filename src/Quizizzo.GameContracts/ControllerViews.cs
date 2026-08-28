@@ -33,6 +33,43 @@ public sealed record DrawingControllerConfiguration(
     string DraftScope,
     bool OnionSkinEnabled = true);
 
+public sealed record ControllerOption(
+    string Id,
+    string Label,
+    string? Detail = null,
+    IReadOnlyList<Guid>? FrameAssetIds = null);
+
+public sealed record VoteControllerConfiguration(
+    IReadOnlyList<ControllerOption> Options,
+    string? SubmittedOptionId = null,
+    string SelectionProperty = "optionId",
+    string SelectionScope = "default");
+
+public sealed record TextControllerConfiguration(
+    int MaximumLength,
+    string Placeholder,
+    string? SubmittedValue = null);
+
+public sealed record ChoiceControllerConfiguration(
+    IReadOnlyList<ControllerOption> Options,
+    string? SubmittedOptionId = null,
+    string SelectionProperty = "optionId",
+    string SelectionScope = "default");
+
+public sealed record DrawingAnimationView(
+    Guid SubmissionPlayerId,
+    string? CreatorName,
+    string Prompt,
+    IReadOnlyList<Guid> FrameAssetIds,
+    int Votes,
+    int? Rank,
+    int PointsAwarded);
+
+public sealed record DrawingPresentationView(
+    string Mode,
+    int FrameDurationMilliseconds,
+    IReadOnlyList<DrawingAnimationView> Animations);
+
 public sealed record PlayerGameViewPayload(
     string Heading,
     string Instructions,
@@ -63,4 +100,5 @@ public sealed record DisplayGameViewPayload(
     string PhaseMessage,
     int SubmittedPlayers,
     int TotalPlayers,
-    IReadOnlyList<GamePresentationEntry> Entries);
+    IReadOnlyList<GamePresentationEntry> Entries,
+    DrawingPresentationView? Drawing = null);

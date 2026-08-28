@@ -78,6 +78,36 @@ public sealed class PartyGameServiceTests
                 fixture.Party.Id.Value, Guid.NewGuid().ToString("N")));
     }
 
+    [Fact]
+    public async Task Completed_snapshot_is_finalized_during_recovery_after_a_process_interruption()
+    {
+        var fixture = new Fixture();
+        var started = await fixture.Service.StartAsync(
+            fixture.Party.Id.Value, Fixture.HostId, "estimate");
+        fixture.Runtime.NextView = new RuntimeGameView(
+            new GameInstanceId(started.GameInstanceId),
+            "estimate",
+            GameAudienceRole.Host,
+            "Completed",
+            12,
+            null,
+            true,
+            GameJson.Empty,
+            new Dictionary<Guid, int>
+            {
+                [fixture.First.Id.Value] = 1700,
+                [fixture.Second.Id.Value] = 900
+            });
+
+        var recovered = await fixture.Service.GetHostViewAsync(
+            fixture.Party.Id.Value, Fixture.HostId);
+
+        Assert.Null(recovered);
+        Assert.Equal(PartyStatus.Lobby, fixture.Party.Status);
+        Assert.Equal(1700, fixture.First.Score);
+        Assert.Equal(900, fixture.Second.Score);
+    }
+
     private sealed class Fixture
     {
         public const string HostId = "host-user";
@@ -96,6 +126,7 @@ public sealed class PartyGameServiceTests
                 PlayerRepository,
                 DisplayRepository,
                 Runtime,
+                new PartyMutationCoordinator(),
                 new FixedTimeProvider());
         }
 
@@ -132,6 +163,7 @@ public sealed class PartyGameServiceTests
         public List<RuntimeGameStart> Starts { get; } = [];
         public RuntimeGameCommandResult NextResult { get; set; } = new(
             true, false, "Results", null, false, null, null, new Dictionary<Guid, int>());
+        public RuntimeGameView? NextView { get; set; }
 
         public IReadOnlyList<GameDescriptor> ListGames() =>
             [new GameDescriptor("estimate", "Estimate", 2, 12)];
@@ -153,7 +185,8 @@ public sealed class PartyGameServiceTests
             GameInstanceId gameInstanceId,
             GameAudienceRole role,
             string subjectId,
-            CancellationToken cancellationToken = default) => throw new NotSupportedException();
+            CancellationToken cancellationToken = default) => Task.FromResult(
+                NextView ?? throw new NotSupportedException("No fake runtime view was configured."));
     }
 
     private sealed class FakePartyRepository : IPartyRepository

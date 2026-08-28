@@ -10,9 +10,10 @@
 
 <PageTitle>Host dashboard</PageTitle>
 
-<h1>Host your party</h1>
+<div class="host-dashboard">
+    <h1>Host your party</h1>
 
-@if (loading)
+    @if (loading)
 {
     <p>Loading your parties…</p>
 }
@@ -43,7 +44,7 @@ else
             <ul class="list-group">
                 @foreach (var party in recentParties)
                 {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                    <li class="list-group-item responsive-list-row">
                         <a href="@($"/host/party/{party.PartyId}")">@party.RoomCode</a>
                         <span>@party.Status · @party.CreatedAt.ToLocalTime().ToString("g")</span>
                     </li>
@@ -52,6 +53,7 @@ else
         }
     </section>
 }
+</div>
 
 @code {
     private bool loading = true;

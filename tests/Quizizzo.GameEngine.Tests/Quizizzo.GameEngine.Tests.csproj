@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quizizzo.GameEngine\Quizizzo.GameEngine.csproj" />
     <ProjectReference Include="..\..\src\Quizizzo.Games.Estimate\Quizizzo.Games.Estimate.csproj" />
+    <ProjectReference Include="..\..\src\Quizizzo.Games.MajorityRules\Quizizzo.Games.MajorityRules.csproj" />
+    <ProjectReference Include="..\..\src\Quizizzo.Games.Bullshit\Quizizzo.Games.Bullshit.csproj" />
+    <ProjectReference Include="..\..\src\Quizizzo.Games.AniMates\Quizizzo.Games.AniMates.csproj" />
   </ItemGroup>
 
 </Project>

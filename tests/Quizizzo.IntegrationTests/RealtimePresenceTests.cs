@@ -98,6 +98,7 @@ public sealed class RealtimePresenceTests
             .AddSingleton<IPlayerCredentialService, UnusedPlayerCredentials>()
             .AddSingleton<ICharacterGenerator, UnusedCharacterGenerator>()
             .AddSingleton(TimeProvider.System)
+            .AddSingleton<Quizizzo.Application.Parties.PartyMutationCoordinator>()
             .AddScoped<PlayerService>()
             .BuildServiceProvider();
         await using var asyncServices = services;

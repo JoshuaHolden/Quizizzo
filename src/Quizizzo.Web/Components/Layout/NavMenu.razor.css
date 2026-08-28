@@ -1,27 +1,35 @@
 .navbar-toggler {
     appearance: none;
-    cursor: pointer;
-    width: 3.5rem;
-    height: 2.5rem;
-    color: white;
-    position: absolute;
-    top: 0.5rem;
-    right: 1rem;
     border: 1px solid rgba(255, 255, 255, 0.1);
     background: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.55%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e") no-repeat center/1.75rem rgba(255, 255, 255, 0.1);
+    color: white;
+    cursor: pointer;
+    height: 44px;
+    position: absolute;
+    right: max(0.75rem, env(safe-area-inset-right));
+    top: max(0.375rem, env(safe-area-inset-top));
+    width: 44px;
 }
 
 .navbar-toggler:checked {
     background-color: rgba(255, 255, 255, 0.5);
 }
 
+.navbar-toggler:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 2px;
+}
+
 .top-row {
-    min-height: 3.5rem;
     background-color: rgba(0,0,0,0.4);
+    min-height: calc(3.5rem + env(safe-area-inset-top));
+    padding-top: env(safe-area-inset-top);
 }
 
 .navbar-brand {
     font-size: 1.1rem;
+    min-height: 44px;
+    padding-block: 0.6rem;
 }
 
 .bi {
@@ -80,14 +88,17 @@
     }
 
     .nav-item ::deep .nav-link {
+        align-items: center;
         color: #d7d7d7;
         background: none;
         border: none;
         border-radius: 4px;
-        height: 3rem;
         display: flex;
-        align-items: center;
-        line-height: 3rem;
+        line-height: 1.25;
+        min-height: 48px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        text-align: left;
         width: 100%;
     }
 
@@ -103,13 +114,30 @@
 
 .nav-scrollable {
     display: none;
+    max-height: calc(100dvh - 3.5rem - env(safe-area-inset-top));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-bottom: env(safe-area-inset-bottom);
+    scrollbar-gutter: stable;
+}
+
+.bi-phone-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='white' stroke-width='1.5' viewBox='0 0 16 16'%3E%3Crect x='3.25' y='.75' width='9.5' height='14.5' rx='2'/%3E%3Cpath d='M6 3h4M7 13h2'/%3E%3C/svg%3E");
+}
+
+.bi-display-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='white' stroke-width='1.5' viewBox='0 0 16 16'%3E%3Crect x='.75' y='2' width='14.5' height='10' rx='1.5'/%3E%3Cpath d='M5 15h6M8 12v3'/%3E%3C/svg%3E");
+}
+
+.bi-controller-nav-menu {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='white' stroke-width='1.5' viewBox='0 0 16 16'%3E%3Cpath d='M5 5h6c2 0 3.5 2 3.5 4.5S13 14 11.5 12l-1-1h-5l-1 1C3 14 1.5 12 1.5 9.5S3 5 5 5Z'/%3E%3Cpath d='M4 8.5h3M5.5 7v3M11 8h.01M12.5 9.5h.01'/%3E%3C/svg%3E");
 }
 
 .navbar-toggler:checked ~ .nav-scrollable {
     display: block;
 }
 
-@media (min-width: 641px) {
+@media (min-width: 768px) {
     .navbar-toggler {
         display: none;
     }
@@ -119,7 +147,7 @@
         display: block;
 
         /* Allow sidebar to scroll for tall menus */
-        height: calc(100vh - 3.5rem);
+        height: calc(100dvh - 3.5rem - env(safe-area-inset-top));
         overflow-y: auto;
     }
 }

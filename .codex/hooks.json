@@ -1,0 +1,19 @@
+{
+  "description": "Project lifecycle hooks managed alongside PhaseRing.",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"c:\\Quizizzo\\.codex\\hooks\\phasering.ps1\"",
+            "commandWindows": "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File \"c:\\Quizizzo\\.codex\\hooks\\phasering.ps1\"",
+            "timeout": 10,
+            "statusMessage": "PhaseRing: loading active phase",
+            "additionalContextLimit": 0
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,6 +1,7 @@
 using Quizizzo.Application.Abstractions;
 using Quizizzo.GameContracts;
 using Quizizzo.GameEngine;
+using System.Text.Json;
 
 namespace Quizizzo.Web.Games;
 
@@ -31,7 +32,7 @@ public sealed class GameRuntimeGateway(
         RuntimeGameCommand command,
         CancellationToken cancellationToken = default)
     {
-        var action = modules.DecodeAction(command.GameKey, command.ActionKind, command.Payload);
+        var action = DecodeAction(command);
         var result = await runtime.ExecuteAsync(new GameCommand(
             command.CommandId,
             command.GameInstanceId,
@@ -45,7 +46,7 @@ public sealed class GameRuntimeGateway(
                 ? GameViewRequest.Host(command.Actor.SubjectId)
                 : GameViewRequest.Player(Guid.Parse(command.Actor.SubjectId)),
             cancellationToken);
-        return new RuntimeGameCommandResult(
+        var response = new RuntimeGameCommandResult(
             result.Outcome == GameCommandOutcome.Applied,
             result.IsDuplicate,
             result.Phase,
@@ -54,6 +55,37 @@ public sealed class GameRuntimeGateway(
             result.ErrorCode,
             result.ErrorMessage,
             view.Scores);
+        if (status.IsComplete)
+        {
+            await runtime.ReleaseAsync(command.GameInstanceId);
+        }
+        return response;
+    }
+
+    private IGameAction DecodeAction(RuntimeGameCommand command)
+    {
+        if (string.IsNullOrWhiteSpace(command.ActionKind) || command.ActionKind.Length > 128)
+        {
+            return new InvalidGameAction(
+                command.ActionKind ?? string.Empty,
+                "invalid-action",
+                "A bounded game action kind is required.");
+        }
+        try
+        {
+            return modules.DecodeAction(command.GameKey, command.ActionKind, command.Payload);
+        }
+        catch (GameRuleViolationException exception)
+        {
+            return new InvalidGameAction(command.ActionKind, exception.Code, exception.Message);
+        }
+        catch (Exception exception) when (exception is JsonException or ArgumentException)
+        {
+            return new InvalidGameAction(
+                command.ActionKind,
+                "invalid-payload",
+                "The game action payload is invalid.");
+        }
     }
 
     public async Task<RuntimeGameView> GetViewAsync(
@@ -70,7 +102,7 @@ public sealed class GameRuntimeGateway(
             _ => throw new ArgumentOutOfRangeException(nameof(role))
         };
         var view = await runtime.GetViewAsync(gameInstanceId, request, cancellationToken);
-        return new RuntimeGameView(
+        var response = new RuntimeGameView(
             view.GameInstanceId,
             view.GameKey,
             view.Role,
@@ -80,5 +112,10 @@ public sealed class GameRuntimeGateway(
             view.IsComplete,
             view.Data,
             view.Scores);
+        if (view.IsComplete)
+        {
+            await runtime.ReleaseAsync(gameInstanceId);
+        }
+        return response;
     }
 }

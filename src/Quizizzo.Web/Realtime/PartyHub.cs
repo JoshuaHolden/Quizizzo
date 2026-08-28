@@ -5,6 +5,7 @@ using Quizizzo.Application.Displays;
 using Quizizzo.Application.Parties;
 using Quizizzo.Application.Players;
 using Quizizzo.Application.Games;
+using Quizizzo.GameContracts;
 using Quizizzo.Web.Endpoints;
 
 namespace Quizizzo.Web.Realtime;
@@ -67,6 +68,13 @@ public sealed class PartyHub(
     {
         var token = GetCookie(PlayerSessionEndpoints.PlayerCookieName);
         var player = await players.ReconnectAsync(token, Context.ConnectionAborted);
+        var currentView = await games.GetPlayerViewAsync(player.PlayerId, Context.ConnectionAborted);
+        var playerView = currentView?.Data.Deserialize<PlayerGameViewPayload>();
+        if (playerView?.Controller.Kind == PlayerControllerKind.Drawing &&
+            string.Equals(playerView.Controller.ActionKind, actionKind, StringComparison.Ordinal))
+        {
+            throw new HubException("Drawing submissions must use the validated asset upload endpoint.");
+        }
         var result = await games.ExecutePlayerActionAsync(
             player.PlayerId,
             commandId,

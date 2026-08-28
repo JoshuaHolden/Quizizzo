@@ -11,6 +11,7 @@ public sealed class PlayerService(
     IPlayerRepository players,
     IPlayerCredentialService credentials,
     ICharacterGenerator characters,
+    PartyMutationCoordinator partyMutations,
     TimeProvider timeProvider)
 {
     public async Task<JoinPartyView> GetJoinPartyAsync(
@@ -28,7 +29,12 @@ public sealed class PlayerService(
         string? existingSessionToken = null,
         CancellationToken cancellationToken = default)
     {
-        var party = await GetJoinablePartyAsync(roomCode, cancellationToken);
+        var discoveredParty = await GetJoinablePartyAsync(roomCode, cancellationToken);
+        await using var mutation = await partyMutations.AcquireAsync(
+            discoveredParty.Id, cancellationToken);
+        var party = await parties.GetByIdAsync(discoveredParty.Id, cancellationToken)
+            ?? throw new PartyNotFoundException();
+        EnsurePartyAcceptsPlayers(party);
 
         if (!string.IsNullOrWhiteSpace(existingSessionToken))
         {
@@ -140,12 +146,17 @@ public sealed class PlayerService(
 
         var party = await parties.GetByRoomCodeAsync(roomCode, cancellationToken)
             ?? throw new PartyNotFoundException();
+        EnsurePartyAcceptsPlayers(party);
+
+        return party;
+    }
+
+    private static void EnsurePartyAcceptsPlayers(Party party)
+    {
         if (party.Status != PartyStatus.Lobby)
         {
             throw new InvalidOperationException("This party is not accepting players right now.");
         }
-
-        return party;
     }
 
     private async Task<IReadOnlyList<PlayerView>> ListAsync(Party party, CancellationToken cancellationToken)

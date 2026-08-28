@@ -203,6 +203,17 @@ public sealed partial class FileSystemDrawingAssetStore : IDrawingAssetStore
         return Task.FromResult(deleted);
     }
 
+    public Task DeleteAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = ResolveKey(key);
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+        }
+        return Task.CompletedTask;
+    }
+
     private static bool HasExpectedSignature(ReadOnlySpan<byte> content, string extension) => extension switch
     {
         ".png" => content.StartsWith(PngSignature),

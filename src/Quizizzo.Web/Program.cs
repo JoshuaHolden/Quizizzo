@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.DataProtection;
 using System.Threading.RateLimiting;
 using Quizizzo.Application;
 using Quizizzo.Application.Abstractions;
@@ -10,17 +12,23 @@ using Quizizzo.Infrastructure;
 using Quizizzo.GameEngine;
 using Quizizzo.GameContracts;
 using Quizizzo.Games.Estimate;
+using Quizizzo.Games.AniMates;
+using Quizizzo.Games.MajorityRules;
+using Quizizzo.Games.Bullshit;
 using Quizizzo.Web.Components;
 using Quizizzo.Web.Components.Account;
 using Quizizzo.Infrastructure.Health;
 using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Infrastructure.Drawings;
+using Quizizzo.Infrastructure.Games;
 using Quizizzo.Web.Endpoints;
 using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
 using Quizizzo.Web.Games;
+using Quizizzo.Web.Security;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -37,9 +45,47 @@ builder.Services.AddAuthentication(options =>
         options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
     })
     .AddIdentityCookies();
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+        ? CookieSecurePolicy.SameAsRequest
+        : CookieSecurePolicy.Always;
+});
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.ForwardLimit = 1;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+if (builder.Configuration["DataProtection:KeyPath"] is { Length: > 0 } keyPath)
+{
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(keyPath))
+        .SetApplicationName("Quizizzo");
+}
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddQuizizzoApplication();
+builder.Services.AddOptions<GameRuntimeOptions>()
+    .Bind(builder.Configuration.GetSection(GameRuntimeOptions.SectionName))
+    .Validate(
+        options => options.CommandQueueCapacity is >= GameRuntimeOptions.MinimumQueueCapacity and
+            <= GameRuntimeOptions.MaximumQueueCapacity,
+        "Game command queue capacity is outside the supported range.")
+    .Validate(
+        options => options.MaximumProcessedCommands is >= GameRuntimeOptions.MinimumProcessedCommands and
+            <= GameRuntimeOptions.MaximumProcessedCommandLimit,
+        "Processed game command capacity is outside the supported range.")
+    .ValidateOnStart();
 builder.Services.AddOptions<DrawingAssetStoreOptions>()
     .Bind(builder.Configuration.GetSection(DrawingAssetStoreOptions.SectionName))
     .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), "Drawing asset root path is required.")
@@ -56,26 +102,69 @@ builder.Services.AddOptions<DrawingAssetStoreOptions>()
             options.CleanupInterval <= TimeSpan.FromDays(1),
         "Drawing asset cleanup interval must be between one minute and one day.")
     .ValidateOnStart();
+builder.Services.AddOptions<GameStateStoreOptions>()
+    .Bind(builder.Configuration.GetSection(GameStateStoreOptions.SectionName))
+    .Validate(
+        options => options.CompletedSnapshotRetention >= TimeSpan.FromDays(1) &&
+            options.CompletedSnapshotRetention <= TimeSpan.FromDays(365),
+        "Completed game snapshot retention must be between one and 365 days.")
+    .Validate(
+        options => options.OrphanSnapshotRetention >= TimeSpan.FromHours(1) &&
+            options.OrphanSnapshotRetention <= TimeSpan.FromDays(30),
+        "Orphan game snapshot retention must be between one hour and 30 days.")
+    .Validate(
+        options => options.CleanupInterval >= TimeSpan.FromMinutes(10) &&
+            options.CleanupInterval <= TimeSpan.FromDays(1),
+        "Game snapshot cleanup interval must be between ten minutes and one day.")
+    .ValidateOnStart();
 builder.Services.AddQuizizzoInfrastructure(connectionString);
 builder.Services.AddQuizizzoGameEngine();
 builder.Services.AddSingleton<IGameModule, EstimateGameModule>();
+builder.Services.AddSingleton<IGameModule, AniMatesGameModule>();
+builder.Services.AddSingleton<IGameModule, MajorityRulesGameModule>();
+builder.Services.AddSingleton<IGameModule, BullshitGameModule>();
 builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
 builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
-builder.Services.Configure<RealtimePresenceOptions>(
-    builder.Configuration.GetSection(RealtimePresenceOptions.SectionName));
+builder.Services.AddOptions<RealtimePresenceOptions>()
+    .Bind(builder.Configuration.GetSection(RealtimePresenceOptions.SectionName))
+    .Validate(
+        options => options.PlayerDisconnectGracePeriod >= TimeSpan.FromMilliseconds(10) &&
+            options.PlayerDisconnectGracePeriod <= TimeSpan.FromMinutes(5),
+        "Player disconnect grace period must be between ten milliseconds and five minutes.")
+    .ValidateOnStart();
 builder.Services.AddSingleton<PartyConnectionRegistry>();
 builder.Services.AddSingleton<IPartyRealtimeNotifier, SignalRPartyRealtimeNotifier>();
 builder.Services.AddRateLimiter(options =>
+{
     options.AddPolicy("player-join", context =>
         RateLimitPartition.GetFixedWindowLimiter(
-            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            RequestPartitionKey.RemoteAddress(context),
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 10,
+                PermitLimit = 30,
                 QueueLimit = 0,
                 Window = TimeSpan.FromMinutes(1)
-            })));
+            }));
+    options.AddPolicy("drawing-submit", context =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            RequestPartitionKey.RemoteAddress(context),
+            _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 4,
+                QueueLimit = 20,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+    options.AddPolicy("drawing-assets", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            RequestPartitionKey.RemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+});
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 builder.Services.AddHealthChecks()
     .AddCheck("application", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
@@ -94,6 +183,7 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();
+app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -107,6 +197,18 @@ else
     app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+app.Use(async (context, next) =>
+{
+    context.Response.OnStarting(() =>
+    {
+        context.Response.Headers.XContentTypeOptions = "nosniff";
+        context.Response.Headers.XFrameOptions = "DENY";
+        context.Response.Headers.Append("Referrer-Policy", "same-origin");
+        context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        return Task.CompletedTask;
+    });
+    await next(context);
+});
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseAuthentication();
@@ -130,7 +232,7 @@ app.Use(async (context, next) =>
                 IsEssential = true,
                 MaxAge = TimeSpan.FromDays(30),
                 SameSite = SameSiteMode.Lax,
-                Secure = context.Request.IsHttps
+                Secure = !app.Environment.IsDevelopment() || context.Request.IsHttps
             });
         }
     }
@@ -171,6 +273,7 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 app.MapPlayerSessionEndpoints();
+app.MapDrawingAssetEndpoints();
 app.MapHub<PartyHub>("/hubs/party");
 app.MapHealthChecks("/health/live", new() { Predicate = check => check.Tags.Contains("live") });
 app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Contains("ready") });

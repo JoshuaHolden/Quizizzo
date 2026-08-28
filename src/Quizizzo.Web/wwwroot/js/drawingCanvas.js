@@ -7,6 +7,7 @@ export class DrawingDraftStore {
         this.storage = storage;
         this.key = key;
         this.disabled = false;
+        this.submissionKey = `${key}:submission-id`;
     }
 
     load() {
@@ -36,7 +37,11 @@ export class DrawingDraftStore {
             const obsoleteKeys = [];
             for (let index = 0; index < this.storage.length; index += 1) {
                 const key = this.storage.key(index);
-                if (key && key !== this.key && key.startsWith(prefix) && key.endsWith(playerSuffix)) {
+                const belongsToPlayer = key && (
+                    key.endsWith(playerSuffix) ||
+                    key.endsWith(`${playerSuffix}:submission-id`));
+                if (key && key !== this.key && key !== this.submissionKey &&
+                    key.startsWith(prefix) && belongsToPlayer) {
                     obsoleteKeys.push(key);
                 }
             }
@@ -52,8 +57,23 @@ export class DrawingDraftStore {
         this.disabled = true;
         try {
             this.storage?.removeItem(this.key);
+            this.storage?.removeItem(this.submissionKey);
         } catch {
             // The submission can still complete when browser storage is unavailable.
+        }
+    }
+
+    getOrCreateSubmissionId(createId) {
+        try {
+            const existing = this.storage?.getItem(this.submissionKey);
+            if (existing && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(existing)) {
+                return existing;
+            }
+            const created = createId();
+            this.storage?.setItem(this.submissionKey, created);
+            return created;
+        } catch {
+            return createId();
         }
     }
 }
@@ -74,6 +94,7 @@ class CanvasDrawingController {
             storage = window.localStorage;
         } catch { }
         this.draftStore = new DrawingDraftStore(storage, this.draftKey);
+        this.submissionId = this.draftStore.getOrCreateSubmissionId(() => crypto.randomUUID());
         this.draftStore.removeObsolete(options.draftFamilyPrefix, options.draftPlayerSuffix);
         const restored = DrawingDocument.tryRestore(this.draftStore.load(), options);
         this.document = restored || new DrawingDocument(options);
@@ -305,6 +326,51 @@ class CanvasDrawingController {
     getDocument() {
         this.document.endStroke();
         return this.document.toJSON();
+    }
+
+    async submit(endpoint, request) {
+        if (!endpoint || !request?.gameInstanceId || !request?.roundId) {
+            throw new Error("Drawing submission details are incomplete.");
+        }
+        const form = new FormData();
+        form.set("gameInstanceId", request.gameInstanceId);
+        form.set("roundId", request.roundId);
+        form.set("commandId", this.submissionId);
+        for (let index = 0; index < this.document.frames.length; index += 1) {
+            const blob = await this.exportFrame(this.document.frames[index]);
+            form.append("frames", blob, `frame-${index + 1}.png`);
+        }
+        const response = await fetch(endpoint, {
+            method: "POST",
+            credentials: "same-origin",
+            body: form,
+            headers: { "X-Requested-With": "QuizizzoDrawingController" }
+        });
+        if (!response.ok) {
+            const message = await response.text();
+            throw new Error(message || "The animation could not be submitted.");
+        }
+        const result = await response.json();
+        this.clearDraft();
+        return result;
+    }
+
+    exportFrame(frame) {
+        const canvas = document.createElement("canvas");
+        canvas.width = this.document.logicalWidth;
+        canvas.height = this.document.logicalHeight;
+        const context = canvas.getContext("2d");
+        context.lineCap = "round";
+        context.lineJoin = "round";
+        this.renderFrame(context, frame, true);
+        context.save();
+        context.globalCompositeOperation = "destination-over";
+        context.fillStyle = "#ffffff";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.restore();
+        return new Promise((resolve, reject) => canvas.toBlob(
+            blob => blob ? resolve(blob) : reject(new Error("A drawing frame could not be encoded.")),
+            "image/png"));
     }
 
     notify(restoredDraft) {

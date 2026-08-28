@@ -3,7 +3,7 @@ using Quizizzo.Application.Players;
 
 namespace Quizizzo.Web.Realtime;
 
-public sealed class PartyConnectionRegistry(
+public sealed partial class PartyConnectionRegistry(
     IServiceScopeFactory scopeFactory,
     IPartyRealtimeNotifier notifier,
     IOptions<RealtimePresenceOptions> options,
@@ -151,8 +151,11 @@ public sealed class PartyConnectionRegistry(
         }
         catch (Exception exception)
         {
-            logger.LogError(exception, "Failed to mark player {PlayerId} disconnected from party {PartyId}",
-                binding.SubjectId, binding.PartyId);
+            LogDisconnectFailure(
+                logger,
+                exception,
+                binding.SubjectId,
+                binding.PartyId);
         }
         finally
         {
@@ -187,4 +190,14 @@ public sealed class PartyConnectionRegistry(
 
     private sealed record ConnectionBinding(string ConnectionId, Guid? PartyId, RealtimeRole Role, string SubjectId);
     private readonly record struct PresenceKey(Guid? PartyId, RealtimeRole Role, string SubjectId);
+
+    [LoggerMessage(
+        EventId = 3201,
+        Level = LogLevel.Error,
+        Message = "Failed to mark player {PlayerId} disconnected from party {PartyId}")]
+    private static partial void LogDisconnectFailure(
+        ILogger logger,
+        Exception exception,
+        string playerId,
+        Guid? partyId);
 }

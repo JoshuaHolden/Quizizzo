@@ -1,4 +1,5 @@
 using Quizizzo.Application.Abstractions;
+using Quizizzo.Application.Parties;
 using Quizizzo.Application.Players;
 using Quizizzo.Domain;
 using Quizizzo.Domain.Parties;
@@ -60,6 +61,43 @@ public sealed class PlayerServiceTests
         Assert.Contains("full", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Concurrent_joins_cannot_exceed_the_party_limit()
+    {
+        var fixture = new Fixture();
+        for (var index = 0; index < QuizizzoLimits.MaximumPlayers - 1; index++)
+        {
+            fixture.PlayerRepository.Players.Add(Player.Create(
+                fixture.Party.Id,
+                PlayerName.Parse($"Player {index}"),
+                Fixture.Character,
+                $"HASH-{index}",
+                Now));
+        }
+
+        var attempts = await Task.WhenAll(
+            AttemptJoinAsync(fixture.Service, "Final A"),
+            AttemptJoinAsync(fixture.Service, "Final B"));
+
+        Assert.Single(attempts, succeeded => succeeded);
+        Assert.Equal(
+            QuizizzoLimits.MaximumPlayers,
+            fixture.PlayerRepository.Players.Count(player => player.IsPartyMember));
+    }
+
+    private static async Task<bool> AttemptJoinAsync(PlayerService service, string name)
+    {
+        try
+        {
+            await service.JoinAsync("K7XM", name);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+
     private sealed class Fixture
     {
         public static readonly CharacterDefinition Character = new(
@@ -78,6 +116,7 @@ public sealed class PlayerServiceTests
                 PlayerRepository,
                 new FakeCredentials(),
                 new FakeCharacterGenerator(),
+                new PartyMutationCoordinator(),
                 new FixedTimeProvider());
         }
 

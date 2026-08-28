@@ -20,11 +20,11 @@
     </div>
 
     <div class="drawing-toolbar" aria-label="Drawing tools">
-        <button type="button" class="drawing-tool-button" @onclick="TogglePalette" aria-expanded="@paletteOpen">
+        <button type="button" class="drawing-tool-button" @onclick="TogglePalette" aria-expanded="@paletteOpen" aria-controls="drawing-colour-picker">
             <span class="drawing-colour-swatch" style="background-color: @state.SelectedColour"></span>
             <span>Colour</span>
         </button>
-        <button type="button" class="drawing-tool-button" @onclick="ToggleSizes" aria-expanded="@sizesOpen">
+        <button type="button" class="drawing-tool-button" @onclick="ToggleSizes" aria-expanded="@sizesOpen" aria-controls="drawing-size-picker">
             <span class="drawing-size-dot" style="width: @SizePreview; height: @SizePreview"></span>
             <span>Size</span>
         </button>
@@ -45,7 +45,7 @@
 
     @if (paletteOpen)
     {
-        <div class="drawing-picker" aria-label="Pen colours">
+        <div id="drawing-colour-picker" class="drawing-picker" aria-label="Pen colours">
             @foreach (var colour in Options.Colours)
             {
                 <button type="button"
@@ -59,7 +59,7 @@
     }
     @if (sizesOpen)
     {
-        <div class="drawing-picker drawing-size-picker" aria-label="Brush sizes">
+        <div id="drawing-size-picker" class="drawing-picker drawing-size-picker" aria-label="Brush sizes">
             @foreach (var width in Options.Widths)
             {
                 <button type="button"
@@ -77,7 +77,7 @@
     {
         <div class="drawing-frame-controls" aria-label="Animation frames">
             <button type="button" disabled="@(state.CurrentFrame <= 1)" @onclick="PreviousFrameAsync">Previous</button>
-            <span>Frame @state.CurrentFrame of @state.FrameCount</span>
+            <span class="drawing-frame-position" aria-live="polite">Frame @state.CurrentFrame of @state.FrameCount</span>
             <button type="button" disabled="@(state.CurrentFrame >= state.FrameCount)" @onclick="NextFrameAsync">Next</button>
             <label class="drawing-onion-toggle">
                 <input type="checkbox"
@@ -93,6 +93,19 @@
     {
         <p class="drawing-draft-message" role="status">Your saved drawing draft was restored.</p>
     }
+    @if (!string.IsNullOrWhiteSpace(submissionError))
+    {
+        <p class="alert alert-danger mt-2" role="alert">@submissionError</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(SubmissionEndpoint))
+    {
+        <button type="button"
+                class="btn btn-primary btn-lg w-100 mt-2"
+                disabled="@(Disabled || submitting)"
+                @onclick="SubmitAsync">
+            @(submitting ? "Submitting..." : SubmitLabel)
+        </button>
+    }
 </section>
 
 @code {
@@ -100,6 +113,10 @@
     [Parameter] public string? Prompt { get; set; }
     [Parameter] public DateTimeOffset? EndsAtUtc { get; set; }
     [Parameter] public EventCallback<DrawingStateSummary> StateChanged { get; set; }
+    [Parameter] public string? SubmissionEndpoint { get; set; }
+    [Parameter] public string SubmitLabel { get; set; } = "Submit drawing";
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback Submitted { get; set; }
 
     private ElementReference drawingCanvas;
     private ElementReference onionCanvas;
@@ -113,6 +130,8 @@
     private bool sizesOpen;
     private bool clearArmed;
     private bool showRestoredMessage;
+    private bool submitting;
+    private string? submissionError;
     private string SizePreview => $"{Math.Clamp(state.SelectedWidth, 5, 22)}px";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -171,6 +190,36 @@
         if (controller is not null)
         {
             await controller.InvokeVoidAsync("clearDraft");
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (controller is null || string.IsNullOrWhiteSpace(SubmissionEndpoint))
+        {
+            return;
+        }
+        submitting = true;
+        submissionError = null;
+        try
+        {
+            await controller.InvokeAsync<object>(
+                "submit",
+                SubmissionEndpoint,
+                new
+                {
+                    gameInstanceId = Options.Identity.GameSessionId.ToString("D"),
+                    roundId = Options.Identity.RoundId
+                });
+            await Submitted.InvokeAsync();
+        }
+        catch (JSException exception)
+        {
+            submissionError = exception.Message;
+        }
+        finally
+        {
+            submitting = false;
         }
     }
 

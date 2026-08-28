@@ -15,7 +15,8 @@
 @if (currentLogins?.Count > 0)
 {
     <h3>Registered Logins</h3>
-    <table class="table">
+    <div class="table-responsive">
+        <table class="table align-middle">
         <tbody>
             @foreach (var login in currentLogins)
             {
@@ -41,7 +42,8 @@
                 </tr>
             }
         </tbody>
-    </table>
+        </table>
+    </div>
 }
 @if (otherLogins?.Count > 0)
 {

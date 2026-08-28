@@ -15,6 +15,9 @@ RUN dotnet publish src/Quizizzo.Web/Quizizzo.Web.csproj -c Release -o /app/publi
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
+RUN mkdir -p /app/assets/drawings /app/data-protection \
+    && chown -R app:app /app/assets /app/data-protection
+USER app
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
 ENTRYPOINT ["dotnet", "Quizizzo.Web.dll"]
