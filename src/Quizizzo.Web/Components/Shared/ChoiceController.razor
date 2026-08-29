@@ -4,13 +4,13 @@
                   SelectionScope="Configuration.SelectionScope"
                   SubmittedOptionId="Configuration.SubmittedOptionId"
                   Legend="Choose one answer"
-                  SubmitLabel="SubmitLabel"
+                  SubmitLabel="@SubmitLabel"
                   Disabled="Disabled"
                   Submitted="Submitted" />
 
 @code {
     [Parameter, EditorRequired] public ChoiceControllerConfiguration Configuration { get; set; } = default!;
-    [Parameter] public string SubmitLabel { get; set; } = "Submit answer";
+    [Parameter] public string SubmitLabel { get; set; } = "Lock in my answer";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<string> Submitted { get; set; }
 

@@ -90,7 +90,7 @@ public sealed class PhaserPresentationMapperTests
         var session = new DisplaySessionView(
             Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
         var payload = new DisplayGameViewPayload(
-            "ANIMATE THIS",
+            "AniMates",
             "Vote now",
             "Playback",
             0,
@@ -103,7 +103,7 @@ public sealed class PhaserPresentationMapperTests
         var game = new PartyGameView(
             partyId,
             Guid.NewGuid(),
-            "animate-this",
+            "animates",
             GameAudienceRole.Display,
             "Voting",
             2,

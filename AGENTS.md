@@ -41,7 +41,7 @@ src/
   Quizizzo.Games.Estimate/
   Quizizzo.Games.MajorityRules/
   Quizizzo.Games.Bullshit/
-  Quizizzo.Games.AnimateThis/
+  Quizizzo.Games.AniMates/
 tests/
   Quizizzo.Domain.Tests/
   Quizizzo.Application.Tests/
@@ -59,8 +59,8 @@ References must point inward: Domain is independent; Application may use Domain 
 - Display pairing: durable display session, scan-to-pair flow, then player join QR/code without TV credential entry.
 - Anonymous players: durable player ID and secure session token, reconnect/rejoin without entering a name again, configurable disconnect grace period.
 - Role-specific player, host, and display views must reveal only appropriate information.
-- MVP games: Estimate, Majority Rules, Bullshit, and mandatory Animate This.
-- Animate This: three configurable logical frames; Pointer Events; fixed logical coordinates; touch/stylus/mouse; compact colour/size tools; eraser restoration; stroke undo; confirmed clear; onion skin; safe frame navigation; local draft recovery; validated/idempotent submission; missing-frame fallback; anonymous playback/voting/reveal/scoring; no self-voting.
+- MVP games: Estimate, Majority Rules, Bullshit, and mandatory AniMates.
+- AniMates: three configurable logical frames; Pointer Events; fixed logical coordinates; touch/stylus/mouse; compact colour/size tools; eraser restoration; stroke undo; confirmed clear; onion skin; safe frame navigation; local draft recovery; validated/idempotent submission; missing-frame fallback; anonymous playback/voting/reveal/scoring; no self-voting.
 - Presentation: persistent recognizable player characters, game-specific themes/assets, responsive 16:9 displays at 720p/1080p/4K, and mobile controllers down to 320px without normal horizontal scrolling.
 - Operations: structured logs, application and PostgreSQL health checks, isolated Compose resources with persistent database/assets, multi-site-safe reverse-proxy integration, GitHub CI/CD to GHCR and Hetzner, immutable SHA deployments, safe migrations, health verification, secrets outside source control, and documented rollback.
 
@@ -196,9 +196,11 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Document framework authority, recovery, single-frame behavior, storage, and the Milestone 10 submission boundary.
 - [x] Add JavaScript model tests plus .NET configuration, local-asset, health, and asset-store boundary tests.
 - [x] Run npm clean install/audit/build/client tests, validate JavaScript syntax, restore, build with zero warnings, and pass all .NET tests.
-- [x] Stop before Animate This rules, submission endpoints, playback, voting, reveal, or scoring.
+- [x] Stop before AniMates rules, submission endpoints, playback, voting, reveal, or scoring.
 
-### Milestone 10 — Animate This (completed 2026-08-27)
+### Milestone 10 — AniMates (completed 2026-08-27)
+
+- [x] Rename the complete game surface to AniMates, including module/action identifiers, routes, project/namespace names, tests, and documentation.
 
 - [x] Implement private prompts and an explicit server-owned Drawing → Voting → Results → Completed state machine.
 - [x] Require three logical 512×512 frames while copying the latest completed frame into missing later slots.
@@ -259,15 +261,41 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Document the breakpoint matrix and add responsive contract tests for viewport metadata, overflow, touch sizing, safe areas, controllers, tables, and single-frame playback.
 - [x] Verify exact browser-emulated 320×568, 667×375, and 1440×900 layouts with no horizontal document overflow; build with zero warnings; pass all 136 .NET tests and 9 client tests.
 
+### Local Docker smoke test (completed 2026-08-28)
+
+- [x] Build the production Web project graph from the secret- and test-excluded Docker context.
+- [x] Start isolated PostgreSQL, apply all EF migrations through the one-shot migration service, and launch the non-root Web container.
+- [x] Verify the home page plus live and PostgreSQL-ready health endpoints on loopback-only port 8081.
+- [x] Confirm both containers belong to the `quizizzo` Compose project and private network, with no published PostgreSQL port or unrelated container changes.
+- [x] Remove container-only GSSAPI and development HTTPS-redirection warnings and pass the focused deployment configuration tests.
+
+### Paired-display reopen hotfix (completed 2026-08-28)
+
+- [x] Reproduce and trace the paired `/display` prerender failure to concurrent roster/game reads sharing a request-scoped EF context.
+- [x] Load reconstructable realtime display state through a fresh operation scope so prerender and circuit work never share the page request context.
+- [x] Rebuild only the Web container, preserve PostgreSQL/session volumes, verify repeated `/display` requests and readiness return HTTP 200, and confirm clean logs.
+- [x] Extend short-lived operation scopes to host and player realtime state plus host game mutations so SignalR hints cannot race a circuit-scoped EF context.
+- [x] Verify host/player recovery and scope contracts, redeploy only the Web container, and confirm healthy readiness with no new concurrency exceptions.
+
+### UI beautification and browser journey audit (completed 2026-08-29)
+
+- [x] Add a repeatable Playwright audit that drives the locally installed Edge browser against the live Docker application.
+- [x] Inspect the public, account, join, display, host, and player journeys for console errors, failed requests, overflow, accessibility defects, and confusing copy.
+- [x] Replace the generic home page and application sidebar on `/` with a distinctive responsive landing experience and restrained parallax depth.
+- [x] Respect reduced-motion, keyboard, touch-target, contrast, safe-area, and 320 px layout requirements throughout the new experience.
+- [x] Replace technical, terse, or ambiguous player and host action labels with concise outcome-oriented language while preserving generic controller contracts.
+- [x] Add automated presentation contracts and browser screenshots at representative phone, tablet, desktop, and shared-display sizes.
+- [x] Rebuild the live Docker Web image, run the client and .NET quality gates, repeat the browser audit, and record the verified findings.
+
 ### Remaining milestones
 
 - [ ] Milestone 13 — CI/CD: GitHub Actions, image publishing, Hetzner deployment, migrations, rollback, health verification.
 
 ## Verification requirements
 
-Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. Animate This additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
+Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
 
-The MVP acceptance scenario is the 34-step end-to-end flow from host registration through party creation/pairing, four-player join, Estimate with player reconnect, score persistence, Animate This drawing/draft recovery/playback/voting/reveal, starting another game without rejoin, display recovery, and persisted party completion.
+The MVP acceptance scenario is the 34-step end-to-end flow from host registration through party creation/pairing, four-player join, Estimate with player reconnect, score persistence, AniMates drawing/draft recovery/playback/voting/reveal, starting another game without rejoin, display recovery, and persisted party completion.
 
 ## Major decisions to preserve
 

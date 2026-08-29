@@ -4,9 +4,7 @@
 @using Quizizzo.Application.Players
 @using Quizizzo.GameContracts
 @using Quizizzo.Web.Presentation
-@inject DisplaySessionService DisplaySessions
-@inject PlayerService Players
-@inject PartyGameService Games
+@inject DisplayRealtimeStateLoader StateLoader
 @inject NavigationManager Navigation
 @inject QrCodeService QrCodes
 
@@ -19,7 +17,8 @@
     <PhaserPresentation Snapshot="PresentationSnapshot" />
     <div class="display-overlay">
         <h1 class="display-2 fw-bold">QUIZIZZO</h1>
-        <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
+        <span class="badge display-connection-pill @ConnectionBadgeClass"
+              aria-live="polite">@ConnectionLabel</span>
 
         @if (!session.IsPaired)
         {
@@ -127,28 +126,28 @@
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+    private string ConnectionLabel => connectionStatus switch
+    {
+        "Connected" => "Live",
+        "Reconnecting" => "Reconnecting…",
+        _ => "Offline"
+    };
 
     protected override async Task OnInitializedAsync()
     {
         session = InitialSession;
         players = InitialPlayers;
-        await LoadGameAsync();
+        await LoadStateAsync();
     }
 
-    private async Task RefreshFromServerAsync(string reason)
-    {
-        session = await DisplaySessions.GetByIdAsync(session.DisplaySessionId);
-        players = session.PartyId is { } partyId
-            ? await Players.ListForDisplayAsync(partyId)
-            : [];
-        await LoadGameAsync();
-    }
+    private Task RefreshFromServerAsync(string reason) => LoadStateAsync();
 
-    private async Task LoadGameAsync()
+    private async Task LoadStateAsync()
     {
-        gameView = session.PartyId is { } partyId
-            ? await Games.GetDisplayViewAsync(partyId, session.DisplaySessionId.ToString("N"))
-            : null;
+        var state = await StateLoader.LoadAsync(session.DisplaySessionId);
+        session = state.Session;
+        players = state.Players;
+        gameView = state.Game;
         game = gameView?.Data.Deserialize<DisplayGameViewPayload>();
     }
 

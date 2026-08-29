@@ -2,13 +2,14 @@ name: quizizzo
 
 services:
   quizizzo:
+    image: ${QUIZIZZO_IMAGE:-quizizzo:local}
     build:
       context: .
       dockerfile: Dockerfile
     environment:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
       AllowedHosts: ${QUIZIZZO_ALLOWED_HOSTS:-localhost}
-      ConnectionStrings__DefaultConnection: Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD}
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
       DrawingAssets__RootPath: /app/assets/drawings
       DataProtection__KeyPath: /app/data-protection
     ports:
@@ -23,12 +24,26 @@ services:
     networks:
       - quizizzo-private
 
+  migrate:
+    image: ${QUIZIZZO_IMAGE:-quizizzo:local}
+    profiles: ["tools"]
+    command: ["--migrate=true"]
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - quizizzo-private
+
   postgres:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: quizizzo
       POSTGRES_USER: quizizzo
-      POSTGRES_PASSWORD: ${QUIZIZZO_POSTGRES_PASSWORD}
+      POSTGRES_PASSWORD: "${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
     volumes:
       - quizizzo-postgres-data:/var/lib/postgresql/data
     healthcheck:

@@ -9,13 +9,10 @@
 @using Quizizzo.Application.Players
 @using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
+@using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject PartyService Parties
-@inject PlayerService Players
-@inject PartyGameService Games
-@inject PartyConnectionRegistry Connections
-@inject IPartyRealtimeNotifier Realtime
+@inject HostPartyRealtimeService PartyState
 
 <PageTitle>Party controls</PageTitle>
 
@@ -34,7 +31,9 @@ else
         <p class="text-uppercase mb-1">Room code</p>
         <h1 class="display-1 fw-bold letter-spacing-wide">@party.RoomCode</h1>
         <p class="lead">Party status: @party.Status</p>
-        <span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span>
+        <span class="badge @ConnectionBadgeClass" aria-live="polite">
+            Updates: @ConnectionLabel
+        </span>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(actionError))
@@ -118,7 +117,7 @@ else
                 </ul>
             }
             <div class="host-game-actions d-flex flex-wrap gap-2">
-                @foreach (var availableGame in Games.ListGames())
+                @foreach (var availableGame in availableGames)
                 {
                     <button class="btn btn-primary btn-lg"
                             disabled="@(players.Count < availableGame.MinimumPlayers ||
@@ -139,6 +138,7 @@ else
 
     private PartyView? party;
     private IReadOnlyList<PlayerView> players = [];
+    private IReadOnlyList<GameDescriptor> availableGames = [];
     private PartyGameView? gameView;
     private HostGameViewPayload? game;
     private PartyPresenceSnapshot presence = new(0, 0, 0);
@@ -151,12 +151,19 @@ else
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+    private string ConnectionLabel => connectionStatus switch
+    {
+        "Connected" => "Live",
+        "Reconnecting" => "Reconnecting…",
+        _ => "Offline"
+    };
 
     protected override async Task OnParametersSetAsync()
     {
         var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         hostUserId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? throw new InvalidOperationException("An authenticated host ID is required.");
+        availableGames = PartyState.ListGames();
 
         try
         {
@@ -176,8 +183,7 @@ else
     {
         await RunActionAsync(async () =>
         {
-            await Games.StartAsync(PartyId, hostUserId!, gameKey);
-            await Realtime.PartyChangedAsync(PartyId, "GameStarted");
+            await PartyState.StartGameAsync(PartyId, hostUserId!, gameKey);
         });
     }
 
@@ -189,13 +195,7 @@ else
         }
         await RunActionAsync(async () =>
         {
-            var result = await Games.ExecuteHostActionAsync(
-                PartyId, hostUserId!, Guid.NewGuid(), actionKind, GameJson.Empty);
-            if (!result.Applied)
-            {
-                throw new InvalidOperationException(result.ErrorMessage ?? "The action was rejected.");
-            }
-            await Realtime.PartyChangedAsync(PartyId, result.IsComplete ? "GameCompleted" : "GameAdvanced");
+            await PartyState.AdvanceGameAsync(PartyId, hostUserId!, actionKind);
         });
     }
 
@@ -226,10 +226,11 @@ else
 
     private async Task LoadAsync()
     {
-        party = await Parties.GetOwnedAsync(PartyId, hostUserId!);
-        players = await Players.ListForHostAsync(PartyId, hostUserId!);
-        presence = Connections.GetSnapshot(PartyId);
-        gameView = await Games.GetHostViewAsync(PartyId, hostUserId!);
+        var state = await PartyState.LoadAsync(PartyId, hostUserId!);
+        party = state.Party;
+        players = state.Players;
+        presence = state.Presence;
+        gameView = state.Game;
         game = gameView?.Data.Deserialize<HostGameViewPayload>();
     }
 

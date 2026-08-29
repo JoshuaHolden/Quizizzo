@@ -250,7 +250,7 @@ public sealed class MajorityRulesGameModule(
                     PlayerControllerKind.Text,
                     SubmitMajorityAnswerAction.ActionKind,
                     true,
-                    "Submit answer",
+                    "Send my answer",
                     GameJson.From(new TextControllerConfiguration(
                         QuizizzoLimits.TextAnswerLength,
                         "Type a funny answer..."))),
@@ -275,7 +275,7 @@ public sealed class MajorityRulesGameModule(
                         PlayerControllerKind.Vote,
                         VoteForMajorityAnswerAction.ActionKind,
                         true,
-                        "Lock in vote",
+                        "Cast my vote",
                         GameJson.From(new VoteControllerConfiguration(
                             options,
                             null,

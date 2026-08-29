@@ -4,10 +4,14 @@
   "type": "module",
   "scripts": {
     "build:client": "node scripts/copy-client-assets.mjs",
-    "test:client": "node --test tests/client/*.test.mjs"
+    "test:client": "node --test tests/client/*.test.mjs",
+    "test:browser": "playwright test"
   },
   "dependencies": {
     "@microsoft/signalr": "10.0.11",
     "phaser": "3.90.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.62.1"
   }
 }

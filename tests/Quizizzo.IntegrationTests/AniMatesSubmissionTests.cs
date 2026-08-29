@@ -9,12 +9,12 @@ using Quizizzo.Application.Abstractions;
 using Quizizzo.Application.Games;
 using Quizizzo.Domain.Drawings;
 using Quizizzo.GameContracts;
-using Quizizzo.Games.AnimateThis;
+using Quizizzo.Games.AniMates;
 using Quizizzo.Web.Endpoints;
 
 namespace Quizizzo.IntegrationTests;
 
-public sealed class AnimateThisSubmissionTests
+public sealed class AniMatesSubmissionTests
 {
     [Fact]
     public async Task Player_refreshes_before_and_after_idempotent_asset_backed_submission()
@@ -22,16 +22,16 @@ public sealed class AnimateThisSubmissionTests
         await using var baseFactory = new RecoveryWebApplicationFactory();
         var assets = new FakeDrawingAssets();
         await using var factory = Configure(baseFactory, assets);
-        await StartAnimateThisAsync(factory, baseFactory.State);
+        await StartAniMatesAsync(factory, baseFactory.State);
         using var client = PlayerClient(factory);
 
         var before = await client.GetStringAsync("/play");
         var commandId = Guid.NewGuid();
         using var firstResponse = await client.PostAsync(
-            "/api/drawing-submissions/animate-this",
+            "/api/drawing-submissions/animates",
             SubmissionContent(baseFactory.State, commandId, ValidPng()));
         using var retryResponse = await client.PostAsync(
-            "/api/drawing-submissions/animate-this",
+            "/api/drawing-submissions/animates",
             SubmissionContent(baseFactory.State, commandId, ValidPng()));
         var after = await client.GetStringAsync("/play");
 
@@ -49,14 +49,14 @@ public sealed class AnimateThisSubmissionTests
         await using var baseFactory = new RecoveryWebApplicationFactory();
         var assets = new FakeDrawingAssets();
         await using var factory = Configure(baseFactory, assets);
-        await StartAnimateThisAsync(factory, baseFactory.State);
+        await StartAniMatesAsync(factory, baseFactory.State);
         using var client = PlayerClient(factory);
 
         using var wrongSize = await client.PostAsync(
-            "/api/drawing-submissions/animate-this",
+            "/api/drawing-submissions/animates",
             SubmissionContent(baseFactory.State, Guid.NewGuid(), ValidPng(width: 256)));
         using var tooLarge = await client.PostAsync(
-            "/api/drawing-submissions/animate-this",
+            "/api/drawing-submissions/animates",
             SubmissionContent(baseFactory.State, Guid.NewGuid(), new byte[(2 * 1024 * 1024) + 1]));
 
         Assert.Equal(HttpStatusCode.BadRequest, wrongSize.StatusCode);
@@ -71,10 +71,10 @@ public sealed class AnimateThisSubmissionTests
         await using var baseFactory = new RecoveryWebApplicationFactory();
         var assets = new FakeDrawingAssets();
         await using var factory = Configure(baseFactory, assets);
-        await StartAnimateThisAsync(factory, baseFactory.State);
+        await StartAniMatesAsync(factory, baseFactory.State);
         using var client = PlayerClient(factory);
         using var submission = await client.PostAsync(
-            "/api/drawing-submissions/animate-this",
+            "/api/drawing-submissions/animates",
             SubmissionContent(baseFactory.State, Guid.NewGuid(), ValidPng()));
         submission.EnsureSuccessStatusCode();
         var assetId = assets.Metadata[0].Id;
@@ -96,7 +96,7 @@ public sealed class AnimateThisSubmissionTests
                 services.AddSingleton<IDrawingAssetMetadataRepository>(assets);
             }));
 
-    private static async Task StartAnimateThisAsync(
+    private static async Task StartAniMatesAsync(
         WebApplicationFactory<Program> factory,
         RecoveryWebApplicationFactory.RecoveryState state)
     {
@@ -105,7 +105,7 @@ public sealed class AnimateThisSubmissionTests
         await games.StartAsync(
             state.Party.Id.Value,
             RecoveryWebApplicationFactory.HostUserId,
-            AnimateThisGameModule.GameKey);
+            AniMatesGameModule.GameKey);
     }
 
     private static HttpClient PlayerClient(WebApplicationFactory<Program> factory)
@@ -125,7 +125,7 @@ public sealed class AnimateThisSubmissionTests
     {
         var content = new MultipartFormDataContent();
         content.Add(new StringContent(state.Party.CurrentGameInstanceId!.Value.ToString("D")), "gameInstanceId");
-        content.Add(new StringContent("animate-this-drawing"), "roundId");
+        content.Add(new StringContent("animates-drawing"), "roundId");
         content.Add(new StringContent(commandId.ToString("D")), "commandId");
         for (var index = 0; index < 3; index++)
         {

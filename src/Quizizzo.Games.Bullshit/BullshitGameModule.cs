@@ -300,7 +300,7 @@ public sealed class BullshitGameModule(
                     PlayerControllerKind.Text,
                     SubmitBluffAction.ActionKind,
                     true,
-                    "Submit bluff",
+                    "Send my bluff",
                     GameJson.From(new TextControllerConfiguration(
                         QuizizzoLimits.TextAnswerLength,
                         "Make up a believable answer..."))),
@@ -326,7 +326,7 @@ public sealed class BullshitGameModule(
                     PlayerControllerKind.Choice,
                     ChooseBullshitAnswerAction.ActionKind,
                     true,
-                    "Lock in answer",
+                    "Lock in my answer",
                     GameJson.From(new ChoiceControllerConfiguration(
                         options,
                         null,

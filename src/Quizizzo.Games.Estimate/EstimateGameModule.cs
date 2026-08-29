@@ -238,7 +238,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
                     PlayerControllerKind.Number,
                     SubmitEstimateAction.ActionKind,
                     true,
-                    "Lock in estimate",
+                    "Lock in my guess",
                     GameJson.From(new NumberControllerConfiguration(
                         question.Minimum,
                         question.Maximum,

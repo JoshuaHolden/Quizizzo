@@ -29,6 +29,32 @@ public sealed class DeploymentConfigurationTests
         Assert.Contains("DataProtection__KeyPath: /app/data-protection", compose,
             StringComparison.Ordinal);
         Assert.Contains("USER app", dockerfile, StringComparison.Ordinal);
+        Assert.Contains("libgssapi-krb5-2", dockerfile, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Migrations_are_an_explicit_one_shot_service_on_the_private_network()
+    {
+        var compose = ReadRepositoryFile("compose.yaml");
+        var program = ReadRepositoryFile("src/Quizizzo.Web/Program.cs");
+
+        Assert.Contains("migrate:", compose, StringComparison.Ordinal);
+        Assert.Contains("profiles: [\"tools\"]", compose, StringComparison.Ordinal);
+        Assert.Contains("command: [\"--migrate=true\"]", compose, StringComparison.Ordinal);
+        Assert.Contains("condition: service_healthy", compose, StringComparison.Ordinal);
+        Assert.Contains("await database.Database.MigrateAsync();", program, StringComparison.Ordinal);
+        Assert.DoesNotContain("EnsureCreated", program, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Compose_requires_an_explicit_PostgreSQL_password()
+    {
+        var compose = ReadRepositoryFile("compose.yaml");
+
+        Assert.Contains(
+            "${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}",
+            compose,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -40,6 +66,18 @@ public sealed class DeploymentConfigurationTests
         Assert.Contains("node_modules", dockerIgnore, StringComparison.Ordinal);
         Assert.Contains("data-protection", dockerIgnore, StringComparison.Ordinal);
         Assert.Contains("assets", dockerIgnore, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Container_restores_only_the_production_project_graph()
+    {
+        var dockerfile = ReadRepositoryFile("Dockerfile");
+
+        Assert.Contains(
+            "dotnet restore src/Quizizzo.Web/Quizizzo.Web.csproj",
+            dockerfile,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("dotnet restore Quizizzo.sln", dockerfile, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

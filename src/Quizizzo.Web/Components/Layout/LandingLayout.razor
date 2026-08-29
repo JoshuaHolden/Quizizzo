@@ -1,0 +1,40 @@
+@inherits LayoutComponentBase
+
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
+<div class="landing-shell">
+    <header class="landing-header">
+        <a class="landing-brand" href="/" aria-label="Quizizzo home">
+            <span class="landing-brand-mark" aria-hidden="true">Q</span>
+            <span>Quizizzo</span>
+        </a>
+
+        <nav class="landing-navigation" aria-label="Main navigation">
+            <a class="landing-navigation-link landing-how-link" href="#how-it-works">How it works</a>
+            <a class="landing-navigation-link" href="/host">Host</a>
+            <a class="landing-navigation-cta" href="/join">Join game</a>
+        </nav>
+    </header>
+
+    <main id="main-content" tabindex="-1">
+        @Body
+    </main>
+
+    <footer class="landing-footer">
+        <a class="landing-brand landing-brand-footer" href="/" aria-label="Quizizzo home">
+            <span class="landing-brand-mark" aria-hidden="true">Q</span>
+            <span>Quizizzo</span>
+        </a>
+        <p>Big-screen games. Tiny-screen controllers. Everyone in.</p>
+        <div class="landing-footer-links">
+            <a href="/display">Shared display</a>
+            <a href="/Account/Login">Host sign in</a>
+        </div>
+    </footer>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    Something went wrong.
+    <a href="." class="reload">Reload Quizizzo</a>
+    <span class="dismiss" aria-label="Dismiss">🗙</span>
+</div>

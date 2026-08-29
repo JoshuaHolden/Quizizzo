@@ -4,8 +4,8 @@
 @using Quizizzo.Application.Players
 @using Quizizzo.GameContracts
 @using Quizizzo.Web.Drawing
-@inject PlayerService Players
-@inject PartyGameService Games
+@using Quizizzo.Web.Presentation
+@inject PlayerRealtimeStateLoader StateLoader
 
 <PartyRealtimeConnection @ref="partyConnection"
                          Role="Player"
@@ -18,8 +18,8 @@
     <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
         <span aria-hidden="true">:)</span>
     </div>
-    <h1>@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
-    <p><span class="badge @ConnectionBadgeClass">Realtime: @connectionStatus</span></p>
+    <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
+    <p><span class="badge @ConnectionBadgeClass" aria-live="polite">@ConnectionLabel</span></p>
 
     @if (!string.IsNullOrWhiteSpace(actionError))
     {
@@ -48,7 +48,7 @@
                     if (configuration is not null)
                     {
                         <NumberController Configuration="configuration"
-                                          SubmitLabel="game.Controller.SubmitLabel"
+                                          SubmitLabel="@game.Controller.SubmitLabel"
                                           Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           Submitted="SubmitNumberAsync" />
                     }
@@ -60,7 +60,7 @@
                         <DrawingController @key="DrawingControllerKey(drawingConfiguration)"
                                            Options="CreateDrawingOptions(drawingConfiguration)"
                                            SubmissionEndpoint="/api/drawing-submissions/animates"
-                                           SubmitLabel="game.Controller.SubmitLabel"
+                                           SubmitLabel="@game.Controller.SubmitLabel"
                                            Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                            Submitted="DrawingSubmittedAsync" />
                     }
@@ -70,7 +70,7 @@
                     if (textConfiguration is not null)
                     {
                         <TextController Configuration="textConfiguration"
-                                        SubmitLabel="game.Controller.SubmitLabel"
+                                        SubmitLabel="@game.Controller.SubmitLabel"
                                         Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                         Submitted="value => SubmitPlayerActionAsync(game.Controller.ActionKind, new { value })" />
                     }
@@ -80,7 +80,7 @@
                     if (voteConfiguration is not null)
                     {
                         <VoteController Configuration="voteConfiguration"
-                                        SubmitLabel="game.Controller.SubmitLabel"
+                                        SubmitLabel="@game.Controller.SubmitLabel"
                                         Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                         Submitted="optionId => SubmitSelectionAsync(voteConfiguration.SelectionProperty, optionId)" />
                     }
@@ -90,7 +90,7 @@
                     if (choiceConfiguration is not null)
                     {
                         <ChoiceController Configuration="choiceConfiguration"
-                                          SubmitLabel="game.Controller.SubmitLabel"
+                                          SubmitLabel="@game.Controller.SubmitLabel"
                                           Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           Submitted="optionId => SubmitSelectionAsync(choiceConfiguration.SelectionProperty, optionId)" />
                     }
@@ -115,23 +115,42 @@
     [Parameter, EditorRequired] public PlayerView InitialPlayer { get; set; } = default!;
 
     private PartyRealtimeConnection? partyConnection;
+    private ElementReference pageHeading;
     private PlayerView player = default!;
     private PartyGameView? gameView;
     private PlayerGameViewPayload? game;
     private string connectionStatus = "Connecting";
     private string? actionError;
     private bool submitting;
+    private bool focusHeadingAfterRender;
     private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
         ? score
         : player.Score;
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+    private string ConnectionLabel => connectionStatus switch
+    {
+        "Connected" => "You're live",
+        "Reconnecting" => "Reconnecting…",
+        _ => "Connection lost"
+    };
 
     protected override async Task OnInitializedAsync()
     {
         player = InitialPlayer;
         await LoadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!focusHeadingAfterRender)
+        {
+            return;
+        }
+
+        focusHeadingAfterRender = false;
+        await pageHeading.FocusAsync(preventScroll: true);
     }
 
     private async Task SubmitNumberAsync(long value)
@@ -141,8 +160,7 @@
             return;
         }
 
-        submitting = true;
-        actionError = null;
+        BeginSubmission();
         try
         {
             await partyConnection.InvokeAsync(
@@ -172,8 +190,7 @@
 
     private async Task SubmitPlayerActionAsync(string actionKind, object payload)
     {
-        submitting = true;
-        actionError = null;
+        BeginSubmission();
         try
         {
             await partyConnection!.InvokeAsync(
@@ -194,11 +211,23 @@
 
     private async Task DrawingSubmittedAsync() => await LoadAsync();
 
+    private void BeginSubmission()
+    {
+        submitting = true;
+        actionError = null;
+        focusHeadingAfterRender = true;
+    }
+
     private async Task LoadAsync()
     {
-        player = await Players.GetByIdAsync(player.PlayerId);
-        gameView = await Games.GetPlayerViewAsync(player.PlayerId);
+        var previousControllerKind = game?.Controller.Kind;
+        var state = await StateLoader.LoadAsync(player.PlayerId);
+        player = state.Player;
+        gameView = state.Game;
         game = gameView?.Data.Deserialize<PlayerGameViewPayload>();
+        var nextControllerKind = game?.Controller.Kind;
+        focusHeadingAfterRender |= previousControllerKind is not null &&
+            previousControllerKind != nextControllerKind;
     }
 
     private Task SetConnectionStatus(string status)

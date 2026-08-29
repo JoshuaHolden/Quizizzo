@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.DataProtection;
+using Microsoft.EntityFrameworkCore;
 using System.Threading.RateLimiting;
 using Quizizzo.Application;
 using Quizizzo.Application.Abstractions;
@@ -126,6 +127,9 @@ builder.Services.AddSingleton<IGameModule, BullshitGameModule>();
 builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
 builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
+builder.Services.AddSingleton<DisplayRealtimeStateLoader>();
+builder.Services.AddSingleton<PlayerRealtimeStateLoader>();
+builder.Services.AddSingleton<HostPartyRealtimeService>();
 builder.Services.AddOptions<RealtimePresenceOptions>()
     .Bind(builder.Configuration.GetSection(RealtimePresenceOptions.SectionName))
     .Validate(
@@ -183,6 +187,21 @@ builder.Services.AddIdentityCore<ApplicationUser>(options =>
 builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSender>();
 
 var app = builder.Build();
+
+if (args.Contains("--migrate=true", StringComparer.OrdinalIgnoreCase))
+{
+    await using var scope = app.Services.CreateAsyncScope();
+    var logger = scope.ServiceProvider
+        .GetRequiredService<ILoggerFactory>()
+        .CreateLogger("Quizizzo.DatabaseMigration");
+    var database = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+    DatabaseMigrationLog.Applying(logger);
+    await database.Database.MigrateAsync();
+    DatabaseMigrationLog.Completed(logger);
+    return;
+}
+
 app.UseForwardedHeaders();
 
 // Configure the HTTP request pipeline.
@@ -209,7 +228,10 @@ app.Use(async (context, next) =>
     });
     await next(context);
 });
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -281,3 +303,12 @@ app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Con
 app.Run();
 
 public partial class Program;
+
+internal static partial class DatabaseMigrationLog
+{
+    [LoggerMessage(EventId = 1001, Level = LogLevel.Information, Message = "Applying Quizizzo database migrations.")]
+    public static partial void Applying(ILogger logger);
+
+    [LoggerMessage(EventId = 1002, Level = LogLevel.Information, Message = "Quizizzo database migrations completed.")]
+    public static partial void Completed(ILogger logger);
+}

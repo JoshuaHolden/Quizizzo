@@ -1,40 +1,169 @@
-﻿@page "/"
+@page "/"
+@layout Quizizzo.Web.Components.Layout.LandingLayout
 
-<PageTitle>Quizizzo party games</PageTitle>
+<PageTitle>Quizizzo — big-screen party games for everyone</PageTitle>
+<HeadContent>
+    <meta name="description" content="Put Quizizzo on the big screen, use every phone as a controller, and turn any room into a party." />
+</HeadContent>
 
-<div class="container home-page">
-    <section class="home-hero text-center mx-auto">
-        <p class="text-uppercase fw-semibold text-primary">Big-screen browser party games</p>
-        <h1 class="display-2 fw-bold">Bring the room together.</h1>
-        <p class="lead mt-3">
-            Put Quizizzo on the shared screen, join from any phone, and let the server keep every
-            round, vote, drawing, and score in sync.
-        </p>
-        <div class="home-actions d-flex flex-wrap justify-content-center gap-3 mt-4">
-            <a class="btn btn-primary btn-lg" href="/join">Join a game</a>
-            <a class="btn btn-outline-primary btn-lg" href="/host">Host a party</a>
-            <a class="btn btn-outline-secondary btn-lg" href="/display">Open the display</a>
+<div class="landing-page" data-landing-motion>
+    <section class="hero-section" aria-labelledby="hero-title">
+        <div class="hero-orb hero-orb-one" data-parallax-layer data-depth="0.45" aria-hidden="true"></div>
+        <div class="hero-orb hero-orb-two" data-parallax-layer data-depth="0.8" aria-hidden="true"></div>
+        <span class="hero-confetti hero-confetti-one" data-parallax-layer data-depth="1.1" aria-hidden="true"></span>
+        <span class="hero-confetti hero-confetti-two" data-parallax-layer data-depth="0.75" aria-hidden="true"></span>
+
+        <div class="hero-grid page-width">
+            <div class="hero-copy">
+                <p class="eyebrow"><span aria-hidden="true"></span> Browser party games, ready when you are</p>
+                <h1 id="hero-title">Big-screen chaos.<br /><em>Tiny-screen controls.</em></h1>
+                <p class="hero-intro">
+                    Put the game on a TV. Everyone joins from their phone. Quizizzo keeps the
+                    laughs, drawings, votes, and scores moving—even when somebody refreshes.
+                </p>
+                <div class="hero-actions">
+                    <a class="hero-button hero-button-primary" href="/join">
+                        Join with a room code
+                        <span aria-hidden="true">→</span>
+                    </a>
+                    <a class="hero-button hero-button-secondary" href="/host">Start hosting</a>
+                </div>
+                <ul class="hero-reassurance" aria-label="Quizizzo benefits">
+                    <li><span aria-hidden="true">✓</span> No app download</li>
+                    <li><span aria-hidden="true">✓</span> No player accounts</li>
+                    <li><span aria-hidden="true">✓</span> Reconnect-safe</li>
+                </ul>
+            </div>
+
+            <div class="hero-visual" aria-hidden="true">
+                <div class="party-card" data-parallax-layer data-depth="0.24">
+                    <div class="party-card-topline">
+                        <span class="party-live"><i aria-hidden="true"></i> Live party</span>
+                        <span class="party-room">Room <strong>ZAPY</strong></span>
+                    </div>
+
+                    <div class="party-question">
+                        <span>MAJORITY RULES</span>
+                        <strong>Who would make the best secret agent?</strong>
+                    </div>
+
+                    <div class="party-players" aria-hidden="true">
+                        <div class="party-person person-pink"><i></i><i></i><b></b></div>
+                        <div class="party-person person-yellow"><i></i><i></i><b></b></div>
+                        <div class="party-person person-blue"><i></i><i></i><b></b></div>
+                        <div class="party-person person-purple"><i></i><i></i><b></b></div>
+                    </div>
+
+                    <div class="party-status">
+                        <span>4 answers are in</span>
+                        <div aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+                    </div>
+                </div>
+
+                <div class="phone-card" data-parallax-layer data-depth="0.82">
+                    <div class="phone-speaker" aria-hidden="true"></div>
+                    <p>YOUR CONTROLLER</p>
+                    <strong>Pick your favourite</strong>
+                    <button type="button" tabindex="-1">Jamie</button>
+                    <button type="button" tabindex="-1">Mika</button>
+                    <span>18s left</span>
+                </div>
+
+                <div class="reaction-bubble reaction-one" data-parallax-layer data-depth="1.05" aria-hidden="true">+500!</div>
+                <div class="reaction-bubble reaction-two" data-parallax-layer data-depth="0.7" aria-hidden="true">😂</div>
+            </div>
         </div>
     </section>
 
-    <section class="row g-4 mt-5" aria-label="How Quizizzo works">
-        <article class="col-md-4">
-            <div class="card h-100 p-4">
-                <h2 class="h4">One shared screen</h2>
-                <p class="mb-0">Pair a TV or projector once, then show the room code, games, reveals, and scores.</p>
+    <section class="game-strip" aria-label="Games included">
+        <p>Four ways to cause friendly chaos</p>
+        <div>
+            <span>ESTIMATE</span><i aria-hidden="true"></i>
+            <span>MAJORITY RULES</span><i aria-hidden="true"></i>
+            <span>BULLSHIT</span><i aria-hidden="true"></i>
+            <span>ANIMATES</span>
+        </div>
+    </section>
+
+    <section class="games-section page-width" aria-labelledby="games-title">
+        <div class="section-heading">
+            <p class="eyebrow">Pick your kind of ridiculous</p>
+            <h2 id="games-title">A party mix with actual personality.</h2>
+            <p>Quick guesses, suspicious bluffs, group votes, and tiny hand-drawn masterpieces.</p>
+        </div>
+
+        <div class="game-grid">
+            <article class="game-card game-card-estimate">
+                <div class="game-icon" aria-hidden="true">≈</div>
+                <p>GUESS CLOSEST</p>
+                <h3>Estimate</h3>
+                <span>Big questions. Wild guesses. Points for whoever gets closest.</span>
+            </article>
+            <article class="game-card game-card-majority">
+                <div class="game-icon" aria-hidden="true">62%</div>
+                <p>THINK ALIKE</p>
+                <h3>Majority Rules</h3>
+                <span>Write your answer, then back the response the room loves most.</span>
+            </article>
+            <article class="game-card game-card-bullshit">
+                <div class="game-icon" aria-hidden="true">?!</div>
+                <p>BLUFF WELL</p>
+                <h3>Bullshit</h3>
+                <span>Invent a convincing fake and lure your mates away from the truth.</span>
+            </article>
+            <article class="game-card game-card-animates">
+                <div class="game-icon animation-icon" aria-hidden="true"><i></i><i></i><i></i></div>
+                <p>DRAW TOGETHER</p>
+                <h3>AniMates</h3>
+                <span>Sketch a tiny animation, watch it move, then vote for a favourite.</span>
+            </article>
+        </div>
+    </section>
+
+    <section id="how-it-works" class="how-section" aria-labelledby="how-title">
+        <div class="page-width">
+            <div class="section-heading section-heading-centred">
+                <p class="eyebrow">From sofa to game night in three steps</p>
+                <h2 id="how-title">No setup speech required.</h2>
             </div>
-        </article>
-        <article class="col-md-4">
-            <div class="card h-100 p-4">
-                <h2 class="h4">Phones are controllers</h2>
-                <p class="mb-0">Players join without accounts and reconnect to the same character after a refresh.</p>
+
+            <ol class="step-grid">
+                <li>
+                    <span class="step-number">01</span>
+                    <div class="step-visual step-screen" aria-hidden="true"><i>Q</i><b>ZAPY</b></div>
+                    <h3>Open the big screen</h3>
+                    <p>Load Quizizzo on a TV, monitor, or projector and pair it once.</p>
+                </li>
+                <li>
+                    <span class="step-number">02</span>
+                    <div class="step-visual step-phones" aria-hidden="true"><i></i><i></i><i></i></div>
+                    <h3>Everyone joins</h3>
+                    <p>Players enter the four-letter room code on any phone—no account needed.</p>
+                </li>
+                <li>
+                    <span class="step-number">03</span>
+                    <div class="step-visual step-party" aria-hidden="true">🎉</div>
+                    <h3>Make some noise</h3>
+                    <p>Choose a game and let Quizizzo handle every round, reveal, and score.</p>
+                </li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="final-cta page-width" aria-labelledby="cta-title">
+        <div>
+            <p class="eyebrow">Your next running joke starts here</p>
+            <h2 id="cta-title">Ready to wake up the group chat?</h2>
+            <p>One big screen, a handful of phones, and absolutely no app installs.</p>
+            <div class="hero-actions final-actions">
+                <a class="hero-button hero-button-primary" href="/host">Host a party <span aria-hidden="true">→</span></a>
+                <a class="hero-button hero-button-secondary" href="/display">Set up the shared screen</a>
             </div>
-        </article>
-        <article class="col-md-4">
-            <div class="card h-100 p-4">
-                <h2 class="h4">Server-owned rules</h2>
-                <p class="mb-0">Deadlines, valid actions, hidden answers, voting, and scoring stay authoritative.</p>
-            </div>
-        </article>
+        </div>
+        <div class="cta-sticker" data-parallax-layer data-depth="0.55" aria-hidden="true">
+            <span>ROOM</span>
+            <strong>ZAPY</strong>
+            <i>LET'S GO!</i>
+        </div>
     </section>
 </div>

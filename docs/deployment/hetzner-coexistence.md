@@ -4,10 +4,13 @@ Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL service h
 
 ## Host-based reverse proxy
 
-Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production`, `QUIZIZZO_ALLOWED_HOSTS` to the exact new Quizizzo hostname, and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`, then run only:
+Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production`, `QUIZIZZO_ALLOWED_HOSTS` to the exact new Quizizzo hostname, and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`. Build or pull the immutable Quizizzo image, back up the Quizizzo database volume, apply migrations explicitly, and start only the Quizizzo services:
 
 ```text
-docker compose --project-name quizizzo up -d --build
+docker compose --project-name quizizzo build quizizzo
+docker compose --project-name quizizzo up -d postgres
+docker compose --project-name quizizzo run --rm migrate
+docker compose --project-name quizizzo up -d quizizzo
 ```
 
 Point only the new Quizizzo hostname in the existing Nginx/Caddy configuration to `http://127.0.0.1:8081`. Keep the `logiagraph.com` hostname, TLS configuration, and upstream unchanged. Forward the original scheme and client address. Quizizzo trusts one forwarded-header hop because its published port is loopback-only; do not expose that port on all host interfaces. Verify `/health/live` and `/health/ready` before enabling public traffic.
@@ -16,10 +19,10 @@ SignalR requires the new Quizizzo route to support WebSocket upgrades. For Nginx
 
 ## Containerized reverse proxy
 
-If the existing reverse proxy is a container, discover its existing external Docker network without changing it. Set `QUIZIZZO_PROXY_NETWORK` to that exact network name and run:
+If the existing reverse proxy is a container, discover its existing external Docker network without changing it. Set `QUIZIZZO_PROXY_NETWORK` to that exact network name. Use the same explicit build, PostgreSQL, and migration steps above, adding both Compose files to each command; then start the Quizizzo web service with:
 
 ```text
-docker compose --project-name quizizzo -f compose.yaml -f compose.proxy.yaml up -d --build
+docker compose --project-name quizizzo -f compose.yaml -f compose.proxy.yaml up -d quizizzo
 ```
 
 Add a separate Quizizzo hostname route to `http://quizizzo-web:8080` from that proxy. Do not edit the `logiagraph.com` router/service definition. The override only attaches the Quizizzo web service; PostgreSQL remains on its private network.
@@ -31,6 +34,7 @@ Whichever proxy is used, verify the browser can negotiate `/hubs/party` and upgr
 - Use `docker compose --project-name quizizzo ...` for every Quizizzo lifecycle command.
 - Capture `docker ps`, the existing proxy configuration, and the `logiagraph.com` health response before deployment; compare them after deployment.
 - Inspect the rendered model first with `docker compose --project-name quizizzo config`.
+- Run migrations only through `docker compose --project-name quizizzo run --rm migrate`; the ordinary web entry point never changes the schema.
 - Never run global `docker system prune`, broad container stop/remove commands, or reuse another stack's volume.
 - Do not publish PostgreSQL port 5432 on the VPS.
 - Back up `quizizzo-postgres-data` before migrations. Preserve `quizizzo-data-protection` across deployments so authentication and anonymous-session protection remain stable. Drawing assets expire after one day, so back up `quizizzo-drawing-assets` only when short-lived in-progress animations must survive a host recovery.

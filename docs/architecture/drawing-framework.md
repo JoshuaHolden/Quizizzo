@@ -1,12 +1,12 @@
 # Reusable drawing framework
 
-Milestone 9 provides a game-neutral phone drawing controller. It deliberately does not implement Animate This prompts, authoritative submissions, playback, voting, reveals, or scoring; those remain game-module work.
+Milestone 9 provides a game-neutral phone drawing controller. It deliberately does not implement AniMates prompts, authoritative submissions, playback, voting, reveals, or scoring; those remain game-module work.
 
 ## Canvas and frame configuration
 
 Every document uses fixed logical coordinates (512×512 by default) regardless of the canvas's CSS or device-pixel size. The JavaScript bridge translates Pointer Events from touch, stylus, and mouse input into logical points, uses pointer capture and coalesced samples, and schedules redraws to animation frames at the browser device-pixel ratio. Blazor is never called for individual pointer samples.
 
-Frame count is configuration, from 1 through 12. A one-frame drawing is a first-class mode: it uses the same document, canvas, strokes, draft, and export APIs, while frame navigation and onion-skin controls disappear and onion skin is forced off. Animate This can request three frames later without making three frames a framework assumption.
+Frame count is configuration, from 1 through 12. A one-frame drawing is a first-class mode: it uses the same document, canvas, strokes, draft, and export APIs, while frame navigation and onion-skin controls disappear and onion skin is forced off. AniMates can request three frames later without making three frames a framework assumption.
 
 The current frame is vector data made from bounded strokes and points. Pen colour and width persist between frames. Erasing is represented as a stroke using destination-out composition, so returning to the pen restores the previous colour and width. Undo and confirmed clear affect only the selected frame. Onion skin renders only the preceding frame on a separate transparent canvas at 20 percent opacity and is never baked into current-frame data.
 

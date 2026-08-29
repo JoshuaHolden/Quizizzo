@@ -10,7 +10,8 @@
                max="@Configuration.Maximum"
                step="@Configuration.Step"
                disabled="@Disabled"
-               @bind="value" />
+               @bind="value"
+               @bind:event="oninput" />
         @if (!string.IsNullOrWhiteSpace(Configuration.Suffix))
         {
             <span class="input-group-text">@Configuration.Suffix</span>
@@ -26,7 +27,7 @@
 
 @code {
     [Parameter, EditorRequired] public NumberControllerConfiguration Configuration { get; set; } = default!;
-    [Parameter] public string SubmitLabel { get; set; } = "Submit";
+    [Parameter] public string SubmitLabel { get; set; } = "Lock in my guess";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<long> Submitted { get; set; }
 

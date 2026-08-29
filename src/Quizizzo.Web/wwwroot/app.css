@@ -21,6 +21,10 @@ body {
     overflow-x: clip;
 }
 
+h1[tabindex="-1"]:focus {
+    outline: none;
+}
+
 img,
 svg,
 canvas {
@@ -77,6 +81,7 @@ select.form-select {
     background: #fff;
     border: 3px solid #052767;
     border-radius: 0.5rem;
+    clip-path: inset(0 0 100% 0);
     color: #052767;
     left: max(0.5rem, env(safe-area-inset-left));
     padding: 0.65rem 1rem;
@@ -87,7 +92,8 @@ select.form-select {
     z-index: 2000;
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
+    clip-path: inset(0);
     transform: translateY(0);
 }
 
@@ -324,6 +330,13 @@ fieldset {
 .display-overlay a,
 .display-overlay .qr-code {
     pointer-events: auto;
+}
+
+.display-connection-pill {
+    align-self: center;
+    min-width: 4rem;
+    padding: 0.35rem 0.75rem;
+    text-shadow: none;
 }
 
 .display-card {

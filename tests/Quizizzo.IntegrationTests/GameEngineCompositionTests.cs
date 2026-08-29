@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Quizizzo.GameEngine;
 using Quizizzo.Games.Estimate;
-using Quizizzo.Games.AnimateThis;
+using Quizizzo.Games.AniMates;
 using Quizizzo.Games.MajorityRules;
 using Quizizzo.Games.Bullshit;
 using Quizizzo.Infrastructure.Games;
@@ -29,7 +29,7 @@ public sealed class GameEngineCompositionTests : IClassFixture<WebApplicationFac
         Assert.IsType<PostgreSqlGameStateStore>(stateStore);
         var games = firstRuntime.ListGames();
         Assert.Contains(games, game => game.Key == EstimateGameModule.GameKey && game.DisplayName == "Estimate");
-        Assert.Contains(games, game => game.Key == AnimateThisGameModule.GameKey && game.DisplayName == "Animate This");
+        Assert.Contains(games, game => game.Key == AniMatesGameModule.GameKey && game.DisplayName == "AniMates");
         Assert.Contains(games, game => game.Key == MajorityRulesGameModule.GameKey && game.DisplayName == "Majority Rules");
         Assert.Contains(games, game => game.Key == BullshitGameModule.GameKey && game.DisplayName == "Bullshit");
     }

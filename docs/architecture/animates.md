@@ -1,6 +1,6 @@
-# Animate This
+# AniMates
 
-Animate This is a server-authoritative three-frame drawing and voting game built on the reusable drawing framework. Each participant receives a private action prompt. The display sees only completion progress during drawing, then anonymous animations during voting, and creator names only after the reveal.
+AniMates—animation with your mates—is a server-authoritative three-frame drawing and voting game built on the reusable drawing framework. Each participant receives a private action prompt. The display sees only completion progress during drawing, then anonymous animations during voting, and creator names only after the reveal.
 
 ## State machine
 

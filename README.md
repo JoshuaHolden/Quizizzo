@@ -12,11 +12,14 @@ Quizizzo is a real-time browser party-game platform built around a shared displa
 ## Run locally
 
 1. Copy `.env.example` to `.env` and replace its sample password.
-2. Start PostgreSQL with `docker compose up -d postgres`.
-3. Set the same connection string through user secrets or `ConnectionStrings__DefaultConnection`. Do not commit real credentials.
-4. Apply migrations:
-   `dotnet ef database update --project src/Quizizzo.Infrastructure --startup-project src/Quizizzo.Web`
-5. Run: `dotnet run --project src/Quizizzo.Web`.
+2. Build the application image: `docker compose --project-name quizizzo build quizizzo`.
+3. Start its private PostgreSQL service: `docker compose --project-name quizizzo up -d postgres`.
+4. Apply migrations from the application image on the private network:
+   `docker compose --project-name quizizzo run --rm migrate`.
+5. Start the web application: `docker compose --project-name quizizzo up -d quizizzo`.
+6. Open `http://localhost:8081` and verify `http://localhost:8081/health/ready`.
+
+The one-shot `migrate` service is opt-in and exits after applying EF Core migrations. It uses the same application image and private network as the web service, so PostgreSQL does not need a published host port. Container startup never applies schema changes implicitly.
 
 The template connection string in `appsettings.json` is local-development-only. Environment variables override it in containers and production.
 The sample `.env` opts into the Development environment for local Compose use; VPS deployments must set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production` (the Compose default).
@@ -44,11 +47,24 @@ dotnet build Quizizzo.sln --no-restore -c Release -p:TreatWarningsAsErrors=true
 dotnet test Quizizzo.sln --no-build
 ```
 
+With the app running at `http://localhost:8081`, run the repeatable Edge browser audit across desktop, tablet, and 320 px phone viewports:
+
+```powershell
+npm run test:browser
+```
+
+The public audit checks browser errors, accessible control names, accidental horizontal overflow, and user-facing action labels while retaining screenshots under `artifacts/playwright/`. The opt-in end-to-end party audit creates local development records and drives separate host, display, and player browser contexts through joining and an Estimate round:
+
+```powershell
+$env:QUIZIZZO_FULL_PARTY_AUDIT = '1'
+npx playwright test tests/browser/party-flow.spec.mjs --project=desktop-edge
+```
+
 Health endpoints are `/health/live` for process liveness and `/health/ready` for PostgreSQL readiness.
 
 ## Containers
 
-`docker compose up --build` starts the isolated `quizizzo` Compose project, web application, and private PostgreSQL network. PostgreSQL is not published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. PostgreSQL data, temporary drawing assets, and ASP.NET Core Data Protection keys use separate Quizizzo-specific volumes. Apply migrations as an explicit deployment step; container startup intentionally does not mutate the schema automatically.
+The local commands above start the isolated `quizizzo` Compose project, web application, and private PostgreSQL network. PostgreSQL is not published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. PostgreSQL data, temporary drawing assets, and ASP.NET Core Data Protection keys use separate Quizizzo-specific volumes. Apply migrations through the explicit one-shot `migrate` service before starting a new application version; ordinary container startup intentionally does not mutate the schema.
 
 Set `QUIZIZZO_ALLOWED_HOSTS` to the exact public Quizizzo hostname in production. The container runs as the built-in non-root `app` user, and `.dockerignore` excludes local secrets, tooling state, generated data, tests, and dependency folders from the image context.
 
@@ -84,9 +100,9 @@ The [reusable drawing framework](docs/architecture/drawing-framework.md) provide
 
 Large rendered assets are stored through `IDrawingAssetStore`. The initial bounded WebP/PNG adapter uses the persistent, stack-specific `quizizzo-drawing-assets` Compose volume and can later be replaced with object storage. Assets expire after one day by default and an hourly worker removes expired files and PostgreSQL metadata. Image bytes never enter PostgreSQL.
 
-## Animate This
+## AniMates
 
-[Animate This](docs/architecture/animate-this.md) assigns private action prompts and runs a server-owned drawing, anonymous playback/voting, creator reveal, and scoring state machine. Phones export validated 512×512 PNG frames through an idempotent same-origin upload rather than SignalR; PostgreSQL stores only bounded ownership/expiry metadata while the dedicated asset volume stores bytes. Phaser cycles the three frames on the shared display, and refreshes reconstruct drawing or submitted/voted state from durable player and game identities.
+[AniMates](docs/architecture/animates.md)—animation with your mates—assigns private action prompts and runs a server-owned drawing, anonymous playback/voting, creator reveal, and scoring state machine. Phones export validated 512×512 PNG frames through an idempotent same-origin upload rather than SignalR; PostgreSQL stores only bounded ownership/expiry metadata while the dedicated asset volume stores bytes. Phaser cycles the three frames on the shared display, and refreshes reconstruct drawing or submitted/voted state from durable player and game identities.
 
 ## Majority Rules
 

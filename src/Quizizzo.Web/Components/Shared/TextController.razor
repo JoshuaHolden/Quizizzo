@@ -24,7 +24,7 @@
 
 @code {
     [Parameter, EditorRequired] public TextControllerConfiguration Configuration { get; set; } = default!;
-    [Parameter] public string SubmitLabel { get; set; } = "Submit answer";
+    [Parameter] public string SubmitLabel { get; set; } = "Send my answer";
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<string> Submitted { get; set; }
 

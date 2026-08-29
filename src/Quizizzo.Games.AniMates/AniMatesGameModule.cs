@@ -253,7 +253,7 @@ public sealed class AniMatesGameModule(
                     PlayerControllerKind.Drawing,
                     SubmitAnimationAction.ActionKind,
                     true,
-                    "Submit animation",
+                    "Send my animation",
                     GameJson.From(new DrawingControllerConfiguration(
                         LogicalSize,
                         LogicalSize,
@@ -283,7 +283,7 @@ public sealed class AniMatesGameModule(
                         PlayerControllerKind.Vote,
                         VoteForAnimationAction.ActionKind,
                         true,
-                        "Lock in vote",
+                        "Cast my vote",
                         GameJson.From(new VoteControllerConfiguration(
                             options,
                             null,
