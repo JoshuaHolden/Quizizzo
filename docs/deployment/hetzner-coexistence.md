@@ -25,7 +25,9 @@ The IPv6 value is the allocated `/64` prefix shown by Hetzner, not a confirmed i
 - The root-owned `/usr/local/sbin/quizizzo-ops` script and exact sudo policy permit `quizizzo-deploy` to run only bounded `preflight`, `backup`, immutable `deploy`, and immutable `rollback` operations; arbitrary shell and Docker sudo remain denied.
 - A real custom-format backup in `/opt/quizizzo/backups` passed checksum and `pg_restore --list` verification while all protected Logiagraph containers remained healthy.
 - The protected GitHub `production` environment requires approval and stores only the dedicated `quizizzo-deploy` key. Its host key is pinned rather than discovered during a deployment.
-- The installed Logiagraph Cloudflare origin certificate covers only `logiagraph.com` and `*.logiagraph.com`; Quizizzo needs a separate origin certificate before its Nginx site can be enabled.
+- Quizizzo has a separate Cloudflare Origin CA certificate covering `quizizzo.com` and `*.quizizzo.com`; its private key is root-owned with mode `600` and is not stored in the repository.
+- `/etc/nginx/sites-enabled/quizizzo` uses the repository template at `scripts/deployment/quizizzo.nginx.conf`, proxies only `quizizzo.com` to loopback port `8081`, and permanently redirects `www.quizizzo.com` to the apex while preserving path and query.
+- Cloudflare proxies the apex and `www` records to `77.42.77.85` in Full (strict) mode. Public apex live/ready checks and the `www` redirect were verified after cutover while the Logiagraph configuration and container identities remained unchanged.
 
 ## Host-based reverse proxy
 
