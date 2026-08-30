@@ -24,7 +24,16 @@ The first successful `main` publication creates the package if necessary. In the
 
 ## Stage 3 — Hetzner deployment preparation
 
-Pending. Provision a least-privilege deployment user, host key pinning, a server-side deployment directory and production `.env`, explicit Compose project isolation, persistent-volume backup procedure, and read-only preflight checks. This stage will prove commands manually without granting GitHub deployment authority.
+Completed 2026-08-30. The `quizizzo-deploy` account uses a dedicated SSH key and has no direct Docker access, unrestricted sudo, or write access to `/opt/quizizzo`. Root owns the validated Compose file and mode-600 production environment. The immutable GHCR image is publicly readable, so no package credential is stored on the VPS.
+
+The root-owned `scripts/deployment/quizizzo-ops` command exposes two bounded Stage 3 operations:
+
+- `preflight` validates ownership, secret permissions, immutable image naming and availability, Compose configuration, Nginx configuration, disk capacity, port `8081`, and the protected Logiagraph containers.
+- `backup` requires healthy Quizizzo PostgreSQL, writes a timestamped custom-format `pg_dump` through a temporary file, and records a SHA-256 checksum under root-only `/opt/quizizzo/backups`.
+
+The sudo policy permits `quizizzo-deploy` to invoke only those exact subcommands. It does not yet grant deploy, migration, rollback, arbitrary Docker, shell, editor, or file-copy authority. GitHub still has no Hetzner credential.
+
+The manual proof passed through the restricted account. Preflight validated the immutable image, Nginx, Compose model, port, disk, and protected containers. Only private Quizizzo PostgreSQL was started; `backup` created a root-only custom-format archive and checksum, `sha256sum` verified it, and PostgreSQL `pg_restore --list` read it successfully. Logiagraph's app, PostgreSQL, and Redis containers remained healthy and unchanged throughout.
 
 ## Stage 4 — Controlled production deployment
 

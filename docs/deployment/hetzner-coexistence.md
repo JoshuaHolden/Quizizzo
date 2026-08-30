@@ -12,6 +12,19 @@ Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL and Redis
 
 The IPv6 value is the allocated `/64` prefix shown by Hetzner, not a confirmed individual host address. Confirm the server's selected IPv6 address before creating an `AAAA` record or firewall rule.
 
+### Verified host baseline (2026-08-30)
+
+- Ubuntu 24.04.3 LTS, Docker 29.1.4, and Docker Compose 5.0.1.
+- Nginx is the host reverse proxy; Logiagraph uses `/etc/nginx/sites-enabled/logiagraph` and proxies to port `8080`.
+- The existing `logiagraph` Compose project has healthy `app`, `postgres`, and `redis` containers on its own network.
+- Port `8081` is available for Quizizzo's loopback-only binding and the root filesystem has approximately 132 GB free.
+- UFW is currently inactive. The existing Logiagraph app and PostgreSQL ports are bound on all IPv4/IPv6 interfaces; this is a pre-existing condition and must not be changed as part of a Quizizzo deployment.
+- The restricted `quizizzo-deploy` account can authenticate only with the dedicated Quizizzo key and has no unrestricted sudo, direct Docker access, or write access to `/opt/quizizzo`.
+- `/opt/quizizzo/compose.yaml` is root-owned; `/opt/quizizzo/.env` is root-only and pins the immutable GHCR image, production environment, allowed hosts, loopback port, and generated database/Redis secrets.
+- The immutable GHCR package is publicly readable, so the VPS requires no registry credential.
+- The root-owned `/usr/local/sbin/quizizzo-ops` script and exact sudo policy permit `quizizzo-deploy` to run only `preflight` and `backup`; arbitrary shell and Docker sudo remain denied.
+- A real custom-format backup in `/opt/quizizzo/backups` passed checksum and `pg_restore --list` verification while all protected Logiagraph containers remained healthy.
+
 ## Host-based reverse proxy
 
 Set `QUIZIZZO_ASPNETCORE_ENVIRONMENT=Production`, `QUIZIZZO_ALLOWED_HOSTS` to the exact new Quizizzo hostname, and an unused loopback port in the VPS `.env`, for example `QUIZIZZO_HTTP_PORT=8081`. Build or pull the immutable Quizizzo image, back up the Quizizzo database volume, apply migrations explicitly, and start only the Quizizzo services:

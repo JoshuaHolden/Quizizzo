@@ -1,0 +1,123 @@
+#!/bin/sh
+
+set -eu
+
+app_root=/opt/quizizzo
+compose_file="$app_root/compose.yaml"
+env_file="$app_root/.env"
+backup_root="$app_root/backups"
+project_name=quizizzo
+
+compose()
+{
+    docker compose \
+        --project-name "$project_name" \
+        --env-file "$env_file" \
+        --file "$compose_file" \
+        "$@"
+}
+
+read_image()
+{
+    sed -n 's/^QUIZIZZO_IMAGE=//p' "$env_file"
+}
+
+require_baseline()
+{
+    test -f "$compose_file"
+    test -f "$env_file"
+    test "$(stat -c '%U:%G' "$compose_file")" = "root:root"
+    test "$(stat -c '%U:%G' "$env_file")" = "root:root"
+    test "$(stat -c '%a' "$env_file")" = "600"
+
+    image=$(read_image)
+    case "$image" in
+        ghcr.io/joshuaholden/quizizzo:sha-????????????????????????????????????????)
+            ;;
+        *)
+            echo "The configured image is not an immutable Quizizzo commit tag." >&2
+            exit 1
+            ;;
+    esac
+
+    compose config --quiet
+}
+
+preflight()
+{
+    require_baseline
+
+    image=$(read_image)
+    docker manifest inspect "$image" >/dev/null
+    nginx -t >/dev/null
+
+    available_kb=$(df --output=avail / | tail -n 1 | tr -d ' ')
+    if [ "$available_kb" -lt 5242880 ]; then
+        echo "Less than 5 GiB is available on the root filesystem." >&2
+        exit 1
+    fi
+
+    if ss -H -ltn 'sport = :8081' | grep -q .; then
+        owner=$(docker ps \
+            --filter publish=8081 \
+            --format '{{.Names}}' | head -n 1)
+        if [ "$owner" != "quizizzo-web" ]; then
+            echo "Port 8081 is occupied by an unexpected process or container." >&2
+            exit 1
+        fi
+    fi
+
+    for container in logiagraph-app logiagraph-postgres logiagraph-redis; do
+        running=$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)
+        if [ "$running" != "true" ]; then
+            echo "Protected container $container is not running." >&2
+            exit 1
+        fi
+    done
+
+    echo "Quizizzo preflight passed."
+}
+
+backup()
+{
+    require_baseline
+    install -d -m 700 -o root -g root "$backup_root"
+
+    postgres_id=$(compose ps --quiet postgres)
+    if [ -z "$postgres_id" ] ||
+        [ "$(docker inspect --format '{{.State.Health.Status}}' "$postgres_id")" != "healthy" ]; then
+        echo "Quizizzo PostgreSQL is not healthy; no backup was created." >&2
+        exit 1
+    fi
+
+    timestamp=$(date -u +%Y%m%dT%H%M%SZ)
+    destination="$backup_root/quizizzo-$timestamp.dump"
+    temporary="$destination.partial"
+
+    trap 'rm -f "$temporary"' EXIT HUP INT TERM
+    compose exec -T postgres \
+        pg_dump --username quizizzo --dbname quizizzo --format custom > "$temporary"
+    test -s "$temporary"
+    chmod 600 "$temporary"
+    mv "$temporary" "$destination"
+    sha256sum "$destination" > "$destination.sha256"
+    chmod 600 "$destination.sha256"
+    trap - EXIT HUP INT TERM
+
+    echo "Created $(basename "$destination")"
+}
+
+case "${1:-}" in
+    preflight)
+        test "$#" -eq 1
+        preflight
+        ;;
+    backup)
+        test "$#" -eq 1
+        backup
+        ;;
+    *)
+        echo "Usage: $0 {preflight|backup}" >&2
+        exit 64
+        ;;
+esac
