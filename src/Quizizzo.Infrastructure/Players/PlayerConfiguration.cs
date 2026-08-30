@@ -45,6 +45,7 @@ internal sealed class PlayerConfiguration : IEntityTypeConfiguration<Player>
             character.Property(value => value.ShoeStyle).HasColumnName("CharacterShoeStyle").HasConversion<int>();
             character.Property(value => value.ShirtStyle).HasColumnName("CharacterShirtStyle").HasConversion<int>();
             character.Property(value => value.TrouserStyle).HasColumnName("CharacterTrouserStyle").HasConversion<int>();
+            character.Property(value => value.BodySize).HasColumnName("CharacterBodySize").HasConversion<int>();
             character.Property(value => value.ShirtColour).HasColumnName("CharacterShirtColour").HasConversion<int>();
             character.Property(value => value.TrouserColour).HasColumnName("CharacterTrouserColour").HasConversion<int>();
             character.Property(value => value.TrouserLength).HasColumnName("CharacterTrouserLength").HasConversion<int>();

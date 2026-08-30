@@ -42,7 +42,8 @@ public sealed record PhaserCharacterSnapshot(
     int BrowShape,
     int ShoeStyle,
     int ShirtStyle,
-    int TrouserStyle);
+    int TrouserStyle,
+    string BodySize);
 
 public sealed record PhaserResultSnapshot(
     string PlayerId,
@@ -105,7 +106,8 @@ public static class PhaserPresentationMapper
                 (int)player.Character.BrowShape,
                 (int)player.Character.ShoeStyle,
                 (int)player.Character.ShirtStyle,
-                (int)player.Character.TrouserStyle))).ToArray();
+                (int)player.Character.TrouserStyle,
+                player.Character.BodySize.ToString()))).ToArray();
         var results = game?.Entries
             .Where(entry => entry.Rank.HasValue)
             .Select(entry => new PhaserResultSnapshot(

@@ -300,19 +300,29 @@ window.quizizzoPresentation = (() => {
                 return image;
             };
             if (mode === "full") {
-                add(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.72, 1);
-                add(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
-                add(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
-                add(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
-                add(166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
-                add(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
-                add(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
-                add(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
-                add(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
-                add(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
-                add(66, 505, "shoes", variants.shoe).setScale(.86);
-                add(0, 200, "shirts", `${variants.shirt}Shirt${variants.shirtStyle}.png`, .5, 0);
-                add(0, 341, "pants", `${variants.pants}${variants.trouserStyle}.png`, .5, 0);
+                const bodyParts = [];
+                const addBodyPart = (...args) => {
+                    const part = add(...args);
+                    bodyParts.push(part);
+                    return part;
+                };
+                addBodyPart(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.72, 1);
+                addBodyPart(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
+                addBodyPart(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
+                addBodyPart(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
+                addBodyPart(166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
+                addBodyPart(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
+                addBodyPart(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
+                addBodyPart(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
+                addBodyPart(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
+                addBodyPart(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
+                addBodyPart(66, 505, "shoes", variants.shoe).setScale(.86);
+                addBodyPart(0, 200, "shirts", `${variants.shirt}Shirt${variants.shirtStyle}.png`, .5, 0);
+                addBodyPart(0, 341, "pants", `${variants.pants}${variants.trouserStyle}.png`, .5, 0);
+                bodyParts.forEach(part => {
+                    part.x *= variants.bodyWidth;
+                    part.scaleX *= variants.bodyWidth;
+                });
             }
 
             add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0).setScale(variants.faceWidth, 1);
@@ -327,6 +337,7 @@ window.quizizzoPresentation = (() => {
             avatar.character.setScale(mode === "full" ? .31 : .5);
             avatar.character.setPosition(0, mode === "full" ? -160 : -78);
             avatar.shadow.setVisible(mode === "full");
+            avatar.shadow.setScale(variants.bodyWidth, 1);
             avatar.mode = mode;
         }
 
@@ -337,6 +348,7 @@ window.quizizzoPresentation = (() => {
                 : body[character.bodyType] || 1;
             const presentation = character.presentation ||
                 (["Blob", "Square"].includes(character.bodyType) ? "Woman" : "Man");
+            const bodyWidth = { Thin: .84, Normal: 1, Thick: 1.16 }[character.bodySize] || 1;
             const legacyHair = {
                 Bright: `blonde${presentation}1.png`,
                 Sleepy: `brown1${presentation}${presentation === "Man" ? 5 : 3}.png`,
@@ -379,6 +391,7 @@ window.quizizzoPresentation = (() => {
             return {
                 skin,
                 presentation,
+                bodyWidth,
                 hair,
                 eye,
                 brow: `${hairPrefix || browPrefix}Brow${browShape}.png`,

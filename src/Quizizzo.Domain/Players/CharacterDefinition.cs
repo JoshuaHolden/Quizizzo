@@ -37,6 +37,7 @@ public enum CharacterAccessory
 }
 
 public enum CharacterPresentation { Man, Woman }
+public enum CharacterBodySize { Thin, Normal, Thick }
 public enum CharacterSkinTone { Tint1 = 1, Tint3 = 3, Tint5 = 5, Tint7 = 7 }
 public enum CharacterHairColour { Brown, Black, Blonde, Red }
 public enum CharacterHairStyle { Style1 = 1, Style2, Style3, Style4, Style5, Style6, Style7, Style8 }
@@ -100,6 +101,7 @@ public sealed class CharacterDefinition
             ? CharacterShirtStyle.Style4
             : CharacterShirtStyle.Style1;
         TrouserStyle = CharacterTrouserStyle.Style1;
+        BodySize = CharacterBodySize.Normal;
         ShirtColour = CharacterShirtColour.Navy;
         TrouserColour = CharacterTrouserColour.Navy;
         TrouserLength = CharacterTrouserLength.FullLength;
@@ -123,7 +125,8 @@ public sealed class CharacterDefinition
         CharacterBrowShape browShape = CharacterBrowShape.Brow1,
         CharacterShoeStyle shoeStyle = CharacterShoeStyle.Style1,
         CharacterShirtStyle shirtStyle = CharacterShirtStyle.Default,
-        CharacterTrouserStyle trouserStyle = CharacterTrouserStyle.Style1)
+        CharacterTrouserStyle trouserStyle = CharacterTrouserStyle.Style1,
+        CharacterBodySize bodySize = CharacterBodySize.Normal)
     {
         EnsureDefined(presentation);
         EnsureDefined(skinTone);
@@ -142,6 +145,7 @@ public sealed class CharacterDefinition
         EnsureDefined(shoeStyle);
         EnsureDefined(shirtStyle);
         EnsureDefined(trouserStyle);
+        EnsureDefined(bodySize);
         if (presentation == CharacterPresentation.Woman && hairStyle > CharacterHairStyle.Style6)
         {
             throw new ArgumentOutOfRangeException(nameof(hairStyle));
@@ -172,6 +176,7 @@ public sealed class CharacterDefinition
         ShoeStyle = shoeStyle;
         ShirtStyle = resolvedShirtStyle;
         TrouserStyle = trouserStyle;
+        BodySize = bodySize;
         BodyType = presentation == CharacterPresentation.Woman ? CharacterBodyType.Blob : CharacterBodyType.Bean;
         PrimaryColour = shirtColour switch
         {
@@ -202,6 +207,7 @@ public sealed class CharacterDefinition
     public CharacterShoeStyle ShoeStyle { get; private set; } = CharacterShoeStyle.Style1;
     public CharacterShirtStyle ShirtStyle { get; private set; } = CharacterShirtStyle.Default;
     public CharacterTrouserStyle TrouserStyle { get; private set; } = CharacterTrouserStyle.Style1;
+    public CharacterBodySize BodySize { get; private set; } = CharacterBodySize.Normal;
     public CharacterShirtColour ShirtColour { get; private set; }
     public CharacterTrouserColour TrouserColour { get; private set; }
     public CharacterTrouserLength TrouserLength { get; private set; }

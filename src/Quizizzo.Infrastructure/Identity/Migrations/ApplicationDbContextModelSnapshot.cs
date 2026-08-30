@@ -611,6 +611,10 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                                 .HasColumnType("integer")
                                 .HasColumnName("CharacterBodyType");
 
+                            b1.Property<int>("BodySize")
+                                .HasColumnType("integer")
+                                .HasColumnName("CharacterBodySize");
+
                             b1.Property<int>("BrowShape")
                                 .HasColumnType("integer")
                                 .HasColumnName("CharacterBrowShape");

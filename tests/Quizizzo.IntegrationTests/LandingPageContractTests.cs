@@ -139,6 +139,11 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("[1, 2, 3, 5, 6, 7]", designer, StringComparison.Ordinal);
         Assert.Contains("syncShirtStyles(form)", designer, StringComparison.Ordinal);
+        Assert.Contains("Thin: .84, Normal: 1, Thick: 1.16", designer,
+            StringComparison.Ordinal);
+        Assert.Contains("part.scaleX *= bodyWidth", designer, StringComparison.Ordinal);
+        Assert.Contains("part.scaleX *= variants.bodyWidth", presentation,
+            StringComparison.Ordinal);
         Assert.Contains("`tint${skin}_head.png`, .5, 0", designer,
             StringComparison.Ordinal);
     }

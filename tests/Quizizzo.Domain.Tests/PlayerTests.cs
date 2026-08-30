@@ -80,6 +80,25 @@ public sealed class PlayerTests
             CreateDesignedCharacter(CharacterPresentation.Woman, shirtStyle));
     }
 
+    [Theory]
+    [InlineData(CharacterBodySize.Thin)]
+    [InlineData(CharacterBodySize.Normal)]
+    [InlineData(CharacterBodySize.Thick)]
+    public void Designed_characters_preserve_the_selected_body_size(CharacterBodySize bodySize)
+    {
+        var character = new CharacterDefinition(
+            CharacterPresentation.Man,
+            CharacterSkinTone.Tint1,
+            CharacterHairColour.Brown,
+            CharacterShirtColour.Navy,
+            CharacterTrouserColour.Navy,
+            CharacterTrouserLength.FullLength,
+            CharacterShoeColour.Brown,
+            bodySize: bodySize);
+
+        Assert.Equal(bodySize, character.BodySize);
+    }
+
     private static CharacterDefinition CreateDesignedCharacter(
         CharacterPresentation presentation,
         CharacterShirtStyle shirtStyle) => new(

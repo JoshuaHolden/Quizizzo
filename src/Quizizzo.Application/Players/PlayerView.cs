@@ -23,7 +23,8 @@ public sealed record CharacterView(
     CharacterBrowShape BrowShape = CharacterBrowShape.Brow1,
     CharacterShoeStyle ShoeStyle = CharacterShoeStyle.Style1,
     CharacterShirtStyle ShirtStyle = CharacterShirtStyle.Default,
-    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1);
+    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1,
+    CharacterBodySize BodySize = CharacterBodySize.Normal);
 
 public sealed record CharacterSelection(
     CharacterPresentation Presentation,
@@ -42,13 +43,14 @@ public sealed record CharacterSelection(
     CharacterBrowShape BrowShape = CharacterBrowShape.Brow1,
     CharacterShoeStyle ShoeStyle = CharacterShoeStyle.Style1,
     CharacterShirtStyle ShirtStyle = CharacterShirtStyle.Default,
-    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1)
+    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1,
+    CharacterBodySize BodySize = CharacterBodySize.Normal)
 {
     public CharacterDefinition ToDefinition() => new(
         Presentation, SkinTone, HairColour, ShirtColour,
         TrouserColour, TrouserLength, ShoeColour, HairStyle,
         EyeColour, EyeSize, FaceShape, NoseShape, Mouth, BrowShape,
-        ShoeStyle, ShirtStyle, TrouserStyle);
+        ShoeStyle, ShirtStyle, TrouserStyle, BodySize);
 }
 
 public sealed record PlayerView(

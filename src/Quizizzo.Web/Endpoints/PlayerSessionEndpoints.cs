@@ -57,7 +57,8 @@ public static class PlayerSessionEndpoints
                 ParseChoiceOrDefault(form["browShape"].ToString(), CharacterBrowShape.Brow1),
                 ParseChoiceOrDefault(form["shoeStyle"].ToString(), CharacterShoeStyle.Style1),
                 ParseChoiceOrDefault(form["shirtStyle"].ToString(), CharacterShirtStyle.Default),
-                ParseChoiceOrDefault(form["trouserStyle"].ToString(), CharacterTrouserStyle.Style1));
+                ParseChoiceOrDefault(form["trouserStyle"].ToString(), CharacterTrouserStyle.Style1),
+                ParseChoiceOrDefault(form["bodySize"].ToString(), CharacterBodySize.Normal));
             context.Request.Cookies.TryGetValue(PlayerCookieName, out var existingSessionToken);
 
             var joined = await players.JoinAsync(

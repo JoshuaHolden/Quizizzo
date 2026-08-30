@@ -194,7 +194,8 @@ public sealed class PlayerService(
             player.Character.BrowShape,
             player.Character.ShoeStyle,
             player.Character.ShirtStyle,
-            player.Character.TrouserStyle),
+            player.Character.TrouserStyle,
+            player.Character.BodySize),
         player.JoinedAt,
         player.LastSeenAt);
 }
