@@ -24,8 +24,7 @@ read_image()
 
 validate_image()
 {
-    image=$1
-    if ! printf '%s\n' "$image" |
+    if ! printf '%s\n' "$1" |
         grep -Eq '^ghcr\.io/joshuaholden/quizizzo:sha-[0-9a-f]{40}$'; then
         echo "The image must be an immutable Quizizzo commit tag." >&2
         exit 1
@@ -34,12 +33,13 @@ validate_image()
 
 compose_with_image()
 {
-    image=$1
+    target_image=$1
     shift
-    (
-        export QUIZIZZO_IMAGE="$image"
-        compose "$@"
-    )
+    env QUIZIZZO_IMAGE="$target_image" docker compose \
+        --project-name "$project_name" \
+        --env-file "$env_file" \
+        --file "$compose_file" \
+        "$@"
 }
 
 require_baseline()
@@ -50,8 +50,8 @@ require_baseline()
     test "$(stat -c '%U:%G' "$env_file")" = "root:root"
     test "$(stat -c '%a' "$env_file")" = "600"
 
-    image=$(read_image)
-    validate_image "$image"
+    configured_image=$(read_image)
+    validate_image "$configured_image"
 
     compose config --quiet
 }
@@ -78,9 +78,18 @@ preflight()
 {
     require_baseline
 
-    image=$(read_image)
-    docker manifest inspect "$image" >/dev/null
+    configured_image=$(read_image)
+    docker manifest inspect "$configured_image" >/dev/null
     nginx -t >/dev/null
+
+    web_id=$(compose ps --quiet quizizzo)
+    if [ -n "$web_id" ]; then
+        running_image=$(docker inspect --format '{{.Config.Image}}' "$web_id")
+        if [ "$running_image" != "$configured_image" ]; then
+            echo "Configured and running Quizizzo images do not match." >&2
+            exit 1
+        fi
+    fi
 
     available_kb=$(df --output=avail / | tail -n 1 | tr -d ' ')
     if [ "$available_kb" -lt 5242880 ]; then
@@ -172,27 +181,34 @@ wait_for_health()
 release()
 {
     operation=$1
-    image=$2
-    validate_image "$image"
+    target_image=$2
+    validate_image "$target_image"
     require_baseline
     preflight
-    docker manifest inspect "$image" >/dev/null
+    docker manifest inspect "$target_image" >/dev/null
 
     previous=$(read_image)
     protected_before=$(protected_container_ids)
 
-    docker pull "$image"
-    compose_with_image "$image" up -d --wait postgres redis
+    docker pull "$target_image"
+    compose_with_image "$target_image" up -d --wait postgres redis
     backup
 
     if [ "$operation" = "deploy" ]; then
-        compose_with_image "$image" run --rm migrate
+        compose_with_image "$target_image" run --rm migrate
     fi
 
-    compose_with_image "$image" up -d --no-deps --force-recreate quizizzo
+    compose_with_image "$target_image" up -d --no-deps --force-recreate quizizzo
     if ! wait_for_health; then
         echo "Quizizzo health verification failed." >&2
         echo "Rollback target: $previous" >&2
+        exit 1
+    fi
+
+    web_id=$(compose_with_image "$target_image" ps --quiet quizizzo)
+    running_image=$(docker inspect --format '{{.Config.Image}}' "$web_id")
+    if [ "$running_image" != "$target_image" ]; then
+        echo "Running Quizizzo image does not match the requested immutable image." >&2
         exit 1
     fi
 
@@ -202,8 +218,8 @@ release()
         exit 1
     fi
     require_protected_containers
-    record_image "$image" "$previous"
-    echo "Quizizzo $operation completed with $image"
+    record_image "$target_image" "$previous"
+    echo "Quizizzo $operation completed with $target_image"
 }
 
 case "${1:-}" in
