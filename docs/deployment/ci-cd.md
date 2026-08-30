@@ -37,7 +37,13 @@ The manual proof passed through the restricted account. Preflight validated the 
 
 ## Stage 4 — Controlled production deployment
 
-Pending. A protected GitHub production environment will require approval before connecting to Hetzner. Deployment will pull one immutable SHA image, back up Quizizzo data, run the one-shot migration service, replace only the Quizizzo web service, and verify live and ready health endpoints plus the public HTTPS route. It must never prune Docker or alter the existing `logiagraph.com` stack.
+In progress. The GitHub `production` environment requires approval by `JoshuaHolden` and holds the dedicated deployment private key. Host, user, and the pinned ED25519 SSH host key are environment variables. Repository and CI jobs have no access to the deployment identity.
+
+`.github/workflows/deploy.yml` is manual-only and requires a `deploy` or `rollback` choice plus a full lowercase commit SHA. It uses strict host-key checking and invokes only the root-owned operation allowed by the server sudo policy. The server independently validates the resulting `ghcr.io/joshuaholden/quizizzo:sha-<40 hex>` reference.
+
+`deploy` re-runs preflight, pulls one immutable image, starts the private dependencies, creates a database backup, runs the explicit one-shot migration service, replaces only Quizizzo web, and requires both loopback live and ready health checks before recording the release. `rollback` creates another backup, replaces only Quizizzo web without attempting to reverse database migrations, and applies the same health and protected-container checks. Neither operation prunes Docker or runs Compose outside the `quizizzo` project.
+
+Public HTTPS verification remains pending. `quizizzo.com` already uses Cloudflare DNS, but the VPS currently has only a Cloudflare origin certificate for `logiagraph.com`; that certificate must never be reused for Quizizzo. Install a separate Quizizzo origin certificate and Nginx site before enabling or testing the public route.
 
 ## Stage 5 — Rollback proof
 

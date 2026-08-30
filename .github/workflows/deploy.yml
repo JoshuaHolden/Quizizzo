@@ -1,0 +1,96 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Release operation
+        required: true
+        type: choice
+        options:
+          - deploy
+          - rollback
+      commit_sha:
+        description: Full 40-character commit SHA whose immutable image should run
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quizizzo-production
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ghcr.io/joshuaholden/quizizzo
+
+jobs:
+  release:
+    name: ${{ inputs.operation }} production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: production
+
+    steps:
+      - name: Validate immutable release input
+        env:
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+        run: |
+          if ! printf '%s\n' "${RELEASE_SHA}" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "commit_sha must be a full lowercase 40-character Git commit SHA." >&2
+            exit 1
+          fi
+
+      - name: Install pinned SSH identity
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.HETZNER_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ vars.HETZNER_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 "${HOME}/.ssh"
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > "${HOME}/.ssh/quizizzo_deploy"
+          printf '%s\n' "${SSH_KNOWN_HOSTS}" > "${HOME}/.ssh/known_hosts"
+          chmod 600 "${HOME}/.ssh/quizizzo_deploy" "${HOME}/.ssh/known_hosts"
+
+      - name: Run server preflight
+        env:
+          SSH_HOST: ${{ vars.HETZNER_HOST }}
+          SSH_USER: ${{ vars.HETZNER_USER }}
+        run: |
+          ssh \
+            -i "${HOME}/.ssh/quizizzo_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "${SSH_USER}@${SSH_HOST}" \
+            'sudo -n /usr/local/sbin/quizizzo-ops preflight'
+
+      - name: Run protected release operation
+        env:
+          OPERATION: ${{ inputs.operation }}
+          RELEASE_SHA: ${{ inputs.commit_sha }}
+          SSH_HOST: ${{ vars.HETZNER_HOST }}
+          SSH_USER: ${{ vars.HETZNER_USER }}
+        run: |
+          image_ref="${IMAGE_NAME}:sha-${RELEASE_SHA}"
+          ssh \
+            -i "${HOME}/.ssh/quizizzo_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "${SSH_USER}@${SSH_HOST}" \
+            "sudo -n /usr/local/sbin/quizizzo-ops ${OPERATION} ${image_ref}"
+          echo "${OPERATION} completed for \`${image_ref}\`." >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Verify final server preflight
+        env:
+          SSH_HOST: ${{ vars.HETZNER_HOST }}
+          SSH_USER: ${{ vars.HETZNER_USER }}
+        run: |
+          ssh \
+            -i "${HOME}/.ssh/quizizzo_deploy" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "${SSH_USER}@${SSH_HOST}" \
+            'sudo -n /usr/local/sbin/quizizzo-ops preflight'

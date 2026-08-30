@@ -24,6 +24,8 @@ The IPv6 value is the allocated `/64` prefix shown by Hetzner, not a confirmed i
 - The immutable GHCR package is publicly readable, so the VPS requires no registry credential.
 - The root-owned `/usr/local/sbin/quizizzo-ops` script and exact sudo policy permit `quizizzo-deploy` to run only `preflight` and `backup`; arbitrary shell and Docker sudo remain denied.
 - A real custom-format backup in `/opt/quizizzo/backups` passed checksum and `pg_restore --list` verification while all protected Logiagraph containers remained healthy.
+- The protected GitHub `production` environment requires approval and stores only the dedicated `quizizzo-deploy` key. Its host key is pinned rather than discovered during a deployment.
+- The installed Logiagraph Cloudflare origin certificate covers only `logiagraph.com` and `*.logiagraph.com`; Quizizzo needs a separate origin certificate before its Nginx site can be enabled.
 
 ## Host-based reverse proxy
 

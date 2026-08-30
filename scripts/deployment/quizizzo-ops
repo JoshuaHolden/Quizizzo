@@ -22,6 +22,26 @@ read_image()
     sed -n 's/^QUIZIZZO_IMAGE=//p' "$env_file"
 }
 
+validate_image()
+{
+    image=$1
+    if ! printf '%s\n' "$image" |
+        grep -Eq '^ghcr\.io/joshuaholden/quizizzo:sha-[0-9a-f]{40}$'; then
+        echo "The image must be an immutable Quizizzo commit tag." >&2
+        exit 1
+    fi
+}
+
+compose_with_image()
+{
+    image=$1
+    shift
+    (
+        export QUIZIZZO_IMAGE="$image"
+        compose "$@"
+    )
+}
+
 require_baseline()
 {
     test -f "$compose_file"
@@ -31,16 +51,27 @@ require_baseline()
     test "$(stat -c '%a' "$env_file")" = "600"
 
     image=$(read_image)
-    case "$image" in
-        ghcr.io/joshuaholden/quizizzo:sha-????????????????????????????????????????)
-            ;;
-        *)
-            echo "The configured image is not an immutable Quizizzo commit tag." >&2
-            exit 1
-            ;;
-    esac
+    validate_image "$image"
 
     compose config --quiet
+}
+
+protected_container_ids()
+{
+    for container in logiagraph-app logiagraph-postgres logiagraph-redis; do
+        docker inspect --format '{{.Id}}' "$container"
+    done
+}
+
+require_protected_containers()
+{
+    for container in logiagraph-app logiagraph-postgres logiagraph-redis; do
+        running=$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)
+        if [ "$running" != "true" ]; then
+            echo "Protected container $container is not running." >&2
+            exit 1
+        fi
+    done
 }
 
 preflight()
@@ -58,22 +89,18 @@ preflight()
     fi
 
     if ss -H -ltn 'sport = :8081' | grep -q .; then
-        owner=$(docker ps \
-            --filter publish=8081 \
-            --format '{{.Names}}' | head -n 1)
-        if [ "$owner" != "quizizzo-web" ]; then
+        owner=$(docker ps --filter publish=8081 --quiet | head -n 1)
+        owner_project=$(docker inspect \
+            --format '{{index .Config.Labels "com.docker.compose.project"}}' "$owner")
+        owner_service=$(docker inspect \
+            --format '{{index .Config.Labels "com.docker.compose.service"}}' "$owner")
+        if [ "$owner_project" != "quizizzo" ] || [ "$owner_service" != "quizizzo" ]; then
             echo "Port 8081 is occupied by an unexpected process or container." >&2
             exit 1
         fi
     fi
 
-    for container in logiagraph-app logiagraph-postgres logiagraph-redis; do
-        running=$(docker inspect --format '{{.State.Running}}' "$container" 2>/dev/null || true)
-        if [ "$running" != "true" ]; then
-            echo "Protected container $container is not running." >&2
-            exit 1
-        fi
-    done
+    require_protected_containers
 
     echo "Quizizzo preflight passed."
 }
@@ -107,6 +134,78 @@ backup()
     echo "Created $(basename "$destination")"
 }
 
+record_image()
+{
+    image=$1
+    previous=$2
+    temporary=$(mktemp "$app_root/.env.XXXXXX")
+    trap 'rm -f "$temporary"' EXIT HUP INT TERM
+
+    sed "s|^QUIZIZZO_IMAGE=.*$|QUIZIZZO_IMAGE=$image|" "$env_file" > "$temporary"
+    chown root:root "$temporary"
+    chmod 600 "$temporary"
+    mv "$temporary" "$env_file"
+    printf '%s\n' "$image" > "$app_root/.current-image"
+    printf '%s\n' "$previous" > "$app_root/.previous-image"
+    chmod 600 "$app_root/.current-image" "$app_root/.previous-image"
+    trap - EXIT HUP INT TERM
+}
+
+wait_for_health()
+{
+    attempt=1
+    while [ "$attempt" -le 30 ]; do
+        if curl --fail --silent --show-error \
+            --header 'Host: quizizzo.com' \
+            http://127.0.0.1:8081/health/live >/dev/null &&
+            curl --fail --silent --show-error \
+                --header 'Host: quizizzo.com' \
+                http://127.0.0.1:8081/health/ready >/dev/null; then
+            return 0
+        fi
+        sleep 2
+        attempt=$((attempt + 1))
+    done
+    return 1
+}
+
+release()
+{
+    operation=$1
+    image=$2
+    validate_image "$image"
+    require_baseline
+    preflight
+    docker manifest inspect "$image" >/dev/null
+
+    previous=$(read_image)
+    protected_before=$(protected_container_ids)
+
+    docker pull "$image"
+    compose_with_image "$image" up -d --wait postgres redis
+    backup
+
+    if [ "$operation" = "deploy" ]; then
+        compose_with_image "$image" run --rm migrate
+    fi
+
+    compose_with_image "$image" up -d --no-deps --force-recreate quizizzo
+    if ! wait_for_health; then
+        echo "Quizizzo health verification failed." >&2
+        echo "Rollback target: $previous" >&2
+        exit 1
+    fi
+
+    protected_after=$(protected_container_ids)
+    if [ "$protected_before" != "$protected_after" ]; then
+        echo "A protected Logiagraph container identity changed; release not recorded." >&2
+        exit 1
+    fi
+    require_protected_containers
+    record_image "$image" "$previous"
+    echo "Quizizzo $operation completed with $image"
+}
+
 case "${1:-}" in
     preflight)
         test "$#" -eq 1
@@ -116,8 +215,16 @@ case "${1:-}" in
         test "$#" -eq 1
         backup
         ;;
+    deploy)
+        test "$#" -eq 2
+        release deploy "$2"
+        ;;
+    rollback)
+        test "$#" -eq 2
+        release rollback "$2"
+        ;;
     *)
-        echo "Usage: $0 {preflight|backup}" >&2
+        echo "Usage: $0 {preflight|backup|deploy IMAGE|rollback IMAGE}" >&2
         exit 64
         ;;
 esac
