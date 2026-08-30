@@ -51,4 +51,44 @@ public sealed class PlayerTests
         Assert.Equal(PlayerStatus.Connected, player.Status);
         Assert.Equal(now.AddMinutes(2), player.LastSeenAt);
     }
+
+    [Theory]
+    [InlineData(CharacterShirtStyle.Style4)]
+    [InlineData(CharacterShirtStyle.Style8)]
+    public void Woman_presentation_accepts_only_woman_top_styles(CharacterShirtStyle shirtStyle)
+    {
+        var character = CreateDesignedCharacter(CharacterPresentation.Woman, shirtStyle);
+
+        Assert.Equal(shirtStyle, character.ShirtStyle);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CreateDesignedCharacter(CharacterPresentation.Man, shirtStyle));
+    }
+
+    [Theory]
+    [InlineData(CharacterShirtStyle.Style1)]
+    [InlineData(CharacterShirtStyle.Style2)]
+    [InlineData(CharacterShirtStyle.Style3)]
+    [InlineData(CharacterShirtStyle.Style5)]
+    [InlineData(CharacterShirtStyle.Style6)]
+    [InlineData(CharacterShirtStyle.Style7)]
+    public void Man_presentation_accepts_only_man_top_styles(CharacterShirtStyle shirtStyle)
+    {
+        var character = CreateDesignedCharacter(CharacterPresentation.Man, shirtStyle);
+
+        Assert.Equal(shirtStyle, character.ShirtStyle);
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            CreateDesignedCharacter(CharacterPresentation.Woman, shirtStyle));
+    }
+
+    private static CharacterDefinition CreateDesignedCharacter(
+        CharacterPresentation presentation,
+        CharacterShirtStyle shirtStyle) => new(
+            presentation,
+            CharacterSkinTone.Tint1,
+            CharacterHairColour.Brown,
+            CharacterShirtColour.Navy,
+            CharacterTrouserColour.Navy,
+            CharacterTrouserLength.FullLength,
+            CharacterShoeColour.Brown,
+            shirtStyle: shirtStyle);
 }

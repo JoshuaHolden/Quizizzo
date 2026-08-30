@@ -130,13 +130,15 @@ public sealed class LandingPageContractTests
         Assert.Contains("[\"face\", \"hair\", \"pants\", \"shirts\", \"shoes\", \"skin\"]",
             presentation, StringComparison.Ordinal);
         Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);
-        Assert.Contains("variants.presentation === \"Woman\" ? 4 : 1", presentation,
+        Assert.Contains("presentation === \"Woman\" ? [4, 8]", presentation,
             StringComparison.Ordinal);
 
         var designer = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");
-        Assert.Contains("presentation === \"Woman\" ? 4 : 1", designer,
+        Assert.Contains("presentation === \"Woman\" ? [4, 8]", designer,
             StringComparison.Ordinal);
+        Assert.Contains("[1, 2, 3, 5, 6, 7]", designer, StringComparison.Ordinal);
+        Assert.Contains("syncShirtStyles(form)", designer, StringComparison.Ordinal);
         Assert.Contains("`tint${skin}_head.png`, .5, 0", designer,
             StringComparison.Ordinal);
     }

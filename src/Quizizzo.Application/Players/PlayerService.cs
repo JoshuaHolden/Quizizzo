@@ -185,7 +185,16 @@ public sealed class PlayerService(
             player.Character.ShirtColour,
             player.Character.TrouserColour,
             player.Character.TrouserLength,
-            player.Character.ShoeColour),
+            player.Character.ShoeColour,
+            player.Character.HairStyle,
+            player.Character.EyeColour,
+            player.Character.EyeSize,
+            player.Character.FaceShape,
+            player.Character.NoseShape,
+            player.Character.BrowShape,
+            player.Character.ShoeStyle,
+            player.Character.ShirtStyle,
+            player.Character.TrouserStyle),
         player.JoinedAt,
         player.LastSeenAt);
 }

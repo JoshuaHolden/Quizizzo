@@ -47,7 +47,17 @@ public static class PlayerSessionEndpoints
                 ParseChoice<CharacterShirtColour>(form["shirtColour"].ToString()),
                 ParseChoice<CharacterTrouserColour>(form["trouserColour"].ToString()),
                 ParseChoice<CharacterTrouserLength>(form["trouserLength"].ToString()),
-                ParseChoice<CharacterShoeColour>(form["shoeColour"].ToString()));
+                ParseChoice<CharacterShoeColour>(form["shoeColour"].ToString()),
+                ParseChoiceOrDefault(form["hairStyle"].ToString(), CharacterHairStyle.Style1),
+                ParseChoiceOrDefault(form["eyeColour"].ToString(), CharacterEyeColour.Blue),
+                ParseChoiceOrDefault(form["eyeSize"].ToString(), CharacterEyeSize.Large),
+                ParseChoiceOrDefault(form["faceShape"].ToString(), CharacterFaceShape.Round),
+                ParseChoiceOrDefault(form["noseShape"].ToString(), CharacterNoseShape.Nose1),
+                ParseChoiceOrDefault(form["mouth"].ToString(), CharacterMouth.Smile),
+                ParseChoiceOrDefault(form["browShape"].ToString(), CharacterBrowShape.Brow1),
+                ParseChoiceOrDefault(form["shoeStyle"].ToString(), CharacterShoeStyle.Style1),
+                ParseChoiceOrDefault(form["shirtStyle"].ToString(), CharacterShirtStyle.Default),
+                ParseChoiceOrDefault(form["trouserStyle"].ToString(), CharacterTrouserStyle.Style1));
             context.Request.Cookies.TryGetValue(PlayerCookieName, out var existingSessionToken);
 
             var joined = await players.JoinAsync(
@@ -96,4 +106,7 @@ public static class PlayerSessionEndpoints
         }
         return parsed;
     }
+
+    private static T ParseChoiceOrDefault<T>(string value, T defaultValue) where T : struct, Enum
+        => string.IsNullOrWhiteSpace(value) ? defaultValue : ParseChoice<T>(value);
 }

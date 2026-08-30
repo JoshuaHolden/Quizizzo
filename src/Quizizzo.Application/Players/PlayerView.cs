@@ -14,7 +14,16 @@ public sealed record CharacterView(
     CharacterShirtColour ShirtColour = CharacterShirtColour.Navy,
     CharacterTrouserColour TrouserColour = CharacterTrouserColour.Navy,
     CharacterTrouserLength TrouserLength = CharacterTrouserLength.FullLength,
-    CharacterShoeColour ShoeColour = CharacterShoeColour.Brown);
+    CharacterShoeColour ShoeColour = CharacterShoeColour.Brown,
+    CharacterHairStyle HairStyle = CharacterHairStyle.Style1,
+    CharacterEyeColour EyeColour = CharacterEyeColour.Blue,
+    CharacterEyeSize EyeSize = CharacterEyeSize.Large,
+    CharacterFaceShape FaceShape = CharacterFaceShape.Round,
+    CharacterNoseShape NoseShape = CharacterNoseShape.Nose1,
+    CharacterBrowShape BrowShape = CharacterBrowShape.Brow1,
+    CharacterShoeStyle ShoeStyle = CharacterShoeStyle.Style1,
+    CharacterShirtStyle ShirtStyle = CharacterShirtStyle.Default,
+    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1);
 
 public sealed record CharacterSelection(
     CharacterPresentation Presentation,
@@ -23,11 +32,23 @@ public sealed record CharacterSelection(
     CharacterShirtColour ShirtColour,
     CharacterTrouserColour TrouserColour,
     CharacterTrouserLength TrouserLength,
-    CharacterShoeColour ShoeColour)
+    CharacterShoeColour ShoeColour,
+    CharacterHairStyle HairStyle = CharacterHairStyle.Style1,
+    CharacterEyeColour EyeColour = CharacterEyeColour.Blue,
+    CharacterEyeSize EyeSize = CharacterEyeSize.Large,
+    CharacterFaceShape FaceShape = CharacterFaceShape.Round,
+    CharacterNoseShape NoseShape = CharacterNoseShape.Nose1,
+    CharacterMouth Mouth = CharacterMouth.Smile,
+    CharacterBrowShape BrowShape = CharacterBrowShape.Brow1,
+    CharacterShoeStyle ShoeStyle = CharacterShoeStyle.Style1,
+    CharacterShirtStyle ShirtStyle = CharacterShirtStyle.Default,
+    CharacterTrouserStyle TrouserStyle = CharacterTrouserStyle.Style1)
 {
     public CharacterDefinition ToDefinition() => new(
         Presentation, SkinTone, HairColour, ShirtColour,
-        TrouserColour, TrouserLength, ShoeColour);
+        TrouserColour, TrouserLength, ShoeColour, HairStyle,
+        EyeColour, EyeSize, FaceShape, NoseShape, Mouth, BrowShape,
+        ShoeStyle, ShirtStyle, TrouserStyle);
 }
 
 public sealed record PlayerView(

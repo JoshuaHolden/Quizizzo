@@ -36,6 +36,15 @@ internal sealed class PlayerConfiguration : IEntityTypeConfiguration<Player>
             character.Property(value => value.Presentation).HasColumnName("CharacterPresentation").HasConversion<int>();
             character.Property(value => value.SkinTone).HasColumnName("CharacterSkinTone").HasConversion<int>();
             character.Property(value => value.HairColour).HasColumnName("CharacterHairColour").HasConversion<int>();
+            character.Property(value => value.HairStyle).HasColumnName("CharacterHairStyle").HasConversion<int>();
+            character.Property(value => value.EyeColour).HasColumnName("CharacterEyeColour").HasConversion<int>();
+            character.Property(value => value.EyeSize).HasColumnName("CharacterEyeSize").HasConversion<int>();
+            character.Property(value => value.FaceShape).HasColumnName("CharacterFaceShape").HasConversion<int>();
+            character.Property(value => value.NoseShape).HasColumnName("CharacterNoseShape").HasConversion<int>();
+            character.Property(value => value.BrowShape).HasColumnName("CharacterBrowShape").HasConversion<int>();
+            character.Property(value => value.ShoeStyle).HasColumnName("CharacterShoeStyle").HasConversion<int>();
+            character.Property(value => value.ShirtStyle).HasColumnName("CharacterShirtStyle").HasConversion<int>();
+            character.Property(value => value.TrouserStyle).HasColumnName("CharacterTrouserStyle").HasConversion<int>();
             character.Property(value => value.ShirtColour).HasColumnName("CharacterShirtColour").HasConversion<int>();
             character.Property(value => value.TrouserColour).HasColumnName("CharacterTrouserColour").HasConversion<int>();
             character.Property(value => value.TrouserLength).HasColumnName("CharacterTrouserLength").HasConversion<int>();

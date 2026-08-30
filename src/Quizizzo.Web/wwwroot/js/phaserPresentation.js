@@ -311,17 +311,17 @@ window.quizizzoPresentation = (() => {
                 add(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
                 add(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
                 add(66, 505, "shoes", variants.shoe).setScale(.86);
-                add(0, 200, "shirts", `${variants.shirt}Shirt${variants.presentation === "Woman" ? 4 : 1}.png`, .5, 0);
-                add(0, 341, "pants", `${variants.pants}1.png`, .5, 0);
+                add(0, 200, "shirts", `${variants.shirt}Shirt${variants.shirtStyle}.png`, .5, 0);
+                add(0, 341, "pants", `${variants.pants}${variants.trouserStyle}.png`, .5, 0);
             }
 
-            add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0);
+            add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0).setScale(variants.faceWidth, 1);
             add(0, -25, "hair", variants.hair, .5, 0);
-            add(-27, 75, "face", variants.eye);
-            add(27, 75, "face", variants.eye);
-            add(-28, 55, "face", variants.brow);
-            add(28, 55, "face", variants.brow).setFlipX(true);
-            add(0, 98, "face", `tint${variants.skin}Nose1.png`);
+            add(-27 * variants.faceWidth, 75, "face", variants.eye);
+            add(27 * variants.faceWidth, 75, "face", variants.eye);
+            add(-28 * variants.faceWidth, 55, "face", variants.brow);
+            add(28 * variants.faceWidth, 55, "face", variants.brow).setFlipX(true);
+            add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
             add(0, 132, "face", variants.mouth);
 
             avatar.character.setScale(mode === "full" ? .31 : .5);
@@ -344,27 +344,51 @@ window.quizizzoPresentation = (() => {
                 Googly: `black${presentation}${presentation === "Man" ? 2 : 1}.png`
             }[character.eyes];
             const hairPrefix = { Brown: "brown1", Black: "black", Blonde: "blonde", Red: "red" }[character.hairColour];
+            const maximumHairStyle = presentation === "Woman" ? 6 : 8;
+            const hairStyle = Math.min(Math.max(Number(character.hairStyle) || 1, 1), maximumHairStyle);
             const hair = hairPrefix
-                ? `${hairPrefix}${presentation}${presentation === "Man" ? 1 : 3}.png`
+                ? `${hairPrefix}${presentation}${hairStyle}.png`
                 : legacyHair;
-            const eye = character.eyes === "Sleepy" ? "eyeBrown_large.png" : "eyeBlue_large.png";
+            const eyeColour = ["Black", "Blue", "Brown", "Green", "Pine"].includes(character.eyeColour)
+                ? character.eyeColour : character.eyes === "Sleepy" ? "Brown" : "Blue";
+            const eyeSize = character.eyeSize === "Small" ? "small" : "large";
+            const eye = `eye${eyeColour}_${eyeSize}.png`;
             const browPrefix = character.eyes === "Googly" ? "black" : character.eyes === "Starry" ? "red" : character.eyes === "Bright" ? "blonde" : "brown1";
-            const mouth = { Smile: "mouth_happy.png", Grin: "mouth_teethUpper.png", Surprised: "mouth_oh.png", Tongue: "mouth_glad.png" }[character.mouth] || "mouth_happy.png";
+            const browShape = Math.min(Math.max(Number(character.browShape) || 1, 1), 3);
+            const noseShape = Math.min(Math.max(Number(character.noseShape) || 1, 1), 3);
+            const faceWidth = { Oval: .92, Round: 1, Wide: 1.1 }[character.faceShape] || 1;
+            const mouth = {
+                Smile: "mouth_happy.png", Grin: "mouth_teethUpper.png",
+                TeethLower: "mouth_teethLower.png", Surprised: "mouth_oh.png",
+                Tongue: "mouth_glad.png", Sad: "mouth_sad.png",
+                Straight: "mouth_straight.png"
+            }[character.mouth] || "mouth_happy.png";
             const colourValue = colour(character.primaryColour);
             const paletteIndex = colourValue % 4;
             const shirt = { Navy: "navy", Blue: "blue", Green: "green", Red: "red" }[character.shirtColour];
             const pants = { Navy: "pantsNavy", Blue: "pantsBlue1", Green: "pantsGreen", Tan: "pantsTan" }[character.trouserColour];
-            const shoe = { Brown: "brownShoe1.png", Black: "blackShoe1.png", Blue: "blueShoe1.png", Red: "redShoe1.png" }[character.shoeColour];
+            const shoeStyle = Math.min(Math.max(Number(character.shoeStyle) || 1, 1), 5);
+            const shoePrefix = { Brown: "brown", Black: "black", Blue: "blue", Red: "red" }[character.shoeColour];
+            const shoe = shoePrefix ? `${shoePrefix}Shoe${shoeStyle}.png` : null;
             const trouserLength = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[character.trouserLength];
+            const allowedShirtStyles = presentation === "Woman" ? [4, 8] : [1, 2, 3, 5, 6, 7];
+            const requestedShirtStyle = Number(character.shirtStyle);
+            const shirtStyle = allowedShirtStyles.includes(requestedShirtStyle)
+                ? requestedShirtStyle : allowedShirtStyles[0];
+            const trouserStyle = Math.min(Math.max(Number(character.trouserStyle) || 1, 1), 4);
             return {
                 skin,
                 presentation,
                 hair,
                 eye,
-                brow: `${browPrefix}Brow1.png`,
+                brow: `${hairPrefix || browPrefix}Brow${browShape}.png`,
                 mouth,
+                faceWidth,
+                noseShape,
                 shirt: shirt || ["navy", "blue", "green", "red"][paletteIndex],
+                shirtStyle,
                 pants: pants || ["pantsNavy", "pantsBlue1", "pantsGreen", "pantsTan"][paletteIndex],
+                trouserStyle,
                 trouserLength: trouserLength || "long",
                 shoe: shoe || ["brownShoe1.png", "blackShoe1.png", "blueShoe1.png", "redShoe1.png"][paletteIndex]
             };

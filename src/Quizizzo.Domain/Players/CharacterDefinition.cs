@@ -21,7 +21,10 @@ public enum CharacterMouth
     Smile,
     Grin,
     Surprised,
-    Tongue
+    Tongue,
+    Sad,
+    Straight,
+    TeethLower
 }
 
 public enum CharacterAccessory
@@ -36,10 +39,19 @@ public enum CharacterAccessory
 public enum CharacterPresentation { Man, Woman }
 public enum CharacterSkinTone { Tint1 = 1, Tint3 = 3, Tint5 = 5, Tint7 = 7 }
 public enum CharacterHairColour { Brown, Black, Blonde, Red }
+public enum CharacterHairStyle { Style1 = 1, Style2, Style3, Style4, Style5, Style6, Style7, Style8 }
+public enum CharacterEyeColour { Black, Blue, Brown, Green, Pine }
+public enum CharacterEyeSize { Large, Small }
+public enum CharacterFaceShape { Oval, Round, Wide }
+public enum CharacterNoseShape { Nose1 = 1, Nose2, Nose3 }
+public enum CharacterBrowShape { Brow1 = 1, Brow2, Brow3 }
 public enum CharacterShirtColour { Navy, Blue, Green, Red }
 public enum CharacterTrouserColour { Navy, Blue, Green, Tan }
 public enum CharacterTrouserLength { FullLength, Cropped, Shorts }
 public enum CharacterShoeColour { Brown, Black, Blue, Red }
+public enum CharacterShoeStyle { Style1 = 1, Style2, Style3, Style4, Style5 }
+public enum CharacterShirtStyle { Default, Style1, Style2, Style3, Style4, Style5, Style6, Style7, Style8 }
+public enum CharacterTrouserStyle { Style1 = 1, Style2, Style3, Style4 }
 
 public sealed class CharacterDefinition
 {
@@ -77,6 +89,17 @@ public sealed class CharacterDefinition
             CharacterEyes.Starry => CharacterHairColour.Red,
             _ => CharacterHairColour.Brown,
         };
+        HairStyle = CharacterHairStyle.Style1;
+        EyeColour = CharacterEyeColour.Blue;
+        EyeSize = CharacterEyeSize.Large;
+        FaceShape = CharacterFaceShape.Round;
+        NoseShape = CharacterNoseShape.Nose1;
+        BrowShape = CharacterBrowShape.Brow1;
+        ShoeStyle = CharacterShoeStyle.Style1;
+        ShirtStyle = Presentation == CharacterPresentation.Woman
+            ? CharacterShirtStyle.Style4
+            : CharacterShirtStyle.Style1;
+        TrouserStyle = CharacterTrouserStyle.Style1;
         ShirtColour = CharacterShirtColour.Navy;
         TrouserColour = CharacterTrouserColour.Navy;
         TrouserLength = CharacterTrouserLength.FullLength;
@@ -90,7 +113,17 @@ public sealed class CharacterDefinition
         CharacterShirtColour shirtColour,
         CharacterTrouserColour trouserColour,
         CharacterTrouserLength trouserLength,
-        CharacterShoeColour shoeColour)
+        CharacterShoeColour shoeColour,
+        CharacterHairStyle hairStyle = CharacterHairStyle.Style1,
+        CharacterEyeColour eyeColour = CharacterEyeColour.Blue,
+        CharacterEyeSize eyeSize = CharacterEyeSize.Large,
+        CharacterFaceShape faceShape = CharacterFaceShape.Round,
+        CharacterNoseShape noseShape = CharacterNoseShape.Nose1,
+        CharacterMouth mouth = CharacterMouth.Smile,
+        CharacterBrowShape browShape = CharacterBrowShape.Brow1,
+        CharacterShoeStyle shoeStyle = CharacterShoeStyle.Style1,
+        CharacterShirtStyle shirtStyle = CharacterShirtStyle.Default,
+        CharacterTrouserStyle trouserStyle = CharacterTrouserStyle.Style1)
     {
         EnsureDefined(presentation);
         EnsureDefined(skinTone);
@@ -99,6 +132,30 @@ public sealed class CharacterDefinition
         EnsureDefined(trouserColour);
         EnsureDefined(trouserLength);
         EnsureDefined(shoeColour);
+        EnsureDefined(hairStyle);
+        EnsureDefined(eyeColour);
+        EnsureDefined(eyeSize);
+        EnsureDefined(faceShape);
+        EnsureDefined(noseShape);
+        EnsureDefined(mouth);
+        EnsureDefined(browShape);
+        EnsureDefined(shoeStyle);
+        EnsureDefined(shirtStyle);
+        EnsureDefined(trouserStyle);
+        if (presentation == CharacterPresentation.Woman && hairStyle > CharacterHairStyle.Style6)
+        {
+            throw new ArgumentOutOfRangeException(nameof(hairStyle));
+        }
+        var resolvedShirtStyle = shirtStyle == CharacterShirtStyle.Default
+            ? presentation == CharacterPresentation.Woman
+                ? CharacterShirtStyle.Style4
+                : CharacterShirtStyle.Style1
+            : shirtStyle;
+        var feminineShirt = resolvedShirtStyle is CharacterShirtStyle.Style4 or CharacterShirtStyle.Style8;
+        if ((presentation == CharacterPresentation.Woman) != feminineShirt)
+        {
+            throw new ArgumentOutOfRangeException(nameof(shirtStyle));
+        }
         Presentation = presentation;
         SkinTone = skinTone;
         HairColour = hairColour;
@@ -106,6 +163,15 @@ public sealed class CharacterDefinition
         TrouserColour = trouserColour;
         TrouserLength = trouserLength;
         ShoeColour = shoeColour;
+        HairStyle = hairStyle;
+        EyeColour = eyeColour;
+        EyeSize = eyeSize;
+        FaceShape = faceShape;
+        NoseShape = noseShape;
+        BrowShape = browShape;
+        ShoeStyle = shoeStyle;
+        ShirtStyle = resolvedShirtStyle;
+        TrouserStyle = trouserStyle;
         BodyType = presentation == CharacterPresentation.Woman ? CharacterBodyType.Blob : CharacterBodyType.Bean;
         PrimaryColour = shirtColour switch
         {
@@ -115,7 +181,7 @@ public sealed class CharacterDefinition
             _ => "#34495e",
         };
         Eyes = CharacterEyes.Bright;
-        Mouth = CharacterMouth.Smile;
+        Mouth = mouth;
         Accessory = CharacterAccessory.None;
     }
 
@@ -127,6 +193,15 @@ public sealed class CharacterDefinition
     public CharacterPresentation Presentation { get; private set; }
     public CharacterSkinTone SkinTone { get; private set; }
     public CharacterHairColour HairColour { get; private set; }
+    public CharacterHairStyle HairStyle { get; private set; } = CharacterHairStyle.Style1;
+    public CharacterEyeColour EyeColour { get; private set; } = CharacterEyeColour.Blue;
+    public CharacterEyeSize EyeSize { get; private set; } = CharacterEyeSize.Large;
+    public CharacterFaceShape FaceShape { get; private set; } = CharacterFaceShape.Round;
+    public CharacterNoseShape NoseShape { get; private set; } = CharacterNoseShape.Nose1;
+    public CharacterBrowShape BrowShape { get; private set; } = CharacterBrowShape.Brow1;
+    public CharacterShoeStyle ShoeStyle { get; private set; } = CharacterShoeStyle.Style1;
+    public CharacterShirtStyle ShirtStyle { get; private set; } = CharacterShirtStyle.Default;
+    public CharacterTrouserStyle TrouserStyle { get; private set; } = CharacterTrouserStyle.Style1;
     public CharacterShirtColour ShirtColour { get; private set; }
     public CharacterTrouserColour TrouserColour { get; private set; }
     public CharacterTrouserLength TrouserLength { get; private set; }
