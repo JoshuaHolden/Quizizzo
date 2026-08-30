@@ -51,6 +51,10 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("join-experience", join, StringComparison.Ordinal);
         Assert.Contains("join-experience", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-designer", joinParty, StringComparison.Ordinal);
+        Assert.Contains("name=\"skinTone\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("name=\"trouserLength\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("name=\"shoeColour\"", joinParty, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -89,7 +93,30 @@ public sealed class LandingPageContractTests
         Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
         Assert.Contains("new Phaser.Game", motion, StringComparison.Ordinal);
         Assert.Contains("this.add.particles", motion, StringComparison.Ordinal);
+        Assert.Contains("this.load.atlasXML", motion, StringComparison.Ordinal);
         Assert.Contains("CC0", licence, StringComparison.OrdinalIgnoreCase);
+
+        foreach (var sheet in new[] { "face", "hair", "pants", "shirts", "shoes", "skin" })
+        {
+            Assert.True(File.Exists(RepositoryPath(
+                $"src/Quizizzo.Web/wwwroot/assets/kenney-presenter/spritesheets/sheet_{sheet}.png")));
+            Assert.True(File.Exists(RepositoryPath(
+                $"src/Quizizzo.Web/wwwroot/assets/kenney-presenter/spritesheets/sheet_{sheet}.xml")));
+        }
+    }
+
+    [Fact]
+    public void Production_presentation_supports_player_portraits_and_full_body_atlas_rigs()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+
+        Assert.Contains("this.load.atlasXML", presentation, StringComparison.Ordinal);
+        Assert.Contains("? \"full\"", presentation, StringComparison.Ordinal);
+        Assert.Contains(": \"portrait\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("[\"face\", \"hair\", \"pants\", \"shirts\", \"shoes\", \"skin\"]",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -173,6 +200,9 @@ public sealed class LandingPageContractTests
     }
 
     private static string ReadRepositoryFile(string relativePath)
+        => File.ReadAllText(RepositoryPath(relativePath));
+
+    private static string RepositoryPath(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);
         while (directory is not null &&
@@ -184,7 +214,7 @@ public sealed class LandingPageContractTests
         {
             throw new DirectoryNotFoundException("The Quizizzo repository root was not found.");
         }
-        return File.ReadAllText(Path.Combine(directory.FullName, relativePath));
+        return Path.Combine(directory.FullName, relativePath);
     }
 
     private static int CountOccurrences(string value, string expected)

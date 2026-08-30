@@ -77,6 +77,8 @@ public sealed class PhaserPresentationMapperTests
         Assert.Equal("Bean", mappedPlayer.Character.BodyType);
         Assert.Equal("Starry", mappedPlayer.Character.Eyes);
         Assert.Equal("PartyHat", mappedPlayer.Character.Accessory);
+        Assert.Equal("Man", mappedPlayer.Character.Presentation);
+        Assert.Equal(1, mappedPlayer.Character.SkinTone);
         Assert.Equal(1, result.Rank);
         Assert.Equal(1000, result.PointsAwarded);
     }

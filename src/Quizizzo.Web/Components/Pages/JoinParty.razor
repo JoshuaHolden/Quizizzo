@@ -28,19 +28,30 @@
             <span><i aria-hidden="true"></i> @party.PlayerCount of @party.MaximumPlayers players are in</span>
             <div class="room-characters" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
         </section>
-        <section class="join-card" data-reveal data-reveal-delay="1" aria-label="Choose your player name">
+        <section class="join-card join-designer-card" data-reveal data-reveal-delay="1" aria-label="Design your player">
             <span class="join-card-kicker">ALMOST THERE</span>
-            <h2>What should we call you?</h2>
+            <h2>Make your player</h2>
             @if (!string.IsNullOrWhiteSpace(Error))
             {
                 <p class="join-error" role="alert">@Error</p>
             }
-            <form method="post" action="/join-player">
+            <form method="post" action="/join-player" data-avatar-designer>
                 <AntiforgeryToken />
                 <input type="hidden" name="roomCode" value="@party.RoomCode" />
+                <div class="avatar-preview" data-avatar-preview aria-label="Character preview"></div>
                 <label for="display-name">Player name</label>
                 <input id="display-name" name="displayName" maxlength="@QuizizzoLimits.PlayerNameLength"
                        autocomplete="nickname" placeholder="Your brilliant nickname" required />
+                <fieldset class="avatar-options">
+                    <legend>Choose your look</legend>
+                    <label>Style<select name="presentation"><option>Man</option><option>Woman</option></select></label>
+                    <label>Skin<select name="skinTone"><option value="Tint1">Warm</option><option value="Tint3">Golden</option><option value="Tint5">Brown</option><option value="Tint7">Deep</option></select></label>
+                    <label>Hair<select name="hairColour"><option>Brown</option><option>Black</option><option>Blonde</option><option>Red</option></select></label>
+                    <label>Shirt<select name="shirtColour"><option>Navy</option><option>Blue</option><option>Green</option><option>Red</option></select></label>
+                    <label>Trousers<select name="trouserColour"><option>Navy</option><option>Blue</option><option>Green</option><option>Tan</option></select></label>
+                    <label>Length<select name="trouserLength"><option value="FullLength">Full length</option><option>Cropped</option><option>Shorts</option></select></label>
+                    <label>Shoes<select name="shoeColour"><option>Brown</option><option>Black</option><option>Blue</option><option>Red</option></select></label>
+                </fieldset>
                 <button type="submit">Join the party <span aria-hidden="true">→</span></button>
             </form>
             <a href="/join">Use a different code</a>

@@ -2,6 +2,8 @@ window.quizizzoPresentation = (() => {
     const presentations = new Map();
     const width = 1280;
     const height = 720;
+    const characterAssetRoot = "/assets/kenney-presenter/spritesheets/";
+    const characterSheets = ["face", "hair", "pants", "shirts", "shoes", "skin"];
 
     function colour(value, fallback = 0x7c3aed) {
         if (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value)) {
@@ -28,6 +30,13 @@ window.quizizzoPresentation = (() => {
             this.drawingContainer = null;
             this.drawingTimer = null;
             this.drawingSignature = null;
+        }
+
+        preload() {
+            characterSheets.forEach(sheet => this.load.atlasXML(
+                `player-${sheet}`,
+                `${characterAssetRoot}sheet_${sheet}.png`,
+                `${characterAssetRoot}sheet_${sheet}.xml`));
         }
 
         create() {
@@ -91,6 +100,9 @@ window.quizizzoPresentation = (() => {
 
             const previousPlayers = playerMap(this.previous);
             const currentIds = new Set((snapshot.players || []).map(player => player.playerId));
+            const characterMode = (snapshot.results || []).some(result => result.rank != null)
+                ? "full"
+                : "portrait";
             this.drawBackground(snapshot.gameKey);
 
             for (const player of snapshot.players || []) {
@@ -104,7 +116,7 @@ window.quizizzoPresentation = (() => {
                 }
 
                 const previousPlayer = previousPlayers.get(player.playerId);
-                this.updateAvatar(avatar, player);
+                this.updateAvatar(avatar, player, characterMode);
                 if (previousPlayer && previousPlayer.score !== player.score) {
                     this.animateScore(avatar, player.score - previousPlayer.score);
                 }
@@ -224,9 +236,7 @@ window.quizizzoPresentation = (() => {
         createAvatar(player) {
             const container = this.add.container(width / 2, height + 100);
             const shadow = this.add.ellipse(0, 62, 112, 26, 0x090516, 0.32);
-            const body = this.add.graphics();
-            const face = this.add.graphics();
-            const accessory = this.add.graphics();
+            const character = this.add.container(0, -58);
             const presence = this.add.text(0, -84, "", {
                 color: "#fef3c7",
                 fontFamily: "Arial, sans-serif",
@@ -249,15 +259,15 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 4
             }).setOrigin(0.5);
-            container.add([shadow, body, face, accessory, presence, name, score]);
+            container.add([shadow, character, presence, name, score]);
             container.setDepth(20);
-            return { container, body, face, accessory, presence, name, score, signature: null };
+            return { container, character, shadow, presence, name, score, signature: null, mode: null };
         }
 
-        updateAvatar(avatar, player) {
-            const signature = JSON.stringify(player.character);
+        updateAvatar(avatar, player, mode) {
+            const signature = JSON.stringify([player.character, mode]);
             if (signature !== avatar.signature) {
-                this.drawCharacter(avatar, player.character);
+                this.drawCharacter(avatar, player.character, mode);
                 avatar.signature = signature;
             }
             avatar.name.setText(player.displayName);
@@ -267,57 +277,82 @@ window.quizizzoPresentation = (() => {
             avatar.container.setAlpha(disconnected ? 0.42 : 1);
         }
 
-        drawCharacter(avatar, character) {
-            const bodyColour = colour(character.primaryColour);
-            const body = avatar.body;
-            const face = avatar.face;
-            const accessory = avatar.accessory;
-            body.clear();
-            face.clear();
-            accessory.clear();
-
-            body.lineStyle(7, 0x170a2e, 0.55);
-            body.fillStyle(bodyColour, 1);
-            switch (character.bodyType) {
-                case "Square":
-                    body.fillRoundedRect(-52, -52, 104, 112, 20);
-                    body.strokeRoundedRect(-52, -52, 104, 112, 20);
-                    break;
-                case "Bean":
-                    body.fillEllipse(0, 6, 98, 132);
-                    body.strokeEllipse(0, 6, 98, 132);
-                    break;
-                case "Blob":
-                    body.fillPoints([
-                        new Phaser.Geom.Point(-52, 48),
-                        new Phaser.Geom.Point(-59, -7),
-                        new Phaser.Geom.Point(-35, -55),
-                        new Phaser.Geom.Point(10, -67),
-                        new Phaser.Geom.Point(51, -38),
-                        new Phaser.Geom.Point(58, 20),
-                        new Phaser.Geom.Point(34, 60),
-                        new Phaser.Geom.Point(-18, 66)
-                    ], true);
-                    body.strokePoints([
-                        new Phaser.Geom.Point(-52, 48),
-                        new Phaser.Geom.Point(-59, -7),
-                        new Phaser.Geom.Point(-35, -55),
-                        new Phaser.Geom.Point(10, -67),
-                        new Phaser.Geom.Point(51, -38),
-                        new Phaser.Geom.Point(58, 20),
-                        new Phaser.Geom.Point(34, 60),
-                        new Phaser.Geom.Point(-18, 66)
-                    ], true);
-                    break;
-                default:
-                    body.fillCircle(0, 3, 58);
-                    body.strokeCircle(0, 3, 58);
-                    break;
+        drawCharacter(avatar, character, mode = "portrait") {
+            avatar.character.removeAll(true);
+            const variants = this.characterFrames(character);
+            const add = (x, y, atlas, frame, originX = .5, originY = .5) => {
+                const image = this.add.image(x, y, `player-${atlas}`, frame).setOrigin(originX, originY);
+                avatar.character.add(image);
+                return image;
+            };
+            if (mode === "full") {
+                add(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.72, 1);
+                add(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
+                add(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
+                add(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
+                add(166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
+                add(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
+                add(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
+                add(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
+                add(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
+                add(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
+                add(66, 505, "shoes", variants.shoe).setScale(.86);
+                add(0, 200, "shirts", `${variants.shirt}Shirt1.png`, .5, 0);
+                add(0, 341, "pants", `${variants.pants}1.png`, .5, 0);
             }
 
-            this.drawEyes(face, character.eyes);
-            this.drawMouth(face, character.mouth);
-            this.drawAccessory(accessory, character.accessory);
+            add(0, 0, "skin", `tint${variants.skin}_head.png`);
+            add(0, -25, "hair", variants.hair);
+            add(-27, 75, "face", variants.eye);
+            add(27, 75, "face", variants.eye);
+            add(-28, 55, "face", variants.brow);
+            add(28, 55, "face", variants.brow).setFlipX(true);
+            add(0, 98, "face", `tint${variants.skin}Nose1.png`);
+            add(0, 132, "face", variants.mouth);
+
+            avatar.character.setScale(mode === "full" ? .31 : .5);
+            avatar.character.setPosition(0, mode === "full" ? -160 : -78);
+            avatar.shadow.setVisible(mode === "full");
+            avatar.mode = mode;
+        }
+
+        characterFrames(character) {
+            const body = { Bean: 1, Blob: 3, Round: 5, Square: 7 };
+            const skin = [1, 3, 5, 7].includes(character.skinTone)
+                ? character.skinTone
+                : body[character.bodyType] || 1;
+            const presentation = character.presentation ||
+                (["Blob", "Square"].includes(character.bodyType) ? "Woman" : "Man");
+            const legacyHair = {
+                Bright: `blonde${presentation}1.png`,
+                Sleepy: `brown1${presentation}${presentation === "Man" ? 5 : 3}.png`,
+                Starry: `red${presentation}${presentation === "Man" ? 1 : 4}.png`,
+                Googly: `black${presentation}${presentation === "Man" ? 2 : 1}.png`
+            }[character.eyes];
+            const hairPrefix = { Brown: "brown1", Black: "black", Blonde: "blonde", Red: "red" }[character.hairColour];
+            const hair = hairPrefix
+                ? `${hairPrefix}${presentation}${presentation === "Man" ? 1 : 3}.png`
+                : legacyHair;
+            const eye = character.eyes === "Sleepy" ? "eyeBrown_large.png" : "eyeBlue_large.png";
+            const browPrefix = character.eyes === "Googly" ? "black" : character.eyes === "Starry" ? "red" : character.eyes === "Bright" ? "blonde" : "brown1";
+            const mouth = { Smile: "mouth_happy.png", Grin: "mouth_teethUpper.png", Surprised: "mouth_oh.png", Tongue: "mouth_glad.png" }[character.mouth] || "mouth_happy.png";
+            const colourValue = colour(character.primaryColour);
+            const paletteIndex = colourValue % 4;
+            const shirt = { Navy: "navy", Blue: "blue", Green: "green", Red: "red" }[character.shirtColour];
+            const pants = { Navy: "pantsNavy", Blue: "pantsBlue1", Green: "pantsGreen", Tan: "pantsTan" }[character.trouserColour];
+            const shoe = { Brown: "brownShoe1.png", Black: "blackShoe1.png", Blue: "blueShoe1.png", Red: "redShoe1.png" }[character.shoeColour];
+            const trouserLength = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[character.trouserLength];
+            return {
+                skin,
+                hair,
+                eye,
+                brow: `${browPrefix}Brow1.png`,
+                mouth,
+                shirt: shirt || ["navy", "blue", "green", "red"][paletteIndex],
+                pants: pants || ["pantsNavy", "pantsBlue1", "pantsGreen", "pantsTan"][paletteIndex],
+                trouserLength: trouserLength || "long",
+                shoe: shoe || ["brownShoe1.png", "blackShoe1.png", "blueShoe1.png", "redShoe1.png"][paletteIndex]
+            };
         }
 
         drawEyes(graphic, eyes) {
@@ -531,6 +566,37 @@ window.quizizzoPresentation = (() => {
             this.cameras.main.flash(260, 255, 235, 135, false);
         }
 
+        react(playerId, reaction) {
+            const avatar = this.avatars.get(playerId);
+            if (!avatar || avatar.mode !== "portrait") return;
+            const symbols = { Kiss: "💋", Angry: "💢", Laugh: "😂", Wow: "❗" };
+            const symbol = this.add.text(
+                avatar.container.x + 42,
+                avatar.container.y - 150,
+                symbols[reaction] || "✨",
+                { fontFamily: "Arial, sans-serif", fontSize: "46px" })
+                .setOrigin(.5)
+                .setDepth(80);
+            const amount = reaction === "Angry" ? 9 : 4;
+            this.tweens.add({
+                targets: avatar.character,
+                x: { from: -amount, to: amount },
+                duration: reaction === "Angry" ? 55 : 120,
+                yoyo: true,
+                repeat: reaction === "Angry" ? 5 : 1,
+                onComplete: () => avatar.character.setX(0)
+            });
+            this.tweens.add({
+                targets: symbol,
+                y: symbol.y - 70,
+                alpha: 0,
+                scale: 1.4,
+                duration: 1050,
+                ease: "Cubic.easeOut",
+                onComplete: () => symbol.destroy()
+            });
+        }
+
         burst(x, y, quantity) {
             if (this.controller.reducedMotion || !this.controller.textureKey) {
                 return;
@@ -603,6 +669,10 @@ window.quizizzoPresentation = (() => {
         controller.scene?.applySnapshot(controller.snapshot);
     }
 
+    function react(key, playerId, reaction) {
+        presentations.get(key)?.scene?.react(playerId, reaction);
+    }
+
     async function stop(key) {
         const controller = presentations.get(key);
         if (!controller) {
@@ -612,5 +682,5 @@ window.quizizzoPresentation = (() => {
         controller.game?.destroy(true);
     }
 
-    return { start, update, stop };
+    return { start, update, react, stop };
 })();

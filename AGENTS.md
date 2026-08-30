@@ -295,6 +295,16 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Stage 4: deploy through a protected GitHub environment with explicit migrations, isolated service replacement, and health verification.
 - [x] Stage 5: prove and document rollback to the previously healthy immutable image without affecting `logiagraph.com`.
 
+### Player avatar designer (completed 2026-08-30)
+
+- [x] Replace individually extracted character PNGs with the original Kenney spritesheets and XML atlas names.
+- [x] Give the production Phaser presentation separate portrait and full-body player rendering modes while retaining the presenter as a separate character.
+- [x] Replace random avatar assignment with a mobile-first join designer for presentation, skin, hair, shirt, trousers, and shoes.
+- [x] Persist and server-validate semantic atlas selections so refresh/reconnect reconstructs the same avatar.
+- [x] Keep player portraits along the bottom during play and use full-body avatars for podiums, winner reveals, and stage animations.
+- [x] Add authenticated, bounded, rate-limited player reactions such as kiss and angry, rendered only on that player's portrait.
+- [x] Add domain, persistence, join-flow, renderer, reaction, recovery, responsive, and browser coverage.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
@@ -318,3 +328,4 @@ Before deviating, record the change, reason, benefit, and trade-off here. Preser
 |---|---|---|---|---|
 | 2026-08-26 | Replace SQL Server with containerized PostgreSQL | The target Hetzner VPS already hosts another website and PostgreSQL is the selected datastore | Lighter isolated database container and a consistent local/production provider | Existing SQL Server migrations and provider-specific configuration are replaced before production data exists |
 | 2026-08-30 | Add a private Redis container and SignalR backplane before multi-replica actor coordination | Cross-process SignalR hint delivery was requested ahead of Milestone 13 | Establishes the supported SignalR scale-out transport and readiness boundary without moving authoritative state | Adds an ephemeral service and password; multiple Web replicas remain unsupported because actor and presence ownership are still process-local and sticky sessions are not yet configured |
+| 2026-08-30 | Replace generated polygon player characters with semantic Kenney atlas selections | Players need to design persistent avatars that work as both full actors and face-only reaction portraits | One reconstructable character definition can drive join previews, the bottom portrait rail, emotes, podiums, and winner animations | Requires a player migration and a controlled compatibility mapping for characters created before the designer ships |

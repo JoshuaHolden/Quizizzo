@@ -26,7 +26,14 @@ public sealed record PhaserCharacterSnapshot(
     string PrimaryColour,
     string Eyes,
     string Mouth,
-    string Accessory);
+    string Accessory,
+    string Presentation,
+    int SkinTone,
+    string HairColour,
+    string ShirtColour,
+    string TrouserColour,
+    string TrouserLength,
+    string ShoeColour);
 
 public sealed record PhaserResultSnapshot(
     string PlayerId,
@@ -73,7 +80,14 @@ public static class PhaserPresentationMapper
                 player.Character.PrimaryColour,
                 player.Character.Eyes.ToString(),
                 player.Character.Mouth.ToString(),
-                player.Character.Accessory.ToString()))).ToArray();
+                player.Character.Accessory.ToString(),
+                player.Character.Presentation.ToString(),
+                (int)player.Character.SkinTone,
+                player.Character.HairColour.ToString(),
+                player.Character.ShirtColour.ToString(),
+                player.Character.TrouserColour.ToString(),
+                player.Character.TrouserLength.ToString(),
+                player.Character.ShoeColour.ToString()))).ToArray();
         var results = game?.Entries
             .Where(entry => entry.Rank.HasValue)
             .Select(entry => new PhaserResultSnapshot(

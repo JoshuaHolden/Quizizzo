@@ -20,6 +20,12 @@
     </div>
     <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
     <p><span class="badge @ConnectionBadgeClass" aria-live="polite">@ConnectionLabel</span></p>
+    <div class="player-reactions" aria-label="Send a reaction to the big screen">
+        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Kiss")' aria-label="Send a kiss">💋</button>
+        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Angry")' aria-label="Show anger">😠</button>
+        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Laugh")' aria-label="Laugh">😂</button>
+        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Wow")' aria-label="Show surprise">😮</button>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(actionError))
     {
@@ -174,6 +180,22 @@
         finally
         {
             submitting = false;
+        }
+    }
+
+    private async Task SendReactionAsync(string reaction)
+    {
+        if (partyConnection is null)
+        {
+            return;
+        }
+        try
+        {
+            await partyConnection.InvokeAsync("SendReaction", reaction);
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            actionError = exception.Message;
         }
     }
 

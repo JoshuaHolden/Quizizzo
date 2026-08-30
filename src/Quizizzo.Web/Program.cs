@@ -147,6 +147,7 @@ builder.Services.AddOptions<RealtimePresenceOptions>()
         "Player disconnect grace period must be between ten milliseconds and five minutes.")
     .ValidateOnStart();
 builder.Services.AddSingleton<PartyConnectionRegistry>();
+builder.Services.AddSingleton<PlayerReactionLimiter>();
 builder.Services.AddSingleton<IPartyRealtimeNotifier, SignalRPartyRealtimeNotifier>();
 builder.Services.AddRateLimiter(options =>
 {

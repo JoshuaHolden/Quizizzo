@@ -117,11 +117,21 @@ test("host, display, and two players can reach a live Estimate controller", asyn
         const playerTwo = await contexts.playerTwo.newPage();
         for (const [page, name] of [[playerOne, "Pixel"], [playerTwo, "Nova"]]) {
             await gotoReliable(page, `/join/${roomCode}`);
-            await page.getByLabel("Your name").fill(name);
+            await expect(page.locator("[data-avatar-preview] canvas")).toBeVisible();
+            await page.getByLabel("Player name").fill(name);
+            await page.getByLabel("Skin").selectOption(name === "Pixel" ? "Tint7" : "Tint3");
+            await page.getByLabel("Hair").selectOption(name === "Pixel" ? "Red" : "Black");
+            await page.getByLabel("Length").selectOption(name === "Pixel" ? "Shorts" : "Cropped");
+            await page.screenshot({
+                path: testInfo.outputPath(`${name.toLowerCase()}-avatar-designer.png`),
+                fullPage: true,
+                animations: "disabled",
+            });
             await page.getByRole("button", { name: "Join the party" }).click();
             await expect(page).toHaveURL(/\/play$/);
             await expect(page.getByRole("heading", { name: new RegExp(`You're in, ${name}`, "i") }))
                 .toBeVisible();
+            await page.getByRole("button", { name: name === "Pixel" ? "Send a kiss" : "Show anger" }).click();
         }
 
         await gotoReliable(host, partyUrl);

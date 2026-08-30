@@ -15,7 +15,9 @@ public sealed class PartyHub(
     PlayerService players,
     DisplaySessionService displays,
     PartyGameService games,
-    PartyConnectionRegistry connections) : Hub<IPartyClient>
+    PartyConnectionRegistry connections,
+    PlayerReactionLimiter reactionLimiter,
+    TimeProvider timeProvider) : Hub<IPartyClient>
 {
     public async Task ConnectHost(Guid partyId)
     {
@@ -86,6 +88,27 @@ public sealed class PartyHub(
             throw new HubException(result.ErrorMessage ?? "The game action was rejected.");
         }
         return result;
+    }
+
+    public async Task SendReaction(string reaction)
+    {
+        var allowed = new[] { "Kiss", "Angry", "Laugh", "Wow" };
+        var selected = allowed.FirstOrDefault(value =>
+            string.Equals(value, reaction, StringComparison.OrdinalIgnoreCase));
+        if (selected is null)
+        {
+            throw new HubException("That reaction is not available.");
+        }
+
+        var token = GetCookie(PlayerSessionEndpoints.PlayerCookieName);
+        var player = await players.ReconnectAsync(token, Context.ConnectionAborted);
+        if (!reactionLimiter.TryAcquire(player.PlayerId))
+        {
+            throw new HubException("Wait a moment before reacting again.");
+        }
+
+        await Clients.Group(RealtimeGroups.Displays(player.PartyId)).PlayerReacted(
+            new PlayerReactionMessage(player.PlayerId, selected, timeProvider.GetUtcNow()));
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

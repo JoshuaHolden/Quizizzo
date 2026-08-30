@@ -4,6 +4,7 @@
 @using Quizizzo.Application.Players
 @using Quizizzo.GameContracts
 @using Quizizzo.Web.Presentation
+@using Quizizzo.Web.Realtime
 @inject DisplayRealtimeStateLoader StateLoader
 @inject NavigationManager Navigation
 @inject QrCodeService QrCodes
@@ -11,10 +12,11 @@
 <PartyRealtimeConnection Role="Display"
                          PartyId="session.PartyId"
                          StateChanged="RefreshFromServerAsync"
-                         ConnectionStatusChanged="SetConnectionStatus" />
+                         ConnectionStatusChanged="SetConnectionStatus"
+                         PlayerReacted="HandlePlayerReactionAsync" />
 
 <main class="display-stage text-center">
-    <PhaserPresentation Snapshot="PresentationSnapshot" />
+    <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot" />
     <div class="display-overlay">
         <h1 class="display-2 fw-bold">QUIZIZZO</h1>
         <span class="badge display-connection-pill @ConnectionBadgeClass"
@@ -118,6 +120,7 @@
     private PartyGameView? gameView;
     private DisplayGameViewPayload? game;
     private string connectionStatus = "Connecting";
+    private PhaserPresentation? phaserPresentation;
     private string PairingPath => $"host/pair-display/{session.PairingCode}";
     private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
@@ -158,5 +161,13 @@
     {
         connectionStatus = status;
         return Task.CompletedTask;
+    }
+
+    private async Task HandlePlayerReactionAsync(PlayerReactionMessage message)
+    {
+        if (phaserPresentation is not null)
+        {
+            await phaserPresentation.ReactAsync(message.PlayerId, message.Reaction);
+        }
     }
 }

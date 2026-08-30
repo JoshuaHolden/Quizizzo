@@ -33,6 +33,13 @@ internal sealed class PlayerConfiguration : IEntityTypeConfiguration<Player>
             character.Property(value => value.Eyes).HasColumnName("CharacterEyes").HasConversion<int>();
             character.Property(value => value.Mouth).HasColumnName("CharacterMouth").HasConversion<int>();
             character.Property(value => value.Accessory).HasColumnName("CharacterAccessory").HasConversion<int>();
+            character.Property(value => value.Presentation).HasColumnName("CharacterPresentation").HasConversion<int>();
+            character.Property(value => value.SkinTone).HasColumnName("CharacterSkinTone").HasConversion<int>();
+            character.Property(value => value.HairColour).HasColumnName("CharacterHairColour").HasConversion<int>();
+            character.Property(value => value.ShirtColour).HasColumnName("CharacterShirtColour").HasConversion<int>();
+            character.Property(value => value.TrouserColour).HasColumnName("CharacterTrouserColour").HasConversion<int>();
+            character.Property(value => value.TrouserLength).HasColumnName("CharacterTrouserLength").HasConversion<int>();
+            character.Property(value => value.ShoeColour).HasColumnName("CharacterShoeColour").HasConversion<int>();
         });
         builder.HasOne<Party>()
             .WithMany()

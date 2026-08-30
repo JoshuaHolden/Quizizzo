@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @using Microsoft.JSInterop
+@using Quizizzo.Web.Realtime
 @inject IJSRuntime JavaScript
 
 @code {
@@ -7,6 +8,7 @@
     [Parameter] public Guid? PartyId { get; set; }
     [Parameter] public EventCallback<string> StateChanged { get; set; }
     [Parameter] public EventCallback<string> ConnectionStatusChanged { get; set; }
+    [Parameter] public EventCallback<PlayerReactionMessage> PlayerReacted { get; set; }
 
     private readonly string connectionKey = Guid.NewGuid().ToString("N");
     private DotNetObjectReference<PartyRealtimeConnection>? reference;
@@ -35,6 +37,9 @@
 
     [JSInvokable]
     public Task SetConnectionStatus(string status) => ConnectionStatusChanged.InvokeAsync(status);
+
+    [JSInvokable]
+    public Task HandlePlayerReaction(PlayerReactionMessage message) => PlayerReacted.InvokeAsync(message);
 
     public async Task InvokeAsync(string method, params object?[] arguments)
     {

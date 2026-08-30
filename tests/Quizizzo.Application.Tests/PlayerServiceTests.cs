@@ -28,6 +28,30 @@ public sealed class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Join_persists_the_players_validated_avatar_selection()
+    {
+        var fixture = new Fixture();
+        var selection = new CharacterSelection(
+            CharacterPresentation.Woman,
+            CharacterSkinTone.Tint7,
+            CharacterHairColour.Red,
+            CharacterShirtColour.Green,
+            CharacterTrouserColour.Tan,
+            CharacterTrouserLength.Shorts,
+            CharacterShoeColour.Black);
+
+        var joined = await fixture.Service.JoinAsync("K7XM", "Designer", null, selection);
+
+        Assert.Equal(CharacterPresentation.Woman, joined.View.Character.Presentation);
+        Assert.Equal(CharacterSkinTone.Tint7, joined.View.Character.SkinTone);
+        Assert.Equal(CharacterHairColour.Red, joined.View.Character.HairColour);
+        Assert.Equal(CharacterShirtColour.Green, joined.View.Character.ShirtColour);
+        Assert.Equal(CharacterTrouserColour.Tan, joined.View.Character.TrouserColour);
+        Assert.Equal(CharacterTrouserLength.Shorts, joined.View.Character.TrouserLength);
+        Assert.Equal(CharacterShoeColour.Black, joined.View.Character.ShoeColour);
+    }
+
+    [Fact]
     public async Task Joining_again_with_the_same_cookie_restores_identity_without_a_duplicate()
     {
         var fixture = new Fixture();

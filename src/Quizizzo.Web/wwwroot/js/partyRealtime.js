@@ -41,6 +41,8 @@ window.quizizzoRealtime = (() => {
 
             await notify(reference, "HandleStateChanged", message.reason);
         });
+        connection.on("PlayerReacted", message =>
+            notify(reference, "HandlePlayerReaction", message));
         connection.onreconnecting(() => notify(reference, "SetConnectionStatus", "Reconnecting"));
         connection.onreconnected(async () => {
             try {

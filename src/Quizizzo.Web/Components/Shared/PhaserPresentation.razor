@@ -56,4 +56,13 @@
         {
         }
     }
+
+    public async Task ReactAsync(Guid playerId, string reaction)
+    {
+        if (started)
+        {
+            await JavaScript.InvokeVoidAsync(
+                "quizizzoPresentation.react", presentationKey, playerId.ToString("N"), reaction);
+        }
+    }
 }

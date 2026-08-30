@@ -27,6 +27,7 @@ public sealed class PlayerService(
         string roomCode,
         string displayName,
         string? existingSessionToken = null,
+        CharacterSelection? characterSelection = null,
         CancellationToken cancellationToken = default)
     {
         var discoveredParty = await GetJoinablePartyAsync(roomCode, cancellationToken);
@@ -61,7 +62,7 @@ public sealed class PlayerService(
         var player = Player.Create(
             party.Id,
             playerName,
-            characters.Generate(),
+            characterSelection?.ToDefinition() ?? characters.Generate(),
             credentials.HashSessionToken(sessionToken),
             timeProvider.GetUtcNow());
         await players.AddAsync(player, cancellationToken);
@@ -177,7 +178,14 @@ public sealed class PlayerService(
             player.Character.PrimaryColour,
             player.Character.Eyes,
             player.Character.Mouth,
-            player.Character.Accessory),
+            player.Character.Accessory,
+            player.Character.Presentation,
+            player.Character.SkinTone,
+            player.Character.HairColour,
+            player.Character.ShirtColour,
+            player.Character.TrouserColour,
+            player.Character.TrouserLength,
+            player.Character.ShoeColour),
         player.JoinedAt,
         player.LastSeenAt);
 }
