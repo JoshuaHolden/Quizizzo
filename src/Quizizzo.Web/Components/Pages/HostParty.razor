@@ -95,7 +95,18 @@ else
     {
         <section class="responsive-card card">
             <h2>Lobby</h2>
-            <p>Open <a href="/display" target="_blank">the shared display</a>, then pair it using the code shown there.</p>
+            <div class="host-display-actions mb-3">
+                <form method="post" action="@($"/host/party/{PartyId}/present")">
+                    <AntiforgeryToken />
+                    <button class="btn btn-primary btn-lg" type="submit">Present on this device</button>
+                </form>
+                <details class="mt-3">
+                    <summary>Connect another screen</summary>
+                    <p class="mt-2 mb-0">
+                        On the TV or projector, open <strong>quizizzo.com/display</strong>, then scan the QR code shown there.
+                    </p>
+                </details>
+            </div>
             <p aria-live="polite">
                 @presence.Players player@(presence.Players == 1 ? string.Empty : "s") online
                 · Display @(presence.DisplayConnected ? "connected" : "not connected")

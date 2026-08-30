@@ -257,7 +257,7 @@ app.Use(async (context, next) =>
 {
     if (HttpMethods.IsGet(context.Request.Method) && context.Request.Path.Equals("/display"))
     {
-        const string cookieName = "quizizzo.display";
+        const string cookieName = HostDisplayEndpoints.DisplayCookieName;
         context.Request.Cookies.TryGetValue(cookieName, out var sessionToken);
         var displaySessions = context.RequestServices.GetRequiredService<DisplaySessionService>();
         var restored = await displaySessions.RestoreOrCreateAsync(sessionToken, context.RequestAborted);
@@ -312,6 +312,7 @@ app.MapRazorComponents<App>()
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
 app.MapPlayerSessionEndpoints();
+app.MapHostDisplayEndpoints();
 app.MapDrawingAssetEndpoints();
 app.MapHub<PartyHub>("/hubs/party");
 app.MapHealthChecks("/health/live", new() { Predicate = check => check.Tags.Contains("live") });

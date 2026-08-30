@@ -58,6 +58,7 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
     internal sealed class RecoveryState : IPartyRepository, IPlayerRepository, IDisplaySessionRepository
     {
         private readonly object gate = new();
+        private readonly List<DisplaySession> displays = [];
 
         public RecoveryState()
         {
@@ -91,12 +92,23 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
                 now,
                 TimeSpan.FromMinutes(15));
             Display.Pair(Party, HostUserId, now);
+            displays.Add(Display);
         }
 
         public Party Party { get; }
         public Player Player { get; }
         public Player OtherPlayer { get; }
         public DisplaySession Display { get; }
+        public IReadOnlyList<DisplaySession> Displays
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return displays.ToArray();
+                }
+            }
+        }
 
         public Task<bool> ActiveRoomCodeExistsAsync(RoomCode roomCode, CancellationToken cancellationToken) =>
             Task.FromResult(Party.RoomCode == roomCode && Party.HasActiveRoomCode);
@@ -140,15 +152,22 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
                 Player.PartyId == partyId && Player.IsPartyMember ? [Player, OtherPlayer] : []);
 
         public Task<bool> PairingCodeExistsAsync(string pairingCode, CancellationToken cancellationToken) =>
-            Task.FromResult(Display.PairingCode == pairingCode);
+            Task.FromResult(Displays.Any(display => display.PairingCode == pairingCode));
 
-        public Task AddAsync(DisplaySession displaySession, CancellationToken cancellationToken) =>
-            throw new NotSupportedException("The recovery fixture is pre-seeded.");
+        public Task AddAsync(DisplaySession displaySession, CancellationToken cancellationToken)
+        {
+            lock (gate)
+            {
+                displays.Add(displaySession);
+            }
+
+            return Task.CompletedTask;
+        }
 
         public Task<DisplaySession?> GetByIdAsync(
             DisplaySessionId displaySessionId,
             CancellationToken cancellationToken) =>
-            Task.FromResult<DisplaySession?>(Display.Id == displaySessionId ? Display : null);
+            Task.FromResult(Displays.FirstOrDefault(display => display.Id == displaySessionId));
 
         Task<DisplaySession?> IDisplaySessionRepository.GetBySessionTokenHashAsync(
             string tokenHash,
@@ -156,14 +175,14 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
         {
             lock (gate)
             {
-                return Task.FromResult<DisplaySession?>(Display.SessionTokenHash == tokenHash ? Display : null);
+                return Task.FromResult(displays.FirstOrDefault(display => display.SessionTokenHash == tokenHash));
             }
         }
 
         public Task<DisplaySession?> GetByPairingCodeAsync(
             string pairingCode,
             CancellationToken cancellationToken) =>
-            Task.FromResult<DisplaySession?>(Display.PairingCode == pairingCode ? Display : null);
+            Task.FromResult(Displays.FirstOrDefault(display => display.PairingCode == pairingCode));
 
         public Task SaveChangesAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
@@ -178,9 +197,9 @@ internal sealed class RecoveryWebApplicationFactory : WebApplicationFactory<Prog
     private sealed class RecoveryDisplayCredentials : IDisplayCredentialService
     {
         public static string Hash(string token) => $"display-hash:{token}";
-        public string GenerateSessionToken() => throw new NotSupportedException();
+        public string GenerateSessionToken() => "generated-display-token";
         public string HashSessionToken(string sessionToken) => Hash(sessionToken);
-        public string GeneratePairingCode() => throw new NotSupportedException();
+        public string GeneratePairingCode() => "GENERATE1";
     }
 
     private sealed class RecoveryAuthenticationHandler(

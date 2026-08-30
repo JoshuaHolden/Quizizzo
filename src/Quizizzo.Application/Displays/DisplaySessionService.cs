@@ -36,6 +36,13 @@ public sealed class DisplaySessionService(
             }
         }
 
+        return await CreateAsync(cancellationToken);
+    }
+
+    public async Task<RestoredDisplaySession> CreateAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var now = timeProvider.GetUtcNow();
         var newToken = credentials.GenerateSessionToken();
         var displaySession = DisplaySession.Create(
             credentials.HashSessionToken(newToken),
