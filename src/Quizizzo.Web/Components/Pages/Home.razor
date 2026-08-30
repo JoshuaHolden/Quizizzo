@@ -7,6 +7,16 @@
 </HeadContent>
 
 <div class="landing-page" data-landing-motion>
+    <div class="scroll-confetti" data-scroll-confetti aria-hidden="true">
+        <i style="--x: 7%; --y: 7%; --r: 18deg; --drift: 1.15"></i>
+        <i style="--x: 20%; --y: 19%; --r: -32deg; --drift: .72"></i>
+        <i style="--x: 91%; --y: 28%; --r: 64deg; --drift: 1.35"></i>
+        <i style="--x: 75%; --y: 44%; --r: 12deg; --drift: .88"></i>
+        <i style="--x: 12%; --y: 56%; --r: 42deg; --drift: 1.5"></i>
+        <i style="--x: 87%; --y: 67%; --r: -18deg; --drift: .65"></i>
+        <i style="--x: 27%; --y: 79%; --r: 73deg; --drift: 1.05"></i>
+        <i style="--x: 68%; --y: 91%; --r: -46deg; --drift: 1.28"></i>
+    </div>
     <section class="hero-section" aria-labelledby="hero-title">
         <div class="hero-orb hero-orb-one" data-parallax-layer data-depth="0.45" aria-hidden="true"></div>
         <div class="hero-orb hero-orb-two" data-parallax-layer data-depth="0.8" aria-hidden="true"></div>
@@ -14,7 +24,7 @@
         <span class="hero-confetti hero-confetti-two" data-parallax-layer data-depth="0.75" aria-hidden="true"></span>
 
         <div class="hero-grid page-width">
-            <div class="hero-copy">
+            <div class="hero-copy" data-reveal>
                 <p class="eyebrow"><span aria-hidden="true"></span> Browser party games, ready when you are</p>
                 <h1 id="hero-title">Big-screen chaos.<br /><em>Tiny-screen controls.</em></h1>
                 <p class="hero-intro">
@@ -35,7 +45,7 @@
                 </ul>
             </div>
 
-            <div class="hero-visual" aria-hidden="true">
+            <div class="hero-visual" data-reveal data-reveal-delay="1" aria-hidden="true">
                 <div class="party-card" data-parallax-layer data-depth="0.24">
                     <div class="party-card-topline">
                         <span class="party-live"><i aria-hidden="true"></i> Live party</span>
@@ -86,32 +96,32 @@
     </section>
 
     <section class="games-section page-width" aria-labelledby="games-title">
-        <div class="section-heading">
+        <div class="section-heading" data-reveal>
             <p class="eyebrow">Pick your kind of ridiculous</p>
             <h2 id="games-title">A party mix with actual personality.</h2>
             <p>Quick guesses, suspicious bluffs, group votes, and tiny hand-drawn masterpieces.</p>
         </div>
 
         <div class="game-grid">
-            <article class="game-card game-card-estimate">
+            <article class="game-card game-card-estimate" data-reveal>
                 <div class="game-icon" aria-hidden="true">≈</div>
                 <p>GUESS CLOSEST</p>
                 <h3>Estimate</h3>
                 <span>Big questions. Wild guesses. Points for whoever gets closest.</span>
             </article>
-            <article class="game-card game-card-majority">
+            <article class="game-card game-card-majority" data-reveal data-reveal-delay="1">
                 <div class="game-icon" aria-hidden="true">62%</div>
                 <p>THINK ALIKE</p>
                 <h3>Majority Rules</h3>
                 <span>Write your answer, then back the response the room loves most.</span>
             </article>
-            <article class="game-card game-card-bullshit">
+            <article class="game-card game-card-bullshit" data-reveal>
                 <div class="game-icon" aria-hidden="true">?!</div>
                 <p>BLUFF WELL</p>
                 <h3>Bullshit</h3>
                 <span>Invent a convincing fake and lure your mates away from the truth.</span>
             </article>
-            <article class="game-card game-card-animates">
+            <article class="game-card game-card-animates" data-reveal data-reveal-delay="1">
                 <div class="game-icon animation-icon" aria-hidden="true"><i></i><i></i><i></i></div>
                 <p>DRAW TOGETHER</p>
                 <h3>AniMates</h3>
@@ -128,19 +138,19 @@
             </div>
 
             <ol class="step-grid">
-                <li>
+                <li data-reveal>
                     <span class="step-number">01</span>
                     <div class="step-visual step-screen" aria-hidden="true"><i>Q</i><b>ZAPY</b></div>
                     <h3>Open the big screen</h3>
                     <p>Load Quizizzo on a TV, monitor, or projector and pair it once.</p>
                 </li>
-                <li>
+                <li data-reveal data-reveal-delay="1">
                     <span class="step-number">02</span>
                     <div class="step-visual step-phones" aria-hidden="true"><i></i><i></i><i></i></div>
                     <h3>Everyone joins</h3>
                     <p>Players enter the four-letter room code on any phone—no account needed.</p>
                 </li>
-                <li>
+                <li data-reveal data-reveal-delay="2">
                     <span class="step-number">03</span>
                     <div class="step-visual step-party" aria-hidden="true">🎉</div>
                     <h3>Make some noise</h3>
@@ -150,7 +160,7 @@
         </div>
     </section>
 
-    <section class="final-cta page-width" aria-labelledby="cta-title">
+    <section class="final-cta page-width" data-reveal aria-labelledby="cta-title">
         <div>
             <p class="eyebrow">Your next running joke starts here</p>
             <h2 id="cta-title">Ready to wake up the group chat?</h2>

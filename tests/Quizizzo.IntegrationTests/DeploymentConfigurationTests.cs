@@ -13,9 +13,28 @@ public sealed class DeploymentConfigurationTests
             compose,
             StringComparison.Ordinal);
         Assert.DoesNotContain("- \"5432:", compose, StringComparison.Ordinal);
+        Assert.DoesNotContain("- \"6379:", compose, StringComparison.Ordinal);
         Assert.Contains("quizizzo-private", compose, StringComparison.Ordinal);
         Assert.Contains("QUIZIZZO_ALLOWED_HOSTS", ReadRepositoryFile(".env.example"),
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SignalR_uses_a_private_password_protected_Redis_backplane()
+    {
+        var compose = ReadRepositoryFile("compose.yaml");
+        var project = ReadRepositoryFile("src/Quizizzo.Web/Quizizzo.Web.csproj");
+        var program = ReadRepositoryFile("src/Quizizzo.Web/Program.cs");
+
+        Assert.Contains("redis:8.2.8-alpine", compose, StringComparison.Ordinal);
+        Assert.Contains("QUIZIZZO_REDIS_PASSWORD", compose, StringComparison.Ordinal);
+        Assert.Contains("ConnectionStrings__Redis", compose, StringComparison.Ordinal);
+        Assert.Contains("condition: service_healthy", compose, StringComparison.Ordinal);
+        Assert.Contains("Microsoft.AspNetCore.SignalR.StackExchangeRedis", project,
+            StringComparison.Ordinal);
+        Assert.Contains("AddStackExchangeRedis", program, StringComparison.Ordinal);
+        Assert.Contains("Quizizzo.SignalR", program, StringComparison.Ordinal);
+        Assert.Contains("redis-backplane", program, StringComparison.Ordinal);
     }
 
     [Fact]

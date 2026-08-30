@@ -287,9 +287,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add automated presentation contracts and browser screenshots at representative phone, tablet, desktop, and shared-display sizes.
 - [x] Rebuild the live Docker Web image, run the client and .NET quality gates, repeat the browser audit, and record the verified findings.
 
-### Remaining milestones
+### Milestone 13 — CI/CD (in progress)
 
-- [ ] Milestone 13 — CI/CD: GitHub Actions, image publishing, Hetzner deployment, migrations, rollback, health verification.
+- [ ] Stage 1: add read-only GitHub CI for client audit/build/tests, JavaScript validation, analyzer-style verification, strict Release .NET build/tests, production image build, and non-root verification. Implementation and container verification are complete; the hosted/full-suite gate must pass before this item is checked.
+- [ ] Stage 2: publish immutable commit-SHA images to GHCR without deployment credentials. Workflow implementation and local build verification are complete; check this item after the first successful `main` publication.
+- [ ] Stage 3: prepare and manually prove the least-privilege Hetzner deployment account, production environment, backups, and preflight checks.
+- [ ] Stage 4: deploy through a protected GitHub environment with explicit migrations, isolated service replacement, and health verification.
+- [ ] Stage 5: prove and document rollback to the previously healthy immutable image without affecting `logiagraph.com`.
 
 ## Verification requirements
 
@@ -313,3 +317,4 @@ Before deviating, record the change, reason, benefit, and trade-off here. Preser
 | Date | Change | Reason | Benefit | Trade-off |
 |---|---|---|---|---|
 | 2026-08-26 | Replace SQL Server with containerized PostgreSQL | The target Hetzner VPS already hosts another website and PostgreSQL is the selected datastore | Lighter isolated database container and a consistent local/production provider | Existing SQL Server migrations and provider-specific configuration are replaced before production data exists |
+| 2026-08-30 | Add a private Redis container and SignalR backplane before multi-replica actor coordination | Cross-process SignalR hint delivery was requested ahead of Milestone 13 | Establishes the supported SignalR scale-out transport and readiness boundary without moving authoritative state | Adds an ephemeral service and password; multiple Web replicas remain unsupported because actor and presence ownership are still process-local and sticky sessions are not yet configured |

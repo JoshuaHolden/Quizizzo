@@ -35,6 +35,61 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("requestAnimationFrame", motion, StringComparison.Ordinal);
         Assert.Contains("AbortController", motion, StringComparison.Ordinal);
+        Assert.Contains("IntersectionObserver", motion, StringComparison.Ordinal);
+        Assert.Contains(".scroll-confetti", homeCss, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Join_routes_share_the_sidebar_free_landing_experience()
+    {
+        var join = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Join.razor");
+        var joinParty = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/JoinParty.razor");
+
+        Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", join,
+            StringComparison.Ordinal);
+        Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", joinParty,
+            StringComparison.Ordinal);
+        Assert.Contains("join-experience", join, StringComparison.Ordinal);
+        Assert.Contains("join-experience", joinParty, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Public_account_routes_share_the_sidebar_free_account_experience()
+    {
+        var imports = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Account/Pages/_Imports.razor");
+        var accountLayout = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Account/Shared/AccountLayout.razor");
+
+        Assert.Contains("AccountLayout", imports, StringComparison.Ordinal);
+        Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", accountLayout,
+            StringComparison.Ordinal);
+        Assert.Contains("account-experience", accountLayout, StringComparison.Ordinal);
+        Assert.DoesNotContain("<NavMenu", accountLayout, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Presenter_lab_uses_layered_cc0_assets_and_accessible_motion_controls()
+    {
+        var page = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PresenterLab.razor");
+        var styles = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PresenterLab.razor.css");
+        var motion = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/presenterLab.js");
+        var licence = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/assets/kenney-presenter/LICENSE.txt");
+
+        Assert.Contains("@page \"/presenter-lab\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-presenter-action=\"wave\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-presenter-action=\"talk\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-presenter-action=\"laugh\"", page, StringComparison.Ordinal);
+        Assert.Contains("data-presenter-action=\"fart\"", page, StringComparison.Ordinal);
+        Assert.Contains("aria-live=\"polite\"", page, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
+        Assert.Contains("new Phaser.Game", motion, StringComparison.Ordinal);
+        Assert.Contains("this.add.particles", motion, StringComparison.Ordinal);
+        Assert.Contains("CC0", licence, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

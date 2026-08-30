@@ -10,6 +10,46 @@
     background: var(--night);
     color: var(--ink);
     overflow: clip;
+    position: relative;
+}
+
+.scroll-confetti {
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    position: absolute;
+    z-index: 1;
+}
+
+.scroll-confetti i {
+    --confetti-shift: 0px;
+    background: var(--pink);
+    border-radius: 0.18rem;
+    height: 0.55rem;
+    left: var(--x);
+    opacity: 0.72;
+    position: absolute;
+    top: var(--y);
+    transform: translate3d(0, calc(var(--confetti-shift) * var(--drift)), 0) rotate(calc(var(--r) + var(--confetti-turn, 0deg)));
+    width: 1.65rem;
+    will-change: transform;
+}
+
+.scroll-confetti i:nth-child(3n + 2) { background: var(--cyan); height: 1.45rem; width: 0.5rem; }
+.scroll-confetti i:nth-child(3n) { background: var(--yellow); border-radius: 50%; height: 0.72rem; width: 0.72rem; }
+
+[data-reveal] {
+    opacity: 0;
+    transform: translateY(2rem) scale(0.985);
+    transition: opacity 700ms ease, transform 800ms cubic-bezier(.2, .75, .2, 1);
+}
+
+[data-reveal-delay="1"] { transition-delay: 100ms; }
+[data-reveal-delay="2"] { transition-delay: 200ms; }
+
+[data-reveal].is-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .page-width {
@@ -985,6 +1025,17 @@
     .hero-button {
         animation: none !important;
         transition: none !important;
+    }
+
+    [data-reveal] {
+        opacity: 1;
+        transform: none;
+        transition: none;
+    }
+
+    .scroll-confetti i {
+        transform: rotate(var(--r));
+        will-change: auto;
     }
 }
 

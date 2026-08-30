@@ -10,12 +10,15 @@ services:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
       AllowedHosts: ${QUIZIZZO_ALLOWED_HOSTS:-localhost}
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
+      ConnectionStrings__Redis: "redis:6379,password=${QUIZIZZO_REDIS_PASSWORD:?Set QUIZIZZO_REDIS_PASSWORD in .env},abortConnect=false"
       DrawingAssets__RootPath: /app/assets/drawings
       DataProtection__KeyPath: /app/data-protection
     ports:
       - "127.0.0.1:${QUIZIZZO_HTTP_PORT:-8081}:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     volumes:
@@ -52,6 +55,21 @@ services:
       timeout: 5s
       retries: 12
       start_period: 30s
+    restart: unless-stopped
+    networks:
+      - quizizzo-private
+
+  redis:
+    image: redis:8.2.8-alpine
+    environment:
+      REDIS_PASSWORD: "${QUIZIZZO_REDIS_PASSWORD:?Set QUIZIZZO_REDIS_PASSWORD in .env}"
+    command: ["/bin/sh", "-c", "exec redis-server --save '' --appendonly no --requirepass \"$$REDIS_PASSWORD\""]
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=$$REDIS_PASSWORD redis-cli ping | grep PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
     restart: unless-stopped
     networks:
       - quizizzo-private

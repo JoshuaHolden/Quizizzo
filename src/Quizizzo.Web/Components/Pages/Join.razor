@@ -1,21 +1,40 @@
 @page "/join"
+@layout Quizizzo.Web.Components.Layout.LandingLayout
 @rendermode InteractiveServer
 @using Quizizzo.Domain.Parties
 @inject NavigationManager Navigation
 
 <PageTitle>Join a party</PageTitle>
 
-<div class="join-panel mx-auto">
-    <h1>Join the party</h1>
-    <p>Enter the four-character code shown on the big screen.</p>
-    <label class="form-label" for="room-code">Room code</label>
-    <input id="room-code" class="form-control form-control-lg text-uppercase" maxlength="4"
-           autocomplete="off" inputmode="text" @bind="roomCode" @bind:event="oninput" />
-    @if (!string.IsNullOrEmpty(error))
-    {
-        <p class="text-danger mt-2">@error</p>
-    }
-    <button class="btn btn-primary btn-lg w-100 mt-3" @onclick="Continue">Find my game</button>
+<div class="join-experience" data-landing-motion>
+    <span class="join-orb join-orb-one" data-parallax-layer data-depth=".65" aria-hidden="true"></span>
+    <span class="join-orb join-orb-two" data-parallax-layer data-depth="1.1" aria-hidden="true"></span>
+    <div class="join-stage">
+        <section class="join-copy" data-reveal aria-labelledby="join-title">
+            <p class="join-eyebrow">Your phone is the controller</p>
+            <h1 id="join-title">Join the party.<br /><em>Bring the chaos.</em></h1>
+            <p>Find the four-letter code on the big screen. No download, no player account, no fuss.</p>
+            <div class="join-perks" aria-label="Joining is simple">
+                <span><i aria-hidden="true">1</i> Enter code</span>
+                <span><i aria-hidden="true">2</i> Pick a name</span>
+                <span><i aria-hidden="true">3</i> Play</span>
+            </div>
+        </section>
+        <section class="join-card" data-reveal data-reveal-delay="1" aria-label="Enter your room code">
+            <span class="join-card-kicker">ROOM CODE</span>
+            <label for="room-code">Four letters. One party.</label>
+            <input id="room-code" maxlength="4" autocomplete="off" inputmode="text"
+                   autocapitalize="characters" spellcheck="false" aria-describedby="room-code-hint"
+                   @bind="roomCode" @bind:event="oninput" />
+            <p id="room-code-hint" class="join-hint">It’s shown at the top of the shared screen.</p>
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <p class="join-error" role="alert">@error</p>
+            }
+            <button type="button" @onclick="Continue">Find my game <span aria-hidden="true">→</span></button>
+            <a href="/">Back to Quizizzo</a>
+        </section>
+    </div>
 </div>
 
 @code {

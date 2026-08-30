@@ -27,6 +27,7 @@ using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
 using Quizizzo.Web.Games;
 using Quizizzo.Web.Security;
+using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
@@ -34,7 +35,15 @@ builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-builder.Services.AddSignalR();
+var signalR = builder.Services.AddSignalR();
+var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    signalR.AddStackExchangeRedis(redisConnectionString, options =>
+    {
+        options.Configuration.ChannelPrefix = RedisChannel.Literal("Quizizzo.SignalR");
+    });
+}
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -174,6 +183,14 @@ builder.Services.AddHealthChecks()
     .AddCheck("application", () => Microsoft.Extensions.Diagnostics.HealthChecks.HealthCheckResult.Healthy(), tags: ["live"])
     .AddCheck<DrawingAssetStoreHealthCheck>("drawing-assets", tags: ["ready"])
     .AddCheck<PostgreSqlHealthCheck>("postgresql", tags: ["ready"]);
+if (!string.IsNullOrWhiteSpace(redisConnectionString))
+{
+    builder.Services.AddHealthChecks()
+        .AddCheck(
+            "redis-backplane",
+            new RedisBackplaneHealthCheck(redisConnectionString),
+            tags: ["ready"]);
+}
 
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {

@@ -1,0 +1,26 @@
+@inherits LayoutComponentBase
+@layout Quizizzo.Web.Components.Layout.LandingLayout
+
+<div class="account-experience" data-landing-motion>
+    <span class="account-orb account-orb-one" data-parallax-layer data-depth=".55" aria-hidden="true"></span>
+    <span class="account-orb account-orb-two" data-parallax-layer data-depth="1.05" aria-hidden="true"></span>
+    <span class="account-spark account-spark-one" data-parallax-layer data-depth="1.25" aria-hidden="true"></span>
+    <span class="account-spark account-spark-two" data-parallax-layer data-depth=".8" aria-hidden="true"></span>
+
+    <div class="account-stage">
+        <aside class="account-welcome" data-reveal aria-hidden="true">
+            <span class="account-welcome-kicker">HOST MODE</span>
+            <h2>Keep the party<br /><em>in your hands.</em></h2>
+            <p>Create rooms, steer every round, and bring the same crew back for another game.</p>
+            <div class="account-mini-screen">
+                <span>LIVE PARTY</span>
+                <strong>ZAPY</strong>
+                <div><i></i><i></i><i></i><i></i></div>
+            </div>
+        </aside>
+
+        <section class="account-card" data-reveal data-reveal-delay="1" aria-label="Host account">
+            @Body
+        </section>
+    </div>
+</div>

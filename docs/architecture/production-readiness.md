@@ -27,4 +27,4 @@ This checkpoint reviews Milestones 1–12 before delivery automation. It strengt
 
 ## Supported scale
 
-The production target is one Web container plus one private PostgreSQL container on the Hetzner VPS. It can host many independent parties concurrently because each active game has a small isolated actor and async I/O. PostgreSQL provides durable restarts, not distributed actor ownership. Multiple Web replicas are unsupported until a later design adds coordinated command ownership and a SignalR backplane; vertical scaling is the safe MVP path.
+The production target is one Web container, one private PostgreSQL container, and one private ephemeral Redis container on the Hetzner VPS. Redis provides a SignalR backplane for cross-process refresh hints, but PostgreSQL alone provides durable restarts and neither service provides distributed actor or presence ownership. Multiple Web replicas remain unsupported until a later design coordinates command ownership and presence and configures sticky sessions; vertical scaling is still the safe MVP path.

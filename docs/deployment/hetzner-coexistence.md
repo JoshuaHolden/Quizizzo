@@ -1,6 +1,16 @@
 # Hetzner deployment alongside an existing website
 
-Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL service has no published host port, and its volume/network names are Quizizzo-specific. The existing `logiagraph.com` site is protected: Quizizzo deployment must not stop or recreate its containers, change its existing proxy route, reuse its volumes, or take over its host ports.
+Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL and Redis services have no published host ports, and its volume/network names are Quizizzo-specific. Redis is an ephemeral SignalR backplane and must use a separate strong `QUIZIZZO_REDIS_PASSWORD`. The existing `logiagraph.com` site is protected: Quizizzo deployment must not stop or recreate its containers, change its existing proxy route, reuse its volumes, or take over its host ports.
+
+## Server inventory
+
+- Hetzner server: `ubuntu-8gb-hel1-1`
+- Location: Helsinki
+- Public IPv4: `77.42.77.85`
+- Public IPv6 allocation: `2a01:4f9:c013:91eb::/64`
+- Current IPv4 reverse DNS: `static.85.77.42.77.clients.your-server.de`
+
+The IPv6 value is the allocated `/64` prefix shown by Hetzner, not a confirmed individual host address. Confirm the server's selected IPv6 address before creating an `AAAA` record or firewall rule.
 
 ## Host-based reverse proxy
 
@@ -36,6 +46,6 @@ Whichever proxy is used, verify the browser can negotiate `/hubs/party` and upgr
 - Inspect the rendered model first with `docker compose --project-name quizizzo config`.
 - Run migrations only through `docker compose --project-name quizizzo run --rm migrate`; the ordinary web entry point never changes the schema.
 - Never run global `docker system prune`, broad container stop/remove commands, or reuse another stack's volume.
-- Do not publish PostgreSQL port 5432 on the VPS.
+- Do not publish PostgreSQL port 5432 or Redis port 6379 on the VPS.
 - Back up `quizizzo-postgres-data` before migrations. Preserve `quizizzo-data-protection` across deployments so authentication and anonymous-session protection remain stable. Drawing assets expire after one day, so back up `quizizzo-drawing-assets` only when short-lived in-progress animations must survive a host recovery.
 - A rollback changes only the Quizizzo image tag and stack; it must not modify `logiagraph.com` containers or its proxy route.

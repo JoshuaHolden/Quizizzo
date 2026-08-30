@@ -64,7 +64,7 @@ Health endpoints are `/health/live` for process liveness and `/health/ready` for
 
 ## Containers
 
-The local commands above start the isolated `quizizzo` Compose project, web application, and private PostgreSQL network. PostgreSQL is not published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. PostgreSQL data, temporary drawing assets, and ASP.NET Core Data Protection keys use separate Quizizzo-specific volumes. Apply migrations through the explicit one-shot `migrate` service before starting a new application version; ordinary container startup intentionally does not mutate the schema.
+The local commands above start the isolated `quizizzo` Compose project, web application, private PostgreSQL database, and private Redis SignalR backplane. Neither PostgreSQL nor Redis is published on the host. The web port defaults to `127.0.0.1:8081` and can be changed with `QUIZIZZO_HTTP_PORT`, avoiding collisions with an existing website. PostgreSQL data, temporary drawing assets, and ASP.NET Core Data Protection keys use separate Quizizzo-specific volumes; Redis carries ephemeral SignalR messages and has no persistence volume. Apply migrations through the explicit one-shot `migrate` service before starting a new application version; ordinary container startup intentionally does not mutate the schema.
 
 Set `QUIZIZZO_ALLOWED_HOSTS` to the exact public Quizizzo hostname in production. The container runs as the built-in non-root `app` user, and `.dockerignore` excludes local secrets, tooling state, generated data, tests, and dependency folders from the image context.
 
@@ -121,3 +121,9 @@ The shared display uses one [long-lived Phaser presentation](docs/architecture/p
 The [responsive UI contract](docs/architecture/responsive-ui.md) covers public, account, host, player-controller, drawing, and shared-display layouts from 320 px phones through 4K screens. It defines touch-target, safe-area, keyboard, reduced-motion, overflow, short-height, and single-frame presentation requirements plus the representative viewport verification matrix.
 
 The completed [production-readiness review](docs/architecture/production-readiness.md) records the runtime, security, persistence, cleanup, and scaling decisions that apply before CI/CD. CI/CD and Hetzner deployment remain scheduled in `AGENTS.md`.
+
+## SignalR Redis backplane
+
+Compose configures the Web service with a password-protected Redis 8 backplane on the private Quizizzo network and an application-specific `Quizizzo.SignalR` channel prefix. Redis distributes SignalR refresh hints only; it contains no authoritative party or game state and can be recreated without data recovery. `/health/ready` includes Redis whenever `ConnectionStrings:Redis` is configured. Non-Compose development and isolated tests may omit that connection string and use the in-process SignalR lifetime manager.
+
+The backplane does not authorize multiple Web replicas: game actors and presence ownership remain process-local. A future multi-replica deployment must first add coordinated actor ownership and distributed presence, and must configure sticky sessions as required by SignalR.

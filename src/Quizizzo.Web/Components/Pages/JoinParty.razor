@@ -1,4 +1,5 @@
 @page "/join/{RoomCode}"
+@layout Quizizzo.Web.Components.Layout.LandingLayout
 @using Quizizzo.Application.Parties
 @using Quizizzo.Application.Players
 @using Quizizzo.Domain
@@ -6,31 +7,46 @@
 
 <PageTitle>Join @RoomCode</PageTitle>
 
-<div class="join-panel mx-auto">
+<div class="join-experience" data-landing-motion>
+  <span class="join-orb join-orb-one" data-parallax-layer data-depth=".65" aria-hidden="true"></span>
+  <span class="join-orb join-orb-two" data-parallax-layer data-depth="1.1" aria-hidden="true"></span>
+  <div class="join-stage join-stage-party">
     @if (party is null)
     {
-        <h1>Can't join</h1>
-        <p>@loadError</p>
-        <a class="btn btn-outline-primary" href="/join">Try another code</a>
+        <section class="join-card join-card-message" data-reveal>
+            <span class="join-card-kicker">NOT QUITE</span>
+            <h1>Can’t join yet.</h1>
+            <p>@loadError</p>
+            <a class="join-card-button" href="/join">Try another code <span aria-hidden="true">→</span></a>
+        </section>
     }
     else
     {
-        <p class="text-uppercase mb-1">Joining room</p>
-        <h1 class="display-3 fw-bold">@party.RoomCode</h1>
-        <p>@party.PlayerCount / @party.MaximumPlayers players</p>
-        @if (!string.IsNullOrWhiteSpace(Error))
-        {
-            <div class="alert alert-danger">@Error</div>
-        }
-        <form method="post" action="/join-player">
-            <AntiforgeryToken />
-            <input type="hidden" name="roomCode" value="@party.RoomCode" />
-            <label class="form-label" for="display-name">Your name</label>
-            <input id="display-name" name="displayName" class="form-control form-control-lg"
-                   maxlength="@QuizizzoLimits.PlayerNameLength" autocomplete="nickname" required />
-            <button class="btn btn-primary btn-lg w-100 mt-3" type="submit">Join the party</button>
-        </form>
+        <section class="room-preview" data-reveal aria-labelledby="room-title">
+            <p>YOU FOUND THE PARTY</p>
+            <h1 id="room-title">Room <strong>@party.RoomCode</strong></h1>
+            <span><i aria-hidden="true"></i> @party.PlayerCount of @party.MaximumPlayers players are in</span>
+            <div class="room-characters" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </section>
+        <section class="join-card" data-reveal data-reveal-delay="1" aria-label="Choose your player name">
+            <span class="join-card-kicker">ALMOST THERE</span>
+            <h2>What should we call you?</h2>
+            @if (!string.IsNullOrWhiteSpace(Error))
+            {
+                <p class="join-error" role="alert">@Error</p>
+            }
+            <form method="post" action="/join-player">
+                <AntiforgeryToken />
+                <input type="hidden" name="roomCode" value="@party.RoomCode" />
+                <label for="display-name">Player name</label>
+                <input id="display-name" name="displayName" maxlength="@QuizizzoLimits.PlayerNameLength"
+                       autocomplete="nickname" placeholder="Your brilliant nickname" required />
+                <button type="submit">Join the party <span aria-hidden="true">→</span></button>
+            </form>
+            <a href="/join">Use a different code</a>
+        </section>
     }
+  </div>
 </div>
 
 @code {

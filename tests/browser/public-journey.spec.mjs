@@ -7,6 +7,12 @@ const publicPages = [
     { name: "player", path: "/play", heading: /no active player/i },
     { name: "login", path: "/Account/Login", heading: /log in/i },
     { name: "register", path: "/Account/Register", heading: /register|create/i },
+    { name: "forgot-password", path: "/Account/ForgotPassword", heading: /forgot your password/i },
+    { name: "forgot-password-confirmation", path: "/Account/ForgotPasswordConfirmation", heading: /forgot password confirmation/i },
+    { name: "resend-confirmation", path: "/Account/ResendEmailConfirmation", heading: /resend email confirmation/i },
+    { name: "invalid-reset", path: "/Account/InvalidPasswordReset", heading: /invalid password reset/i },
+    { name: "locked-out", path: "/Account/Lockout", heading: /locked out/i },
+    { name: "access-denied", path: "/Account/AccessDenied", heading: /access denied/i },
 ];
 
 for (const publicPage of publicPages) {
