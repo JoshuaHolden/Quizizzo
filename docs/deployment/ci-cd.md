@@ -31,17 +31,19 @@ The root-owned `scripts/deployment/quizizzo-ops` command exposes two bounded Sta
 - `preflight` validates ownership, secret permissions, immutable image naming and availability, Compose configuration, Nginx configuration, disk capacity, port `8081`, and the protected Logiagraph containers.
 - `backup` requires healthy Quizizzo PostgreSQL, writes a timestamped custom-format `pg_dump` through a temporary file, and records a SHA-256 checksum under root-only `/opt/quizizzo/backups`.
 
-The sudo policy permits `quizizzo-deploy` to invoke only those exact subcommands. It does not yet grant deploy, migration, rollback, arbitrary Docker, shell, editor, or file-copy authority. GitHub still has no Hetzner credential.
+At the Stage 3 proof point, the sudo policy permitted `quizizzo-deploy` to invoke only those exact subcommands and GitHub held no Hetzner credential. Stage 4 later extended the same root-owned command with bounded immutable deploy and rollback operations; arbitrary Docker, shell, editor, and file-copy authority remain denied.
 
 The manual proof passed through the restricted account. Preflight validated the immutable image, Nginx, Compose model, port, disk, and protected containers. Only private Quizizzo PostgreSQL was started; `backup` created a root-only custom-format archive and checksum, `sha256sum` verified it, and PostgreSQL `pg_restore --list` read it successfully. Logiagraph's app, PostgreSQL, and Redis containers remained healthy and unchanged throughout.
 
 ## Stage 4 — Controlled production deployment
 
-In progress. The GitHub `production` environment requires approval by `JoshuaHolden` and holds the dedicated deployment private key. Host, user, and the pinned ED25519 SSH host key are environment variables. Repository and CI jobs have no access to the deployment identity.
+Completed 2026-08-30. The GitHub `production` environment requires approval by `JoshuaHolden` and holds the dedicated deployment private key. Host, user, and the pinned ED25519 SSH host key are environment variables. Repository and CI jobs have no access to the deployment identity.
 
 `.github/workflows/deploy.yml` is manual-only and requires a `deploy` or `rollback` choice plus a full lowercase commit SHA. It uses strict host-key checking and invokes only the root-owned operation allowed by the server sudo policy. The server independently validates the resulting `ghcr.io/joshuaholden/quizizzo:sha-<40 hex>` reference.
 
 `deploy` re-runs preflight, pulls one immutable image, starts the private dependencies, creates a database backup, runs the explicit one-shot migration service, replaces only Quizizzo web, and requires both loopback live and ready health checks before recording the release. It also verifies that Docker is running the exact requested image reference; every later preflight rejects drift between the recorded and running images. `rollback` creates another backup, replaces only Quizizzo web without attempting to reverse database migrations, and applies the same health, exact-image, and protected-container checks. Neither operation prunes Docker or runs Compose outside the `quizizzo` project.
+
+Protected run `33332467338` deployed `ghcr.io/joshuaholden/quizizzo:sha-40f726b602276e8e0e7492467a62989e4fc0caff`. Independent server verification proved that the configured and running references match exactly, both loopback health endpoints return healthy, all six migrations are recorded, the release backup checksum passes, and the three `logiagraph` containers remain healthy in their original Compose project.
 
 Public HTTPS verification remains pending. `quizizzo.com` already uses Cloudflare DNS, but the VPS currently has only a Cloudflare origin certificate for `logiagraph.com`; that certificate must never be reused for Quizizzo. Install a separate Quizizzo origin certificate and Nginx site before enabling or testing the public route.
 
