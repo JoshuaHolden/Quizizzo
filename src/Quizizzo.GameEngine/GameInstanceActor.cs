@@ -394,9 +394,14 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
     {
         try
         {
-            var delay = deadline - timeProvider.GetUtcNow();
-            if (delay > TimeSpan.Zero)
+            while (true)
             {
+                var delay = deadline - timeProvider.GetUtcNow();
+                if (delay <= TimeSpan.Zero)
+                {
+                    break;
+                }
+
                 await Task.Delay(delay, timeProvider, cancellationToken);
             }
 
