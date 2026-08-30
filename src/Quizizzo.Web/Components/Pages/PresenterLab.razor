@@ -45,58 +45,14 @@
                 </div>
                 <div class="speech-bubble" data-speech-bubble aria-live="polite">Ready to play?</div>
 
-                <div class="presenter is-idle" data-presenter role="img" aria-label="Animated cartoon Quizizzo presenter">
-                    <div class="presenter-shadow"></div>
-
-                    <div class="presenter-leg presenter-leg-left">
-                        <img src="/assets/kenney-presenter/leg.png" data-presenter-part="leg" alt="" />
-                        <img class="presenter-shoe" src="/assets/kenney-presenter/shoe.png" data-presenter-part="shoe" alt="" />
-                    </div>
-                    <div class="presenter-leg presenter-leg-right">
-                        <img src="/assets/kenney-presenter/leg.png" data-presenter-part="leg" alt="" />
-                        <img class="presenter-shoe" src="/assets/kenney-presenter/shoe.png" data-presenter-part="shoe" alt="" />
-                    </div>
-
-                    <div class="presenter-body">
-                        <img class="presenter-neck" src="/assets/kenney-presenter/neck.png" data-presenter-part="neck" alt="" />
-                        <img class="presenter-shirt" src="/assets/kenney-presenter/shirt.png" data-presenter-part="shirt" alt="" />
-                        <img class="presenter-pants" src="/assets/kenney-presenter/pants.png" data-presenter-part="pants" alt="" />
-                    </div>
-
-                    <div class="presenter-arm presenter-arm-left">
-                        <img class="arm-sleeve" src="/assets/kenney-presenter/arm.png" data-presenter-part="arm" alt="" />
-                        <img class="arm-hand" src="/assets/kenney-presenter/hand.png" data-presenter-part="hand" alt="" />
-                    </div>
-                    <div class="presenter-arm presenter-arm-right">
-                        <img class="arm-sleeve" src="/assets/kenney-presenter/arm.png" data-presenter-part="arm" alt="" />
-                        <img class="arm-hand" src="/assets/kenney-presenter/hand.png" data-presenter-part="hand" alt="" />
-                    </div>
-
-                    <div class="presenter-head">
-                        <img class="head-shape" src="/assets/kenney-presenter/head.png" data-presenter-part="head" alt="" />
-                        <img class="head-hair" src="/assets/kenney-presenter/hair.png" data-presenter-part="hair" alt="" />
-                        <div class="face-eye face-eye-left"><img src="/assets/kenney-presenter/eye.png" alt="" /></div>
-                        <div class="face-eye face-eye-right"><img src="/assets/kenney-presenter/eye.png" alt="" /></div>
-                        <img class="face-brow face-brow-left" src="/assets/kenney-presenter/brow.png" alt="" />
-                        <img class="face-brow face-brow-right" src="/assets/kenney-presenter/brow.png" alt="" />
-                        <img class="face-nose" src="/assets/kenney-presenter/nose.png" data-presenter-part="nose" alt="" />
-                        <div class="face-mouth">
-                            <img class="mouth mouth-happy" src="/assets/kenney-presenter/mouth-happy.png" alt="" />
-                            <img class="mouth mouth-glad" src="/assets/kenney-presenter/mouth-glad.png" alt="" />
-                            <img class="mouth mouth-oh" src="/assets/kenney-presenter/mouth-oh.png" alt="" />
-                            <img class="mouth mouth-teeth" src="/assets/kenney-presenter/mouth-teeth.png" alt="" />
-                        </div>
-                    </div>
-                    <img class="celebration-hand celebration-hand-left" src="/assets/kenney-presenter/hand.png" data-presenter-part="hand" alt="" />
-                    <img class="celebration-hand celebration-hand-right" src="/assets/kenney-presenter/hand.png" data-presenter-part="hand" alt="" />
-                </div>
+                <span class="visually-hidden" role="img">Animated cartoon Quizizzo presenter</span>
             </div>
         </section>
 
         <aside class="animation-console" aria-labelledby="animation-title">
             <p class="lab-kicker">Animation console</p>
             <h2 id="animation-title">Try an expression</h2>
-            <p>These are runtime motions assembled from the pack's individual body and face pieces.</p>
+            <p>These are runtime motions assembled from named frames in Kenney's body and face texture atlases.</p>
 
             <button class="randomise-presenter" type="button" data-randomise-presenter>
                 <span aria-hidden="true">↻</span>
@@ -129,7 +85,7 @@
 
             <div class="lab-note">
                 <strong>Prototype scope</strong>
-                <p>No baked animation frames are being used. Every movement is generated in the browser from reusable layers.</p>
+                <p>No baked animation frames are being used. Every movement is generated in the browser from reusable spritesheet layers.</p>
             </div>
         </aside>
     </div>
