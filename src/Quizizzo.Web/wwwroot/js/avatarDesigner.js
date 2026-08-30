@@ -22,7 +22,7 @@
         }
 
         create() {
-            this.rig = this.add.container(320, -8).setScale(.58);
+            this.rig = this.add.container(320, 10).setScale(.58);
             this.renderChoice();
         }
 
@@ -44,6 +44,7 @@
             const length = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[choice.trouserLength] || "long";
             const shoe = { Brown: "brownShoe1.png", Black: "blackShoe1.png", Blue: "blueShoe1.png", Red: "redShoe1.png" }[choice.shoeColour] || "brownShoe1.png";
             const hair = `${hairPrefix}${presentation}${presentation === "Man" ? 1 : 3}.png`;
+            const shirtFrame = `${shirt}Shirt${presentation === "Woman" ? 4 : 1}.png`;
 
             this.rig.add(this.add.ellipse(0, 523, 250, 30, 0x02091f, .42));
             this.addPart(0, 168, "skin", `tint${skin}_neck.png`, .5, 0).setScale(.72, 1);
@@ -57,10 +58,10 @@
             this.addPart(95.5, 341, "pants", `${pants}_${length}.png`, 1, 0);
             this.addPart(-66, 505, "shoes", shoe).setFlipX(true).setScale(.86);
             this.addPart(66, 505, "shoes", shoe).setScale(.86);
-            this.addPart(0, 200, "shirts", `${shirt}Shirt1.png`, .5, 0);
+            this.addPart(0, 200, "shirts", shirtFrame, .5, 0);
             this.addPart(0, 341, "pants", `${pants}1.png`, .5, 0);
-            this.addPart(0, 35, "skin", `tint${skin}_head.png`);
-            this.addPart(0, 10, "hair", hair);
+            this.addPart(0, 35, "skin", `tint${skin}_head.png`, .5, 0);
+            this.addPart(0, 10, "hair", hair, .5, 0);
             this.addPart(-27, 110, "face", "eyeBlue_large.png");
             this.addPart(27, 110, "face", "eyeBlue_large.png");
             this.addPart(-28, 90, "face", `${hairPrefix}Brow1.png`);

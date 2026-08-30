@@ -19,18 +19,20 @@
 }
 else
 {
-    <button class="btn btn-primary btn-lg" disabled="@creating" @onclick="CreatePartyAsync">
-        @(creating ? "Creating…" : "Start new party")
-    </button>
-
     @if (activeParty is not null)
     {
         <section class="mt-4" aria-labelledby="active-party-heading">
             <h2 id="active-party-heading">Resume active party</h2>
-            <a class="btn btn-outline-primary" href="@($"/host/party/{activeParty.PartyId}")">
+            <a class="btn btn-primary btn-lg" href="@($"/host/party/{activeParty.PartyId}")">
                 @activeParty.RoomCode · @activeParty.Status
             </a>
         </section>
+    }
+    else
+    {
+        <button class="btn btn-primary btn-lg" disabled="@creating" @onclick="CreatePartyAsync">
+            @(creating ? "Creating…" : "Start new party")
+        </button>
     }
 
     <section class="mt-4" aria-labelledby="recent-parties-heading">
@@ -74,8 +76,28 @@ else
 
     private async Task CreatePartyAsync()
     {
+        if (activeParty is not null)
+        {
+            Navigation.NavigateTo($"/host/party/{activeParty.PartyId}");
+            return;
+        }
         creating = true;
-        var party = await Parties.CreateAsync(hostUserId);
-        Navigation.NavigateTo($"/host/party/{party.PartyId}");
+        try
+        {
+            var party = await Parties.CreateAsync(hostUserId);
+            Navigation.NavigateTo($"/host/party/{party.PartyId}");
+        }
+        catch (InvalidOperationException)
+        {
+            activeParty = await Parties.GetActiveAsync(hostUserId);
+            if (activeParty is not null)
+            {
+                Navigation.NavigateTo($"/host/party/{activeParty.PartyId}");
+            }
+        }
+        finally
+        {
+            creating = false;
+        }
     }
 }

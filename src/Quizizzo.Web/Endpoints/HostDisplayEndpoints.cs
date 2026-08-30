@@ -42,6 +42,10 @@ public static class HostDisplayEndpoints
 
             context.Request.Cookies.TryGetValue(DisplayCookieName, out var sessionToken);
             var restored = await displays.RestoreOrCreateAsync(sessionToken, context.RequestAborted);
+            if (restored.View.PartyId == partyId)
+            {
+                return Results.Redirect("/display");
+            }
             if (restored.View.PartyId is { } existingPartyId && existingPartyId != partyId)
             {
                 restored = await displays.CreateAsync(context.RequestAborted);

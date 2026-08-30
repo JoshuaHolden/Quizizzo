@@ -119,6 +119,7 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             await gotoReliable(page, `/join/${roomCode}`);
             await expect(page.locator("[data-avatar-preview] canvas")).toBeVisible();
             await page.getByLabel("Player name").fill(name);
+            await page.getByLabel("Style").selectOption(name === "Pixel" ? "Woman" : "Man");
             await page.getByLabel("Skin").selectOption(name === "Pixel" ? "Tint7" : "Tint3");
             await page.getByLabel("Hair").selectOption(name === "Pixel" ? "Red" : "Black");
             await page.getByLabel("Length").selectOption(name === "Pixel" ? "Shorts" : "Cropped");

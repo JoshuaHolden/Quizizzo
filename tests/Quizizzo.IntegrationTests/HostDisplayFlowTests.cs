@@ -42,6 +42,16 @@ public sealed partial class HostDisplayFlowTests
             factory.State.Displays,
             display => display.Id != factory.State.Display.Id);
         Assert.Equal(factory.State.Party.Id, newDisplay.PartyId);
+
+        using var repeatedForm = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["__RequestVerificationToken"] = WebUtility.HtmlDecode(tokenMatch.Groups[1].Value)
+        });
+        using var repeatedResponse = await client.PostAsync($"{partyPath}/present", repeatedForm);
+
+        Assert.Equal(HttpStatusCode.Redirect, repeatedResponse.StatusCode);
+        Assert.Equal("/display", repeatedResponse.Headers.Location?.OriginalString);
+        Assert.Equal(2, factory.State.Displays.Count);
     }
 
     [GeneratedRegex("name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"")]

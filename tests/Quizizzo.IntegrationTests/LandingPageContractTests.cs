@@ -117,6 +117,27 @@ public sealed class LandingPageContractTests
         Assert.Contains("[\"face\", \"hair\", \"pants\", \"shirts\", \"shoes\", \"skin\"]",
             presentation, StringComparison.Ordinal);
         Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);
+        Assert.Contains("variants.presentation === \"Woman\" ? 4 : 1", presentation,
+            StringComparison.Ordinal);
+
+        var designer = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");
+        Assert.Contains("presentation === \"Woman\" ? 4 : 1", designer,
+            StringComparison.Ordinal);
+        Assert.Contains("`tint${skin}_head.png`, .5, 0", designer,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Host_dashboard_resumes_an_active_party_instead_of_offering_a_conflicting_create_action()
+    {
+        var dashboard = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/HostDashboard.razor");
+
+        Assert.Contains("if (activeParty is not null)", dashboard, StringComparison.Ordinal);
+        Assert.Contains("Resume active party", dashboard, StringComparison.Ordinal);
+        Assert.Contains("else\n    {\n        <button", dashboard, StringComparison.Ordinal);
+        Assert.Contains("catch (InvalidOperationException)", dashboard, StringComparison.Ordinal);
     }
 
     [Fact]

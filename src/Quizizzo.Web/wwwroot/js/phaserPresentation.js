@@ -297,12 +297,12 @@ window.quizizzoPresentation = (() => {
                 add(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
                 add(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
                 add(66, 505, "shoes", variants.shoe).setScale(.86);
-                add(0, 200, "shirts", `${variants.shirt}Shirt1.png`, .5, 0);
+                add(0, 200, "shirts", `${variants.shirt}Shirt${variants.presentation === "Woman" ? 4 : 1}.png`, .5, 0);
                 add(0, 341, "pants", `${variants.pants}1.png`, .5, 0);
             }
 
-            add(0, 0, "skin", `tint${variants.skin}_head.png`);
-            add(0, -25, "hair", variants.hair);
+            add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0);
+            add(0, -25, "hair", variants.hair, .5, 0);
             add(-27, 75, "face", variants.eye);
             add(27, 75, "face", variants.eye);
             add(-28, 55, "face", variants.brow);
@@ -344,6 +344,7 @@ window.quizizzoPresentation = (() => {
             const trouserLength = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[character.trouserLength];
             return {
                 skin,
+                presentation,
                 hair,
                 eye,
                 brow: `${browPrefix}Brow1.png`,
