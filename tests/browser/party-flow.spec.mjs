@@ -112,6 +112,15 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             .toBeVisible({ timeout: 15_000 });
         await expect(display.getByRole("heading", { name: "JOIN THE PARTY" }))
             .toBeVisible({ timeout: 20_000 });
+        const displayCanvas = display.locator(".phaser-presentation canvas");
+        await expect(displayCanvas).toBeVisible();
+        const initialCanvasWidth = await displayCanvas.evaluate(canvas => canvas.width);
+        await display.setViewportSize({ width: 1920, height: 1080 });
+        await expect.poll(() => displayCanvas.evaluate(canvas => canvas.width))
+            .toBeGreaterThan(initialCanvasWidth);
+        await expect.poll(() => displayCanvas.evaluate(canvas =>
+            Math.round(canvas.getBoundingClientRect().width)))
+            .toBe(1920);
 
         const playerOne = await contexts.playerOne.newPage();
         const playerTwo = await contexts.playerTwo.newPage();

@@ -114,6 +114,19 @@ public sealed class LandingPageContractTests
         Assert.Contains("this.load.atlasXML", presentation, StringComparison.Ordinal);
         Assert.Contains("? \"full\"", presentation, StringComparison.Ordinal);
         Assert.Contains(": \"portrait\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("rows === 1 ? 575 : 555", presentation, StringComparison.Ordinal);
+        Assert.Contains("const resolution = renderResolution(parent)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("Math.min(3, deviceScale * displayScale)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("new ResizeObserver(controller.resizeHandler)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("start(key, elementId, controller.snapshot)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("}, 150)", presentation, StringComparison.Ordinal);
+        Assert.Contains(".setOrigin(0, 0)", presentation, StringComparison.Ordinal);
+        Assert.Contains("controller.resizeObserver?.disconnect()", presentation,
+            StringComparison.Ordinal);
         Assert.Contains("[\"face\", \"hair\", \"pants\", \"shirts\", \"shoes\", \"skin\"]",
             presentation, StringComparison.Ordinal);
         Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);

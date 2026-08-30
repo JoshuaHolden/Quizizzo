@@ -2,6 +2,16 @@ window.quizizzoPresentation = (() => {
     const presentations = new Map();
     const width = 1280;
     const height = 720;
+
+    function renderResolution(parent) {
+        const deviceScale = Math.max(1, window.devicePixelRatio || 1);
+        const displayScale = Math.max(
+            1,
+            parent.clientWidth / width,
+            parent.clientHeight / height);
+        return Math.min(3, deviceScale * displayScale);
+    }
+
     const characterAssetRoot = "/assets/kenney-presenter/spritesheets/";
     const characterSheets = ["face", "hair", "pants", "shirts", "shoes", "skin"];
 
@@ -40,6 +50,10 @@ window.quizizzoPresentation = (() => {
         }
 
         create() {
+            this.cameras.main
+                .setOrigin(0, 0)
+                .setZoom(this.controller.renderResolution)
+                .setScroll(0, 0);
             this.createBackground();
             this.createParticleTexture();
             this.controller.scene = this;
@@ -449,7 +463,9 @@ window.quizizzoPresentation = (() => {
             const columns = Math.min(players.length, 6);
             const rows = Math.ceil(players.length / columns);
             const horizontalSpacing = Math.min(190, 1080 / columns);
-            const baseY = snapshot.mode === "Lobby" ? 505 : 548;
+            // The lobby QR occupies the centre of the upper canvas. Keep the
+            // portrait row below it so the HTML overlay cannot mask faces.
+            const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555) : 548;
             const rowSpacing = rows > 1 ? 165 : 0;
             const scale = players.length > 8 ? 0.72 : players.length > 6 ? 0.8 : 0.92;
 
@@ -629,20 +645,25 @@ window.quizizzoPresentation = (() => {
             throw new Error("The Phaser presentation container was not found.");
         }
 
+        const resolution = renderResolution(parent);
         const controller = {
             key,
             snapshot: cloneSnapshot(snapshot),
             scene: null,
             textureKey: null,
             reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
-            game: null
+            game: null,
+            renderResolution: resolution,
+            resizeObserver: null,
+            resizeHandler: null,
+            resizeTimer: null
         };
         const scene = new PartyPresentationScene(controller);
         controller.game = new Phaser.Game({
             type: Phaser.AUTO,
             parent: elementId,
-            width,
-            height,
+            width: width * resolution,
+            height: height * resolution,
             transparent: false,
             backgroundColor: "#101735",
             render: {
@@ -653,11 +674,29 @@ window.quizizzoPresentation = (() => {
             scale: {
                 mode: Phaser.Scale.FIT,
                 autoCenter: Phaser.Scale.CENTER_BOTH,
-                width,
-                height
+                width: width * resolution,
+                height: height * resolution
             },
             scene
         });
+        controller.resizeHandler = () => {
+            const resolution = renderResolution(parent);
+            if (Math.abs(controller.renderResolution - resolution) < .01) {
+                return;
+            }
+
+            window.clearTimeout(controller.resizeTimer);
+            controller.resizeTimer = window.setTimeout(() => {
+                if (presentations.get(key) !== controller) {
+                    return;
+                }
+                start(key, elementId, controller.snapshot).catch(error =>
+                    console.error("Unable to resize the Quizizzo presentation.", error));
+            }, 150);
+        };
+        controller.resizeObserver = new ResizeObserver(controller.resizeHandler);
+        controller.resizeObserver.observe(parent);
+        window.addEventListener("resize", controller.resizeHandler, { passive: true });
         presentations.set(key, controller);
     }
 
@@ -680,6 +719,11 @@ window.quizizzoPresentation = (() => {
             return;
         }
         presentations.delete(key);
+        window.clearTimeout(controller.resizeTimer);
+        controller.resizeObserver?.disconnect();
+        if (controller.resizeHandler) {
+            window.removeEventListener("resize", controller.resizeHandler);
+        }
         controller.game?.destroy(true);
     }
 
