@@ -49,4 +49,8 @@ Public HTTPS verification remains pending. `quizizzo.com` already uses Cloudflar
 
 ## Stage 5 — Rollback proof
 
-Pending. Record the previously healthy immutable image, verify a rollback command that targets only the Quizizzo Compose project, and document database compatibility limits. A failed health check must stop the workflow and present the explicit rollback action rather than making unrelated server changes.
+Completed 2026-08-30. Protected run `33332630621` rolled back from `sha-40f726b602276e8e0e7492467a62989e4fc0caff` to the previously healthy `sha-e393d9c650756a1329f047306e47de5da49f92d3`. Independent verification proved the configured and running references matched, both health endpoints passed, a new backup checksum passed, all six existing migrations remained compatible, and the three Logiagraph containers remained healthy and unchanged.
+
+Protected run `33332701088` then restored `sha-40f726b602276e8e0e7492467a62989e4fc0caff`. The same independent image, health, backup, migration, and isolation checks passed, and the recorded rollback pointer now identifies `sha-e393d9c650756a1329f047306e47de5da49f92d3`.
+
+Rollback replaces only the Quizizzo web image; it deliberately does not run EF down-migrations or restore a database dump. A rollback target is therefore safe only when it is compatible with the database schema already applied. For a future schema-breaking release, prove backward compatibility before deployment or use a separately planned database-restore procedure with an explicit maintenance window. A failed health or exact-image check stops the workflow without recording the release or touching unrelated services.

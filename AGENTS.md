@@ -287,13 +287,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add automated presentation contracts and browser screenshots at representative phone, tablet, desktop, and shared-display sizes.
 - [x] Rebuild the live Docker Web image, run the client and .NET quality gates, repeat the browser audit, and record the verified findings.
 
-### Milestone 13 — CI/CD (in progress)
+### Milestone 13 — CI/CD (completed 2026-08-30)
 
 - [x] Stage 1: add read-only GitHub CI for client audit/build/tests, JavaScript validation, analyzer-style verification, strict Release .NET build/tests, production image build, and non-root verification.
 - [x] Stage 2: publish immutable commit-SHA images to GHCR without deployment credentials.
 - [x] Stage 3: prepare and manually prove the least-privilege Hetzner deployment account, production environment, backups, and preflight checks.
 - [x] Stage 4: deploy through a protected GitHub environment with explicit migrations, isolated service replacement, and health verification.
-- [ ] Stage 5: prove and document rollback to the previously healthy immutable image without affecting `logiagraph.com`.
+- [x] Stage 5: prove and document rollback to the previously healthy immutable image without affecting `logiagraph.com`.
 
 ## Verification requirements
 
