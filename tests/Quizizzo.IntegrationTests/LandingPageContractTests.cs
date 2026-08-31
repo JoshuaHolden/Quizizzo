@@ -267,6 +267,15 @@ public sealed class LandingPageContractTests
         Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
         Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);
+
+        var navigation = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Layout/NavMenu.razor.css");
+        var shell = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Layout/MainLayout.razor.css");
+        Assert.Contains("flex-direction: row !important", navigation, StringComparison.Ordinal);
+        Assert.Contains("brand-spark", navigation, StringComparison.Ordinal);
+        Assert.Contains("flex-direction: column", shell, StringComparison.Ordinal);
+        Assert.DoesNotContain("15.625rem", shell, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

@@ -1,4 +1,8 @@
 .page {
+    background:
+        radial-gradient(circle at 8% 12%, rgb(124 60 255 / 10%), transparent 28rem),
+        radial-gradient(circle at 92% 78%, rgb(55 217 245 / 9%), transparent 30rem),
+        #f7f5fc;
     display: flex;
     flex-direction: column;
     min-height: 100vh;
@@ -13,21 +17,25 @@ main {
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background: linear-gradient(105deg, #120824 0%, #271354 55%, #123c58 100%);
+    box-shadow: 0 .4rem 1.5rem rgb(24 10 54 / 18%);
     flex: 0 0 auto;
 }
 
 @media (min-width: 768px) {
     .page {
-        flex-direction: row;
+        flex-direction: column;
     }
 
     .sidebar {
-        flex: 0 0 15.625rem;
-        height: 100vh;
-        height: 100dvh;
+        align-items: center;
+        display: flex;
+        flex: 0 0 auto;
+        height: auto;
+        padding-inline: max(1rem, env(safe-area-inset-left));
         position: sticky;
         top: 0;
+        z-index: 100;
     }
 }
 

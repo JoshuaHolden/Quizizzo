@@ -330,6 +330,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Replace the legacy host lobby card with a branded control-room layout and prominent room-code hero.
 - [x] Separate display connection, player roster, game selection, and destructive closure into clear responsive regions.
 - [x] Give each game a distinctive launch tile while preserving disabled player-count rules, touch targets, reduced motion, and forced-colour support.
+- [x] Replace the stock desktop sidebar with a compact branded top navigation and carry the same visual system into active host game controls and score panels.
 
 ### AniMates turn-based guessing expansion (completed 2026-08-31)
 
