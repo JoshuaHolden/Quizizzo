@@ -1053,6 +1053,7 @@ window.quizizzoPresentation = (() => {
             },
             scene
         });
+        parent.closest(".display-stage")?.classList.add("phaser-enhanced");
         controller.resizeHandler = () => {
             const resolution = renderResolution(parent);
             if (Math.abs(controller.renderResolution - resolution) < .01) {

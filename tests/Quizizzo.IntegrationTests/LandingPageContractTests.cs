@@ -55,6 +55,15 @@ public sealed class LandingPageContractTests
         Assert.Contains("name=\"skinTone\"", joinParty, StringComparison.Ordinal);
         Assert.Contains("name=\"trouserLength\"", joinParty, StringComparison.Ordinal);
         Assert.Contains("name=\"shoeColour\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("role=\"tablist\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"head\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"body\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"legs\"", joinParty, StringComparison.Ordinal);
+
+        var designer = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");
+        Assert.Contains("function setupTabs(form)", designer, StringComparison.Ordinal);
+        Assert.Contains("ArrowRight", designer, StringComparison.Ordinal);
+        Assert.Contains("ArrowLeft", designer, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -135,6 +144,8 @@ public sealed class LandingPageContractTests
         Assert.Contains("Quizizzo Display", presentation, StringComparison.Ordinal);
         Assert.Contains("animatePhaseTransition", presentation, StringComparison.Ordinal);
         Assert.Contains("startsWith(\"Showdown\")", presentation, StringComparison.Ordinal);
+        Assert.Contains("classList.add(\"phaser-enhanced\")", presentation,
+            StringComparison.Ordinal);
 
         var designer = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");

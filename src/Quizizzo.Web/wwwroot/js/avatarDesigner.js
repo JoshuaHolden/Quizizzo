@@ -37,6 +37,33 @@
         select.value = `Style${styles.includes(previous) ? previous : styles[0]}`;
     }
 
+    function setupTabs(form) {
+        const tabs = [...form.querySelectorAll("[data-avatar-tab]")];
+        const panels = [...form.querySelectorAll("[data-avatar-panel]")];
+        if (!tabs.length || !panels.length) return;
+
+        const activate = (tab, focus = false) => {
+            const section = tab.dataset.avatarTab;
+            tabs.forEach(item => {
+                const selected = item === tab;
+                item.setAttribute("aria-selected", selected ? "true" : "false");
+                item.tabIndex = selected ? 0 : -1;
+            });
+            panels.forEach(panel => { panel.hidden = panel.dataset.avatarPanel !== section; });
+            if (focus) tab.focus();
+        };
+
+        tabs.forEach((tab, index) => {
+            tab.addEventListener("click", () => activate(tab));
+            tab.addEventListener("keydown", event => {
+                const direction = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+                if (!direction) return;
+                event.preventDefault();
+                activate(tabs[(index + direction + tabs.length) % tabs.length], true);
+            });
+        });
+    }
+
     class AvatarDesignerScene extends Phaser.Scene {
         constructor(form, host) {
             super(`avatar-designer-${crypto.randomUUID()}`);
@@ -148,6 +175,7 @@
             scene
         });
         games.set(form, game);
+        setupTabs(form);
         syncHairStyles(form);
         syncShirtStyles(form);
         form.addEventListener("change", event => {

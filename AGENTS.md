@@ -313,6 +313,12 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Hide player avatars during presenter briefings and keep the drawing tutorial within its dedicated lower-stage region.
 - [x] Validate JavaScript syntax, rebuild client assets, pass all 9 client tests, build with zero warnings, and pass all 174 .NET tests.
 
+### Mobile avatar-picker follow-up (completed 2026-08-31)
+
+- [x] Split the join-page character controls into accessible Head, Body, and Legs tabs with click and arrow-key navigation.
+- [x] Compact the mobile preview, room introduction, spacing, and card chrome without reducing touch targets or hiding submitted fields.
+- [x] Reinforce the successful-Phaser display handoff directly in the presentation bridge so the fallback overlay cannot remain visually active after startup.
+
 ### AniMates turn-based guessing expansion (completed 2026-08-31)
 
 - [x] Give every player a private absurd prompt and let all players create their three-frame animations simultaneously.
