@@ -7,7 +7,8 @@ namespace Quizizzo.Games.AniMates;
 public sealed class AniMatesGameModule(
     TimeSpan? drawingDuration = null,
     TimeSpan? guessingDuration = null,
-    TimeSpan? choosingDuration = null) : IGameModule
+    TimeSpan? choosingDuration = null,
+    TimeSpan? showdownVotingDuration = null) : IGameModule
 {
     public const string GameKey = "animates";
     public const string BriefingPhase = "Briefing";
@@ -37,6 +38,7 @@ public sealed class AniMatesGameModule(
     private readonly TimeSpan drawingDuration = drawingDuration ?? TimeSpan.FromSeconds(90);
     private readonly TimeSpan guessingDuration = guessingDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan showdownVotingDuration = showdownVotingDuration ?? TimeSpan.FromSeconds(90);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, MaximumPlayers);
 
@@ -122,7 +124,7 @@ public sealed class AniMatesGameModule(
         return submissions.Count == state.Participants.Count
             ? state.RoundNumber == 1
                 ? BeginGuessing(updated, context.ReceivedAtUtc)
-                : BeginShowdownPlayback(updated)
+                : BeginShowdownVoting(updated, context.ReceivedAtUtc)
             : new GameTransition(current with { Data = GameJson.From(updated) }, [],
                 [new GameEvent("AnimationSubmitted", GameJson.From(new { playerId }))]);
     }
@@ -227,7 +229,7 @@ public sealed class AniMatesGameModule(
                 ? CompleteWithoutAnimations(state)
                 : state.RoundNumber == 1
                     ? BeginGuessing(MoveToNextSubmittedAnimation(state, -1), context.ReceivedAtUtc)
-                    : BeginShowdownPlayback(state),
+                    : BeginShowdownVoting(state, context.ReceivedAtUtc),
             GuessingPhase => BeginChoosing(state, context.ReceivedAtUtc),
             ChoosingPhase => Reveal(state),
             ShowdownVotingPhase => RevealShowdown(state),
@@ -242,12 +244,8 @@ public sealed class AniMatesGameModule(
         ModuleState(CompletedPhase, null, true, state), [],
         [new GameEvent("GameCompleted", GameJson.Empty)]);
 
-    private static GameTransition BeginShowdownPlayback(AnimateState state) => new(
-        ModuleState(ShowdownPlaybackPhase, null, false, state), [],
-        [new GameEvent("ShowdownPlaybackStarted", GameJson.Empty)]);
-
     private GameTransition BeginShowdownVoting(AnimateState state, DateTimeOffset now) => new(
-        ModuleState(ShowdownVotingPhase, now.Add(choosingDuration), false, state), [],
+        ModuleState(ShowdownVotingPhase, now.Add(showdownVotingDuration), false, state), [],
         [new GameEvent("ShowdownVotingStarted", GameJson.Empty)]);
 
     private GameTransition BeginChoosing(AnimateState state, DateTimeOffset now)
@@ -347,10 +345,6 @@ public sealed class AniMatesGameModule(
         {
             return StartDrawing(state, context.ReceivedAtUtc);
         }
-        if (current.Phase == ShowdownPlaybackPhase)
-        {
-            return BeginShowdownVoting(state, context.ReceivedAtUtc);
-        }
         if (current.Phase == ShowdownResultsPhase)
         {
             return new GameTransition(ModuleState(CompletedPhase, null, true, state), [],
@@ -444,10 +438,12 @@ public sealed class AniMatesGameModule(
         if (current.Phase == ShowdownVotingPhase && !state.ShowdownVotes.ContainsKey(playerId))
         {
             var options = state.Submissions.Values
-                .Where(submission => submission.PlayerId != playerId)
                 .OrderBy(submission => submission.PlayerId)
-                .Select((submission, index) => new ControllerOption(
-                    submission.PlayerId.ToString("N"), Letter(index), null, submission.FrameAssetIds)).ToArray();
+                .Select((submission, index) => new { Submission = submission, Index = index })
+                .Where(item => item.Submission.PlayerId != playerId)
+                .Select(item => new ControllerOption(
+                    item.Submission.PlayerId.ToString("N"), Letter(item.Index), null,
+                    item.Submission.FrameAssetIds)).ToArray();
             return new PlayerGameViewPayload(
                 "Vote for your favourite", "Choose the animation you enjoyed most. Your own is hidden.",
                 new PlayerControllerView(PlayerControllerKind.Vote, VoteForShowdownAnimationAction.ActionKind, true,
@@ -469,7 +465,6 @@ public sealed class AniMatesGameModule(
             ResultsPhase => award is null
                 ? "No points this turn. The next animator is up soon."
                 : $"You earned {award.Points:N0} points this turn.",
-            ShowdownPlaybackPhase => "Watch every anonymous animation on the main screen.",
             ShowdownVotingPhase => "Vote locked. Waiting for the creator reveal...",
             ShowdownResultsPhase => ShowdownResultFor(state, playerId) is { } result
                 ? $"Your animation received {result.Votes} vote(s): +{result.Points:N0} points."
@@ -482,13 +477,12 @@ public sealed class AniMatesGameModule(
     private static HostGameViewPayload HostView(GameModuleState current, AnimateState state)
     {
         var canAdvance = current.Phase is BriefingPhase or ShowdownBriefingPhase or ResultsPhase or
-            ShowdownPlaybackPhase or ShowdownResultsPhase;
+            ShowdownResultsPhase;
         var advanceLabel = current.Phase switch
         {
             BriefingPhase => "Start round 1",
             ShowdownBriefingPhase => "Start Same Prompt Showdown",
             ResultsPhase => NextSubmittedIndex(state, state.TurnIndex) < 0 ? "Explain round 2" : "Next animation",
-            ShowdownPlaybackPhase => "Open voting",
             ShowdownResultsPhase => "Finish AniMates",
             _ => null
         };
@@ -517,7 +511,7 @@ public sealed class AniMatesGameModule(
         {
             drawing = new DrawingPresentationView(
                 current.Phase == ShowdownResultsPhase ? "ShowdownReveal" : "ShowdownPlayback", 150,
-                ShowdownAnimations(current, state), 3);
+                ShowdownAnimations(current, state), 1);
         }
         return new DisplayGameViewPayload(
             DisplayTitle(current, state), DisplayPrompt(current, state),
@@ -616,7 +610,7 @@ public sealed class AniMatesGameModule(
         GuessingPhase => "What do you think this is?",
         ChoosingPhase => "Choose the best-fitting answer",
         ShowdownPlaybackPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt}",
-        ShowdownVotingPhase => "Every animation is now on your phone",
+        ShowdownVotingPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt}",
         ShowdownResultsPhase => ShowdownPrompt,
         _ => "The answer is..."
     };
@@ -627,8 +621,7 @@ public sealed class AniMatesGameModule(
         ShowdownBriefingPhase => RoundTwoBriefing,
         DrawingPhase => state.RoundNumber == 1 ? "Everyone is animating at once" : ShowdownPrompt,
         ResultsPhase => Prompt(state),
-        ShowdownPlaybackPhase => "Play every anonymous animation before opening voting",
-        ShowdownVotingPhase => "Players are choosing their favourite",
+        ShowdownVotingPhase => "Players have 90 seconds to choose their favourite",
         ShowdownResultsPhase => "Showdown creators and winner revealed",
         _ => $"{Animator(state).DisplayName}'s animation"
     };
@@ -641,7 +634,6 @@ public sealed class AniMatesGameModule(
         ResultsPhase => "Correct answer and writers revealed!",
         BriefingPhase => "Presenter briefing — start when everyone is ready",
         ShowdownBriefingPhase => "Presenter briefing — one prompt, five frames",
-        ShowdownPlaybackPhase => "Play each animation three times, then open voting",
         ShowdownVotingPhase => $"{state.ShowdownVotes.Count}/{ShowdownVoters(state).Length} votes locked in",
         ShowdownResultsPhase => "Votes counted and creators revealed!",
         _ => "AniMates complete"

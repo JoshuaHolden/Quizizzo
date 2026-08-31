@@ -154,10 +154,10 @@ public sealed class AniMatesGameModuleTests
             "A grandma escaping from prison", game.PlayerView(id).Instructions));
 
         game.SubmitAllAnimations(5);
-        Assert.Equal(AniMatesGameModule.ShowdownPlaybackPhase, game.State.Phase);
+        Assert.Equal(AniMatesGameModule.ShowdownVotingPhase, game.State.Phase);
+        Assert.Equal(TimeSpan.FromSeconds(90), game.State.PhaseEndsAtUtc - game.CurrentTime);
         Assert.All(game.DisplayView().Drawing!.Animations, animation => Assert.Null(animation.CreatorName));
-        Assert.Equal(3, game.DisplayView().Drawing!.LoopsPerAnimation);
-        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        Assert.Equal(1, game.DisplayView().Drawing!.LoopsPerAnimation);
 
         var firstVote = game.VoteView(game.PlayerIds[0]);
         Assert.DoesNotContain(firstVote.Options, option => option.Id == game.PlayerIds[0].ToString("N"));
@@ -179,13 +179,27 @@ public sealed class AniMatesGameModuleTests
     }
 
     [Fact]
+    public void Same_prompt_showdown_reveals_at_the_deadline_and_discards_missing_votes()
+    {
+        var game = new Fixture();
+        game.ReachShowdownBriefing();
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        game.SubmitAllAnimations(5);
+        game.Vote(game.PlayerIds[0], game.PlayerIds[1]);
+
+        game.Deadline();
+
+        Assert.Equal(AniMatesGameModule.ShowdownResultsPhase, game.State.Phase);
+        Assert.Equal(300, game.LastTransition.ScoreAwards.Single().Points);
+    }
+
+    [Fact]
     public void Same_prompt_showdown_awards_the_winner_bonus_to_every_tied_winner()
     {
         var game = new Fixture();
         game.ReachShowdownBriefing();
         game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
         game.SubmitAllAnimations(5);
-        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
 
         game.Vote(game.PlayerIds[0], game.PlayerIds[1]);
         game.Vote(game.PlayerIds[1], game.PlayerIds[2]);
@@ -244,6 +258,7 @@ public sealed class AniMatesGameModuleTests
         }
 
         public Guid[] PlayerIds { get; }
+        public DateTimeOffset CurrentTime => now;
         public GameModuleState State { get; private set; }
         public GameTransition LastTransition { get; private set; }
 
