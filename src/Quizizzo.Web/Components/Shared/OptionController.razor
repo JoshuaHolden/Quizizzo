@@ -5,31 +5,66 @@
     <div class="vote-options">
         @foreach (var option in Options)
         {
-            <label class="vote-option @(selectedId == option.Id ? "selected" : null)">
-                <input type="radio"
-                       name="@groupName"
-                       value="@option.Id"
-                       checked="@(selectedId == option.Id)"
-                       @onchange="() => selectedId = option.Id" />
-                @if (ShowFrameAnimations && option.FrameAssetIds is { Count: > 0 } frames)
-                {
-                    <FrameAnimation FrameAssetIds="frames" AlternativeText="@option.Label" />
-                }
-                <strong>@option.Label</strong>
-                @if (!string.IsNullOrWhiteSpace(option.Detail))
-                {
-                    <span>@option.Detail</span>
-                }
-            </label>
+            @if (ReviewBeforeSubmit)
+            {
+                <button type="button" class="vote-option vote-review-option"
+                        @onclick="() => reviewedOption = option">
+                    <strong>Animation @option.Label</strong>
+                    <span>Tap to watch</span>
+                </button>
+            }
+            else
+            {
+                <label class="vote-option @(selectedId == option.Id ? "selected" : null)">
+                    <input type="radio"
+                           name="@groupName"
+                           value="@option.Id"
+                           checked="@(selectedId == option.Id)"
+                           @onchange="() => selectedId = option.Id" />
+                    @if (ShowFrameAnimations && option.FrameAssetIds is { Count: > 0 } frames)
+                    {
+                        <FrameAnimation FrameAssetIds="frames" AlternativeText="@option.Label" />
+                    }
+                    <strong>@option.Label</strong>
+                    @if (!string.IsNullOrWhiteSpace(option.Detail))
+                    {
+                        <span>@option.Detail</span>
+                    }
+                </label>
+            }
         }
     </div>
-    <button type="button"
-            class="btn btn-primary btn-lg w-100 mt-2"
-            disabled="@(Disabled || string.IsNullOrWhiteSpace(selectedId))"
-            @onclick="SubmitAsync">
-        @SubmitLabel
-    </button>
+    @if (!ReviewBeforeSubmit)
+    {
+        <button type="button"
+                class="btn btn-primary btn-lg w-100 mt-2"
+                disabled="@(Disabled || string.IsNullOrWhiteSpace(selectedId))"
+                @onclick="SubmitAsync">
+            @SubmitLabel
+        </button>
+    }
 </fieldset>
+
+@if (reviewedOption is { FrameAssetIds: { Count: > 0 } } review)
+{
+    <div class="animation-review-backdrop" role="presentation" @onclick="CloseReview">
+        <section class="animation-review-dialog" role="dialog" aria-modal="true"
+                 aria-labelledby="animation-review-title" @onclick:stopPropagation="true">
+            <h2 id="animation-review-title">Animation @review.Label</h2>
+            <FrameAnimation FrameAssetIds="review.FrameAssetIds"
+                            AlternativeText="@($"Animation {review.Label}")" />
+            <div class="animation-review-actions">
+                <button type="button" class="btn btn-primary btn-lg" disabled="@Disabled"
+                        @onclick="() => SubmitReviewedAsync(review.Id)">
+                    Lock in Animation @review.Label
+                </button>
+                <button type="button" class="btn btn-outline-light btn-lg" @onclick="CloseReview">
+                    Close
+                </button>
+            </div>
+        </section>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public IReadOnlyList<ControllerOption> Options { get; set; } = [];
@@ -38,11 +73,13 @@
     [Parameter] public string Legend { get; set; } = "Choose one option";
     [Parameter] public string SubmitLabel { get; set; } = "Confirm my pick";
     [Parameter] public bool ShowFrameAnimations { get; set; }
+    [Parameter] public bool ReviewBeforeSubmit { get; set; }
     [Parameter] public bool Disabled { get; set; }
     [Parameter] public EventCallback<string> Submitted { get; set; }
 
     private readonly string groupName = $"option-{Guid.NewGuid():N}";
     private string? selectedId;
+    private ControllerOption? reviewedOption;
     private string? previousScope;
     private string? previousSubmittedOptionId;
 
@@ -64,4 +101,13 @@
     private Task SubmitAsync() => string.IsNullOrWhiteSpace(selectedId)
         ? Task.CompletedTask
         : Submitted.InvokeAsync(selectedId);
+
+    private async Task SubmitReviewedAsync(string optionId)
+    {
+        reviewedOption = null;
+        selectedId = optionId;
+        await Submitted.InvokeAsync(optionId);
+    }
+
+    private void CloseReview() => reviewedOption = null;
 }

@@ -313,6 +313,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Replace loose overlapping portraits with compact bottom player cards and fit long player names within their card.
 - [x] Hide empty activity badges and fit the portrait, presence, name, and score inside each square player card.
 - [x] Open a server-owned 90-second showdown vote as soon as all animations arrive, reveal early when everyone votes, and discard missing votes at timeout.
+- [x] Let phone players open each A–F option in a looping review modal before explicitly locking in or closing it.
 
 ### Main-display composition hotfix (completed 2026-08-31)
 

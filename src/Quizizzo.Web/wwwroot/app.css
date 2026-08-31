@@ -969,6 +969,56 @@ fieldset {
     width: 1.25rem;
 }
 
+.vote-review-option {
+    align-items: center;
+    color: #24123f;
+    justify-content: center;
+    min-height: 6rem;
+    text-align: center;
+    width: 100%;
+}
+
+.vote-review-option strong {
+    font-size: 1.25rem;
+}
+
+.animation-review-backdrop {
+    align-items: center;
+    background: rgba(9, 5, 22, 0.88);
+    display: flex;
+    inset: 0;
+    justify-content: center;
+    padding: max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right))
+        max(1rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
+    position: fixed;
+    z-index: 2000;
+}
+
+.animation-review-dialog {
+    background: linear-gradient(145deg, #312e81, #581c87);
+    border: 3px solid #67e8f9;
+    border-radius: 1.25rem;
+    box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.55);
+    color: #fff;
+    max-height: calc(100dvh - 2rem);
+    max-width: 32rem;
+    overflow: auto;
+    padding: 1rem;
+    text-align: center;
+    width: 100%;
+}
+
+.animation-review-dialog .frame-animation {
+    margin: 0.75rem auto 1rem;
+    max-height: min(55dvh, 28rem);
+    max-width: min(100%, 28rem);
+}
+
+.animation-review-actions {
+    display: grid;
+    gap: 0.65rem;
+}
+
 .frame-animation {
     aspect-ratio: 1;
     background: #fff;

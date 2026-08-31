@@ -213,6 +213,22 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void AniMates_phone_votes_are_reviewed_in_a_looping_modal_before_submission()
+    {
+        var voteController = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/VoteController.razor");
+        var optionController = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/OptionController.razor");
+
+        Assert.Contains("ReviewBeforeSubmit=\"true\"", voteController, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\"", optionController, StringComparison.Ordinal);
+        Assert.Contains("Lock in Animation @review.Label", optionController, StringComparison.Ordinal);
+        Assert.Contains("<FrameAnimation FrameAssetIds=\"review.FrameAssetIds\"", optionController,
+            StringComparison.Ordinal);
+        Assert.Contains("private void CloseReview()", optionController, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Player_controller_labels_are_bound_as_expressions_not_rendered_as_source_text()
     {
         var playerPage = ReadRepositoryFile(
