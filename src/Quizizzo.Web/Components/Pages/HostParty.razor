@@ -186,37 +186,38 @@ else
                 </div>
             </section>
 
-            <div class="host-danger-zone">
-                <div><strong>Finished for now?</strong><span>Closing retires this room code permanently.</span></div>
-                <div>
-            @if (!closeConfirmationRequested)
-            {
-                <button class="host-close-action" disabled="@actionPending"
-                        @onclick="() => closeConfirmationRequested = true">
-                    Close lobby
-                </button>
-            }
-            else
-            {
-                <div class="host-close-confirmation" role="alert">
-                    <strong>Close room @party.RoomCode?</strong>
-                    <p>Players will no longer be able to join.</p>
-                    <div>
-                        <button class="btn btn-danger" disabled="@actionPending" @onclick="CloseLobbyAsync">
-                            @(actionPending ? "Closing..." : "Yes, close lobby")
-                        </button>
-                        <button class="btn btn-secondary" disabled="@actionPending"
-                                @onclick="() => closeConfirmationRequested = false">
-                            Keep it open
-                        </button>
-                    </div>
-                </div>
-            }
-                </div>
-            </div>
             <small class="host-last-update">Last update: @lastUpdateReason</small>
         </section>
     }
+
+    <div class="host-danger-zone">
+        <div><strong>Need to leave?</strong><span>Closing ends any active game and retires this room code permanently.</span></div>
+        <div>
+        @if (!closeConfirmationRequested)
+        {
+            <button class="host-close-action" disabled="@actionPending"
+                    @onclick="() => closeConfirmationRequested = true">
+                Close party
+            </button>
+        }
+        else
+        {
+            <div class="host-close-confirmation" role="alert">
+                <strong>Close room @party.RoomCode?</strong>
+                <p>Any game in progress will end, and you can create a new party.</p>
+                <div>
+                    <button class="btn btn-danger" disabled="@actionPending" @onclick="CloseLobbyAsync">
+                        @(actionPending ? "Closing..." : "Yes, close party")
+                    </button>
+                    <button class="btn btn-secondary" disabled="@actionPending"
+                            @onclick="() => closeConfirmationRequested = false">
+                        Keep it open
+                    </button>
+                </div>
+            </div>
+        }
+        </div>
+    </div>
 }
 </div>
 

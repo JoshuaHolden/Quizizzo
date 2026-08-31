@@ -62,11 +62,6 @@ public sealed class PartyService(
         await using var mutation = await partyMutations.AcquireAsync(
             new PartyId(partyId), cancellationToken);
         var party = await GetOwnedPartyAsync(partyId, hostUserId, cancellationToken);
-        if (party.Status != PartyStatus.Lobby || party.CurrentGameInstanceId.HasValue)
-        {
-            throw new InvalidOperationException("Only an open lobby with no game in progress can be closed.");
-        }
-
         party.Abandon(timeProvider.GetUtcNow());
         await parties.SaveChangesAsync(cancellationToken);
         return Map(party);

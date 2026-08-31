@@ -38,8 +38,8 @@ public sealed class RealtimeOperationScopeTests
         Assert.Contains("scopeFactory.CreateAsyncScope()", hostService, StringComparison.Ordinal);
         Assert.Contains("CloseLobbyAsync", hostService, StringComparison.Ordinal);
         Assert.Contains("LobbyClosed", hostService, StringComparison.Ordinal);
-        Assert.Contains("Close lobby", host, StringComparison.Ordinal);
-        Assert.Contains("Yes, close lobby", host, StringComparison.Ordinal);
+        Assert.Contains("Close party", host, StringComparison.Ordinal);
+        Assert.Contains("Yes, close party", host, StringComparison.Ordinal);
         Assert.Contains("scopeFactory.CreateAsyncScope()", playerLoader, StringComparison.Ordinal);
     }
 

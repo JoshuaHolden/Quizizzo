@@ -75,7 +75,7 @@ public sealed class PartyServiceTests
     }
 
     [Fact]
-    public async Task Lobby_cannot_be_closed_while_a_game_is_active()
+    public async Task Owner_can_close_a_party_while_a_game_is_active()
     {
         var repository = new FakePartyRepository();
         var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
@@ -83,8 +83,12 @@ public sealed class PartyServiceTests
         repository.Parties.Add(party);
         var service = CreateService(repository);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.CloseLobbyAsync(party.Id.Value, "host-1"));
+        var closed = await service.CloseLobbyAsync(party.Id.Value, "host-1");
+
+        Assert.Equal(PartyStatus.Abandoned, closed.Status);
+        Assert.Null(closed.CurrentGameInstanceId);
+        Assert.Null(closed.CurrentGameKey);
+        Assert.Null(await service.GetActiveAsync("host-1"));
     }
 
     private sealed class FixedTimeProvider : TimeProvider
