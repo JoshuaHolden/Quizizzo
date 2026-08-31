@@ -40,6 +40,7 @@ window.quizizzoPresentation = (() => {
             this.drawingContainer = null;
             this.drawingTimer = null;
             this.drawingSignature = null;
+            this.podiumContainer = null;
         }
 
         preload() {
@@ -145,6 +146,7 @@ window.quizizzoPresentation = (() => {
                 }
             }
 
+            this.renderPodium(snapshot);
             this.layoutAvatars(snapshot, initial);
             if (!initial && this.isNewResult(snapshot)) {
                 this.animateResults(snapshot.results || []);
@@ -247,6 +249,41 @@ window.quizizzoPresentation = (() => {
             return JSON.stringify(snapshot.results) !== JSON.stringify(this.previous.results);
         }
 
+        renderPodium(snapshot) {
+            this.podiumContainer?.destroy(true);
+            this.podiumContainer = null;
+            if (snapshot.gameKey !== "animates" || snapshot.phase !== "Results" || !snapshot.results?.length) {
+                return;
+            }
+            const players = playerMap(snapshot);
+            const ordered = [...snapshot.results].sort((left, right) => left.rank - right.rank);
+            const maximum = Math.max(1, ...ordered.map(result => players.get(result.playerId)?.score || 0));
+            const spacing = Math.min(180, 1080 / ordered.length);
+            const widthPerPodium = Math.max(72, spacing - 12);
+            const items = [];
+            ordered.forEach((result, index) => {
+                const score = players.get(result.playerId)?.score || 0;
+                const podiumHeight = 70 + (score / maximum) * 145;
+                const x = width / 2 + (index - (ordered.length - 1) / 2) * spacing;
+                const block = this.add.rectangle(x, 660 - podiumHeight / 2, widthPerPodium, podiumHeight,
+                    result.rank === 1 ? 0xfacc15 : result.rank === 2 ? 0xcbd5e1 : 0xc08457, .92)
+                    .setStrokeStyle(4, 0x24123f, 1);
+                const rank = this.add.text(x, 650 - podiumHeight, `#${result.rank}`, {
+                    color: "#24123f", fontFamily: "Arial, sans-serif", fontSize: "28px", fontStyle: "bold"
+                }).setOrigin(.5);
+                items.push(block, rank);
+                if (!this.controller.reducedMotion) {
+                    block.setScale(1, .05);
+                    block.setOrigin(.5, 1);
+                    block.y = 660;
+                    this.tweens.add({ targets: block, scaleY: 1, duration: 650, delay: index * 90, ease: "Back.easeOut" });
+                    rank.setAlpha(0);
+                    this.tweens.add({ targets: rank, alpha: 1, duration: 250, delay: 500 + index * 90 });
+                }
+            });
+            this.podiumContainer = this.add.container(0, 0, items).setDepth(15);
+        }
+
         createAvatar(player) {
             const container = this.add.container(width / 2, height + 100);
             const shadow = this.add.ellipse(0, 62, 112, 26, 0x090516, 0.32);
@@ -273,9 +310,13 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 4
             }).setOrigin(0.5);
-            container.add([shadow, character, presence, name, score]);
+            const activity = this.add.text(48, -142, "", {
+                color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
+                fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold"
+            }).setOrigin(.5);
+            container.add([shadow, character, presence, name, score, activity]);
             container.setDepth(20);
-            return { container, character, shadow, presence, name, score, signature: null, mode: null };
+            return { container, character, shadow, presence, name, score, activity, signature: null, mode: null };
         }
 
         updateAvatar(avatar, player, mode) {
@@ -288,7 +329,16 @@ window.quizizzoPresentation = (() => {
             avatar.score.setText(`${player.score.toLocaleString()} pts`);
             const disconnected = player.status === "Disconnected";
             avatar.presence.setText(disconnected ? "OFFLINE" : "");
+            avatar.activity.setText(player.activity === "Thinking" ? "…?" : "");
             avatar.container.setAlpha(disconnected ? 0.42 : 1);
+            if (!this.controller.reducedMotion && player.activity === "Thinking" && !avatar.thinkingTween) {
+                avatar.thinkingTween = this.tweens.add({ targets: avatar.activity, y: { from: -142, to: -154 },
+                    duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+            } else if (player.activity !== "Thinking" && avatar.thinkingTween) {
+                avatar.thinkingTween.stop();
+                avatar.thinkingTween = null;
+                avatar.activity.setY(-142);
+            }
         }
 
         drawCharacter(avatar, character, mode = "portrait") {
@@ -506,7 +556,29 @@ window.quizizzoPresentation = (() => {
             const rowSpacing = rows > 1 ? 165 : 0;
             const scale = players.length > 8 ? 0.72 : players.length > 6 ? 0.8 : 0.92;
 
+            const podiumResults = snapshot.gameKey === "animates" && snapshot.phase === "Results"
+                ? [...(snapshot.results || [])].sort((left, right) => left.rank - right.rank)
+                : null;
+            const maximumScore = Math.max(1, ...players.map(player => player.score));
             players.forEach((player, index) => {
+                if (podiumResults?.length) {
+                    const podiumIndex = podiumResults.findIndex(result => result.playerId === player.playerId);
+                    const spacing = Math.min(180, 1080 / podiumResults.length);
+                    const x = width / 2 + (podiumIndex - (podiumResults.length - 1) / 2) * spacing;
+                    const podiumHeight = 70 + (player.score / maximumScore) * 145;
+                    const avatar = this.avatars.get(player.playerId);
+                    const y = 565 - podiumHeight;
+                    if (avatar) {
+                        avatar.container.setDepth(20);
+                        if (immediate || this.controller.reducedMotion) {
+                            avatar.container.setPosition(x, y).setScale(.62);
+                        } else {
+                            this.tweens.add({ targets: avatar.container, x, y, scale: .62,
+                                duration: 700, ease: "Back.easeOut" });
+                        }
+                    }
+                    return;
+                }
                 const row = Math.floor(index / columns);
                 const itemsInRow = Math.min(columns, players.length - row * columns);
                 const column = index % columns;
@@ -616,6 +688,18 @@ window.quizizzoPresentation = (() => {
                     ease: "Quad.easeOut"
                 });
                 this.burst(avatar.container.x, avatar.container.y - 50, 54);
+            });
+            const lastRank = Math.max(...results.map(result => result.rank));
+            results.filter(result => result.rank === lastRank && result.rank !== 1).forEach(result => {
+                const avatar = this.avatars.get(result.playerId);
+                if (!avatar) return;
+                const tears = this.add.text(avatar.container.x + 38, avatar.container.y - 115, "😭", {
+                    fontFamily: "Arial, sans-serif", fontSize: "42px"
+                }).setOrigin(.5).setDepth(80);
+                this.tweens.add({ targets: avatar.character, angle: { from: -4, to: 4 }, duration: 130,
+                    yoyo: true, repeat: 5, onComplete: () => avatar.character.setAngle(0) });
+                this.tweens.add({ targets: tears, y: tears.y + 35, alpha: 0, duration: 1500,
+                    onComplete: () => tears.destroy() });
             });
             this.cameras.main.flash(260, 255, 235, 135, false);
         }

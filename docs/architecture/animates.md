@@ -1,12 +1,12 @@
 # AniMates
 
-AniMates—animation with your mates—is a server-authoritative three-frame drawing and voting game built on the reusable drawing framework. Each participant receives a private action prompt. The display sees only completion progress during drawing, then anonymous animations during voting, and creator names only after the reveal.
+AniMates—animation with your mates—is a server-authoritative three-frame drawing and guessing game built on the reusable drawing framework. Every participant receives a different private absurd prompt and draws simultaneously. The display sees completion activity but not prompts or live work, then walks through the saved animations one at a time.
 
 ## State machine
 
-The explicit phases are `Drawing`, `Voting`, `Results`, and `Completed`. Drawing and voting carry UTC deadlines. Submitting all animations starts voting early; submitting every eligible vote reveals results early. Deadline commands travel through the same per-game command channel as all other mutations. The host can finish only from results.
+The explicit phases are `Drawing`, `Guessing`, `Choosing`, `Results`, and `Completed`. Drawing happens once for everyone; each submitted animation then receives its own guessing, answer-choice, and result cycle. Drawing, guessing, and choosing carry UTC deadlines. Completing all required actions advances early. Deadline commands travel through the same per-game command channel as all other mutations. From each result the host advances to the next saved animation or finishes after the last one.
 
-The module derives submission ownership from the durable player actor. A submission accepts one to three completed frame references and normalizes it to exactly three frames by repeating the latest completed frame. Votes target the submission owner's durable player ID, are accepted once, and reject self-votes. Creators receive rank awards of 1,000/600/300 points when they have at least one vote.
+The module derives submission ownership from the durable player actor. A submission accepts one to three completed frame references and normalizes it to exactly three frames by repeating the latest completed frame. Everyone except the current animator writes one bounded guess. The server persists and shuffles opaque answer options containing the real prompt and the guesses. Phone controllers use the same stable A/B/C labels as the display, hide a player's own guess, and reject forged self-choices. Each pick of a fake answer awards its writer 100 points. A correct pick awards 50 points to the chooser and 100 points to the animator.
 
 ## Secure submission and recovery
 
@@ -18,4 +18,6 @@ Asset metadata contains opaque IDs, storage keys, ownership, frame number, UTC c
 
 ## Playback and role views
 
-Game state contains opaque asset IDs, never physical paths. Player voting views receive anonymous options excluding their own submission. The display presentation receives three-frame semantic animations: Phaser loads the local asset URLs, cycles frames at 150 ms, rotates through submissions, and adds creator/vote text only in reveal mode. Accessible HTML uses the same frame references as a fallback, with reduced motion showing the first frame.
+Game state contains opaque asset IDs, never physical paths. The display presentation receives only the current three-frame animation: Phaser loads local asset URLs and cycles frames at 150 ms. During choosing, all answers appear together as high-contrast lettered cards. Results identify the correct answer and guess writers.
+
+During the shared drawing phase, role snapshots mark unfinished players as thinking and submitted players as idle. Phaser renders that semantic activity without owning completion state. The HTML overlay fixes the server-deadline countdown at the top right. After every animation result, cumulative scores drive a score-proportional podium; first place cheers and the lowest rank cries. Reduced-motion mode retains the static podium and standings while suppressing animated movement and reactions. Accessible HTML uses the same frame and answer data as the fallback.

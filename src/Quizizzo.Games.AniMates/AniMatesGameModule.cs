@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text.Json;
 using Quizizzo.GameContracts;
 
@@ -5,47 +6,46 @@ namespace Quizizzo.Games.AniMates;
 
 public sealed class AniMatesGameModule(
     TimeSpan? drawingDuration = null,
-    TimeSpan? votingDuration = null) : IGameModule
+    TimeSpan? guessingDuration = null,
+    TimeSpan? choosingDuration = null) : IGameModule
 {
     public const string GameKey = "animates";
     public const string DrawingPhase = "Drawing";
-    public const string VotingPhase = "Voting";
+    public const string GuessingPhase = "Guessing";
+    public const string ChoosingPhase = "Choosing";
     public const string ResultsPhase = "Results";
     public const string CompletedPhase = "Completed";
     public const int RequiredFrameCount = 3;
     public const int LogicalSize = 512;
     public const int MaximumSubmissionPayloadBytes = 6 * 1024 * 1024;
+    public const int MaximumGuessLength = 200;
+    public const int GuessChosenPoints = 100;
+    public const int CorrectChoicePoints = 50;
+    public const int AnimatorCorrectChoicePoints = 100;
 
     private readonly TimeSpan drawingDuration = drawingDuration ?? TimeSpan.FromSeconds(90);
-    private readonly TimeSpan votingDuration = votingDuration ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan guessingDuration = guessingDuration ?? TimeSpan.FromSeconds(45);
+    private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, 12);
 
     public GameModuleState Start(GameStartContext context)
     {
-        var participants = context.Participants.Select((participant, index) =>
-            new AnimateParticipant(
-                participant.PlayerId,
-                participant.DisplayName,
-                Prompts[index % Prompts.Length])).ToArray();
-        return ModuleState(
-            DrawingPhase,
-            context.StartedAtUtc.Add(drawingDuration),
-            false,
-            new AnimateState(participants, new Dictionary<Guid, AnimationSubmission>(),
-                new Dictionary<Guid, Guid>(), []));
+        var participants = context.Participants
+            .Select(player => new AnimateParticipant(player.PlayerId, player.DisplayName)).ToArray();
+        return ModuleState(DrawingPhase, context.StartedAtUtc.Add(drawingDuration), false,
+            new AnimateState(0, participants, new Dictionary<Guid, AnimationSubmission>(),
+                new Dictionary<Guid, string>(), [], new Dictionary<Guid, Guid>(), []));
     }
 
-    public GameTransition Apply(
-        GameModuleState state,
-        GameActionContext context,
-        IGameAction action)
+    public GameTransition Apply(GameModuleState state, GameActionContext context, IGameAction action)
     {
         var animate = ReadState(state);
         return action switch
         {
-            SubmitAnimationAction submission => Submit(state, animate, context, submission),
-            VoteForAnimationAction vote => Vote(state, animate, context, vote),
+            SubmitAnimationAction submission => SubmitAnimation(state, animate, context, submission),
+            SubmitAnimationGuessAction guess => SubmitGuess(state, animate, context, guess),
+            ChooseAnimationAnswerAction choice => Choose(state, animate, context, choice),
             DeadlineElapsedAction => Deadline(state, animate, context),
             AdvanceAniMatesAction => Advance(state, animate, context),
             _ => throw new GameRuleViolationException(
@@ -68,90 +68,105 @@ public sealed class AniMatesGameModule(
     public IGameAction DecodeAction(string actionKind, JsonElement payload) => actionKind switch
     {
         SubmitAnimationAction.ActionKind => new SubmitAnimationAction(ReadFrameAssetIds(payload)),
-        VoteForAnimationAction.ActionKind => new VoteForAnimationAction(
-            ReadGuid(payload, "submissionPlayerId", "invalid-vote")),
+        SubmitAnimationGuessAction.ActionKind => new SubmitAnimationGuessAction(ReadText(payload)),
+        ChooseAnimationAnswerAction.ActionKind => new ChooseAnimationAnswerAction(
+            ReadGuid(payload, "answerOptionId")),
         AdvanceAniMatesAction.ActionKind => new AdvanceAniMatesAction(),
         _ => throw new GameRuleViolationException(
             "unsupported-action", $"Action '{actionKind}' is not supported by AniMates.")
     };
 
-    private GameTransition Submit(
+    private GameTransition SubmitAnimation(
         GameModuleState current,
         AnimateState state,
         GameActionContext context,
         SubmitAnimationAction action)
     {
-        if (current.Phase != DrawingPhase)
-        {
-            throw new GameRuleViolationException("wrong-phase", "Drawing submissions are closed.");
-        }
+        RequirePhase(current, DrawingPhase, "Drawing submissions are closed.");
         var playerId = RequiredPlayer(state, context);
         if (state.Submissions.ContainsKey(playerId))
         {
             throw new GameRuleViolationException("already-submitted", "Your animation is already submitted.");
         }
         if (action.FrameAssetIds.Count is < 1 or > RequiredFrameCount ||
-            action.FrameAssetIds.Any(assetId => assetId == Guid.Empty))
+            action.FrameAssetIds.Any(id => id == Guid.Empty))
         {
-            throw new GameRuleViolationException(
-                "invalid-frames", "Submit between one and three valid animation frames.");
+            throw new GameRuleViolationException("invalid-frames", "Submit between one and three valid frames.");
         }
 
-        var normalizedFrames = action.FrameAssetIds.ToList();
-        while (normalizedFrames.Count < RequiredFrameCount)
+        var frames = action.FrameAssetIds.ToList();
+        while (frames.Count < RequiredFrameCount)
         {
-            normalizedFrames.Add(normalizedFrames[^1]);
+            frames.Add(frames[^1]);
         }
         var submissions = state.Submissions.ToDictionary();
-        submissions.Add(playerId, new AnimationSubmission(playerId, normalizedFrames));
+        submissions.Add(playerId, new AnimationSubmission(playerId, frames));
         var updated = state with { Submissions = submissions };
-        if (submissions.Count == state.Participants.Count)
-        {
-            return BeginVoting(updated, context.ReceivedAtUtc);
-        }
-
-        return new GameTransition(
-            current with { Data = GameJson.From(updated) },
-            [],
-            [new GameEvent("AnimationSubmitted", GameJson.From(new { playerId }))]);
+        return submissions.Count == state.Participants.Count
+            ? BeginGuessing(updated, context.ReceivedAtUtc)
+            : new GameTransition(current with { Data = GameJson.From(updated) }, [],
+                [new GameEvent("AnimationSubmitted", GameJson.From(new { playerId }))]);
     }
 
-    private static GameTransition Vote(
+    private GameTransition SubmitGuess(
         GameModuleState current,
         AnimateState state,
         GameActionContext context,
-        VoteForAnimationAction action)
+        SubmitAnimationGuessAction action)
     {
-        if (current.Phase != VotingPhase)
-        {
-            throw new GameRuleViolationException("wrong-phase", "Animation voting is not open.");
-        }
+        RequirePhase(current, GuessingPhase, "Guesses are not open right now.");
         var playerId = RequiredPlayer(state, context);
-        if (state.Votes.ContainsKey(playerId))
+        if (playerId == Animator(state).PlayerId)
         {
-            throw new GameRuleViolationException("already-voted", "Your vote is already locked in.");
+            throw new GameRuleViolationException("animator-ineligible", "The animator cannot submit a guess.");
         }
-        if (action.SubmissionPlayerId == playerId)
+        if (state.Guesses.ContainsKey(playerId))
         {
-            throw new GameRuleViolationException("self-vote", "You cannot vote for your own animation.");
-        }
-        if (!state.Submissions.ContainsKey(action.SubmissionPlayerId))
-        {
-            throw new GameRuleViolationException("invalid-vote", "That animation is not available.");
+            throw new GameRuleViolationException("already-submitted", "Your guess is already locked in.");
         }
 
-        var votes = state.Votes.ToDictionary();
-        votes.Add(playerId, action.SubmissionPlayerId);
-        var updated = state with { Votes = votes };
-        if (EligibleVoters(updated).All(votes.ContainsKey))
+        var guesses = state.Guesses.ToDictionary();
+        guesses.Add(playerId, NormalizeGuess(action.Value));
+        var updated = state with { Guesses = guesses };
+        return Guessers(updated).All(guesses.ContainsKey)
+            ? BeginChoosing(updated, context.ReceivedAtUtc)
+            : new GameTransition(current with { Data = GameJson.From(updated) }, [],
+                [new GameEvent("AnimationGuessSubmitted", GameJson.From(new { playerId }))]);
+    }
+
+    private static GameTransition Choose(
+        GameModuleState current,
+        AnimateState state,
+        GameActionContext context,
+        ChooseAnimationAnswerAction action)
+    {
+        RequirePhase(current, ChoosingPhase, "Answer choices are not open right now.");
+        var playerId = RequiredPlayer(state, context);
+        if (!EligibleChoosers(state).Contains(playerId))
         {
-            return Reveal(updated);
+            throw new GameRuleViolationException("not-eligible", "You are not eligible to choose this turn.");
+        }
+        if (state.Choices.ContainsKey(playerId))
+        {
+            throw new GameRuleViolationException("already-chosen", "Your answer is already locked in.");
+        }
+        var option = state.Options.SingleOrDefault(candidate => candidate.OptionId == action.AnswerOptionId);
+        if (option is null)
+        {
+            throw new GameRuleViolationException("invalid-choice", "That answer is not available.");
+        }
+        if (option.AuthorPlayerId == playerId)
+        {
+            throw new GameRuleViolationException("self-choice", "You cannot choose your own answer.");
         }
 
-        return new GameTransition(
-            current with { Data = GameJson.From(updated) },
-            [],
-            [new GameEvent("AnimationVoteSubmitted", GameJson.From(new { playerId }))]);
+        var choices = state.Choices.ToDictionary();
+        choices.Add(playerId, option.OptionId);
+        var updated = state with { Choices = choices };
+        return EligibleChoosers(updated).All(choices.ContainsKey)
+            ? Reveal(updated)
+            : new GameTransition(current with { Data = GameJson.From(updated) }, [],
+                [new GameEvent("AnimationAnswerChosen", GameJson.From(new { playerId }))]);
     }
 
     private GameTransition Deadline(
@@ -159,81 +174,93 @@ public sealed class AniMatesGameModule(
         AnimateState state,
         GameActionContext context) => current.Phase switch
         {
-            DrawingPhase => BeginVoting(state, context.ReceivedAtUtc),
-            VotingPhase => Reveal(state),
+            DrawingPhase => state.Submissions.Count == 0
+                ? CompleteWithoutAnimations(state)
+                : BeginGuessing(MoveToNextSubmittedAnimation(state, -1), context.ReceivedAtUtc),
+            GuessingPhase => BeginChoosing(state, context.ReceivedAtUtc),
+            ChoosingPhase => Reveal(state),
             _ => throw new GameRuleViolationException("wrong-phase", "This phase has no active deadline.")
         };
 
-    private GameTransition BeginVoting(AnimateState state, DateTimeOffset now)
+    private GameTransition BeginGuessing(AnimateState state, DateTimeOffset now) => new(
+        ModuleState(GuessingPhase, now.Add(guessingDuration), false, state), [],
+        [new GameEvent("AnimationGuessingStarted", GameJson.Empty)]);
+
+    private static GameTransition CompleteWithoutAnimations(AnimateState state) => new(
+        ModuleState(CompletedPhase, null, true, state), [],
+        [new GameEvent("GameCompleted", GameJson.Empty)]);
+
+    private GameTransition BeginChoosing(AnimateState state, DateTimeOffset now)
     {
-        if (state.Submissions.Count == 0 || EligibleVoters(state).Length == 0)
+        var options = new List<AnimationAnswerOption>
         {
-            return Reveal(state);
-        }
-        return new GameTransition(
-            ModuleState(VotingPhase, now.Add(votingDuration), false, state),
-            [],
-            [new GameEvent("AnimationVotingStarted", GameJson.From(new
-            {
-                submissions = state.Submissions.Count
-            }))]);
+            new(Guid.NewGuid(), Prompt(state), true, null)
+        };
+        options.AddRange(state.Guesses.Select(guess =>
+            new AnimationAnswerOption(Guid.NewGuid(), guess.Value, false, guess.Key)));
+        Shuffle(options);
+        var choosing = state with { Options = options };
+        return options.Count < 2 || EligibleChoosers(choosing).Length == 0
+            ? Reveal(choosing)
+            : new GameTransition(ModuleState(ChoosingPhase, now.Add(choosingDuration), false, choosing), [],
+                [new GameEvent("AnimationAnswersOpened", GameJson.From(new { answers = options.Count }))]);
     }
 
     private static GameTransition Reveal(AnimateState state)
     {
-        var voteCounts = state.Votes.Values
-            .GroupBy(playerId => playerId)
-            .ToDictionary(group => group.Key, group => group.Count());
-        var ordered = state.Submissions.Keys
-            .Select(playerId => new { PlayerId = playerId, Votes = voteCounts.GetValueOrDefault(playerId) })
-            .OrderByDescending(result => result.Votes)
-            .ThenBy(result => result.PlayerId)
-            .ToArray();
-        var results = new List<AnimationResult>(ordered.Length);
-        int? previousVotes = null;
-        var rank = 0;
-        for (var index = 0; index < ordered.Length; index++)
+        var points = state.Participants.ToDictionary(player => player.PlayerId, _ => 0);
+        foreach (var choice in state.Choices)
         {
-            if (previousVotes != ordered[index].Votes)
+            var option = state.Options.Single(candidate => candidate.OptionId == choice.Value);
+            if (option.IsCorrect)
             {
-                rank = index + 1;
-                previousVotes = ordered[index].Votes;
+                points[choice.Key] += CorrectChoicePoints;
+                points[Animator(state).PlayerId] += AnimatorCorrectChoicePoints;
             }
-            results.Add(new AnimationResult(
-                ordered[index].PlayerId,
-                ordered[index].Votes,
-                rank,
-                ordered[index].Votes > 0 ? PointsForRank(rank) : 0));
+            else if (option.AuthorPlayerId is { } authorId)
+            {
+                points[authorId] += GuessChosenPoints;
+            }
         }
-        var revealed = state with { Results = results };
+        var awards = points.Where(item => item.Value > 0)
+            .Select(item => new AnimationAward(item.Key, item.Value))
+            .OrderByDescending(item => item.Points).ThenBy(item => item.PlayerId).ToArray();
+        var revealed = state with { Awards = awards };
         return new GameTransition(
             ModuleState(ResultsPhase, null, false, revealed),
-            results.Where(result => result.PointsAwarded > 0)
-                .Select(result => new ScoreAward(
-                    result.PlayerId,
-                    result.PointsAwarded,
-                    $"AniMates rank {result.Rank}"))
-                .ToArray(),
-            [new GameEvent("AnimationCreatorsRevealed", GameJson.Empty)]);
+            awards.Select(award => new ScoreAward(
+                award.PlayerId, award.Points, $"AniMates turn {state.TurnIndex + 1}")).ToArray(),
+            [new GameEvent("AnimationAnswerRevealed", GameJson.Empty)]);
     }
 
-    private static GameTransition Advance(
+    private GameTransition Advance(
         GameModuleState current,
         AnimateState state,
         GameActionContext context)
     {
         if (context.Actor.Role != GameActorRole.Host)
         {
-            throw new GameRuleViolationException("host-required", "Only the host can finish AniMates.");
+            throw new GameRuleViolationException("host-required", "Only the host can advance AniMates.");
         }
-        if (current.Phase != ResultsPhase)
+        RequirePhase(current, ResultsPhase, "Results must be revealed first.");
+        var nextIndex = NextSubmittedIndex(state, state.TurnIndex);
+        if (nextIndex < 0)
         {
-            throw new GameRuleViolationException("wrong-phase", "Results must be revealed first.");
+            return new GameTransition(ModuleState(CompletedPhase, null, true, state), [],
+                [new GameEvent("GameCompleted", GameJson.Empty)]);
         }
+
+        var next = state with
+        {
+            TurnIndex = nextIndex,
+            Guesses = new Dictionary<Guid, string>(),
+            Options = [],
+            Choices = new Dictionary<Guid, Guid>(),
+            Awards = []
+        };
         return new GameTransition(
-            ModuleState(CompletedPhase, null, true, state),
-            [],
-            [new GameEvent("GameCompleted", GameJson.Empty)]);
+            ModuleState(GuessingPhase, context.ReceivedAtUtc.Add(guessingDuration), false, next), [],
+            [new GameEvent("AniMatesTurnStarted", GameJson.From(new { turn = next.TurnIndex + 1 }))]);
     }
 
     private static PlayerGameViewPayload PlayerView(
@@ -242,183 +269,256 @@ public sealed class AniMatesGameModule(
         GameViewContext context)
     {
         var playerId = context.PlayerId
-            ?? throw new GameRuleViolationException("player-required", "A player view requires an identity.");
-        var participant = state.Participants.Single(player => player.PlayerId == playerId);
+            ?? throw new GameRuleViolationException("player-required", "A player identity is required.");
+        RequiredParticipant(state, playerId);
+        var animator = Animator(state);
+
         if (current.Phase == DrawingPhase && !state.Submissions.ContainsKey(playerId))
         {
             return new PlayerGameViewPayload(
-                "Animate with your mates!",
-                participant.Prompt,
-                new PlayerControllerView(
-                    PlayerControllerKind.Drawing,
-                    SubmitAnimationAction.ActionKind,
-                    true,
-                    "Send my animation",
-                    GameJson.From(new DrawingControllerConfiguration(
-                        LogicalSize,
-                        LogicalSize,
-                        RequiredFrameCount,
-                        "animates-drawing",
-                        true))),
-                GameJson.From(new { submitted = false, requiredFrames = RequiredFrameCount }));
+                "Create your animation", PromptForPlayer(state, playerId),
+                new PlayerControllerView(PlayerControllerKind.Drawing, SubmitAnimationAction.ActionKind, true,
+                    "Send my animation", GameJson.From(new DrawingControllerConfiguration(
+                        LogicalSize, LogicalSize, RequiredFrameCount, "animates-drawing", true))),
+                GameJson.From(new { animator = true }));
         }
-
-        if (current.Phase == VotingPhase && !state.Votes.ContainsKey(playerId))
+        if (current.Phase == GuessingPhase && playerId != animator.PlayerId && !state.Guesses.ContainsKey(playerId))
         {
-            var options = state.Submissions.Values
-                .Where(submission => submission.PlayerId != playerId)
-                .OrderBy(submission => submission.PlayerId)
-                .Select((submission, index) => new ControllerOption(
-                    submission.PlayerId.ToString("N"),
-                    $"Animation {index + 1}",
-                    null,
-                    submission.FrameAssetIds))
-                .ToArray();
-            if (options.Length > 0)
-            {
-                return new PlayerGameViewPayload(
-                    "Vote for your favourite",
-                    "Animations are anonymous. You cannot vote for yourself.",
-                    new PlayerControllerView(
-                        PlayerControllerKind.Vote,
-                        VoteForAnimationAction.ActionKind,
-                        true,
-                        "Cast my vote",
-                        GameJson.From(new VoteControllerConfiguration(
-                            options,
-                            null,
-                            "submissionPlayerId",
-                            "animates:vote"))),
-                    GameJson.From(new { submitted = true, voted = false }));
-            }
+            return new PlayerGameViewPayload(
+                "What is the animation?", "Watch the main screen and write your best guess.",
+                new PlayerControllerView(PlayerControllerKind.Text, SubmitAnimationGuessAction.ActionKind, true,
+                    "Send my guess", GameJson.From(new TextControllerConfiguration(
+                        MaximumGuessLength, "Describe what you think is happening..."))),
+                GameJson.From(new { submitted = false, turn = state.TurnIndex }));
+        }
+        if (current.Phase == ChoosingPhase && EligibleChoosers(state).Contains(playerId) &&
+            !state.Choices.ContainsKey(playerId))
+        {
+            var options = state.Options.Select((option, index) => new { Option = option, Index = index })
+                .Where(item => item.Option.AuthorPlayerId != playerId)
+                .Select(item => new ControllerOption(
+                    item.Option.OptionId.ToString("N"), Letter(item.Index), item.Option.Text)).ToArray();
+            return new PlayerGameViewPayload(
+                "Choose the best answer", "Pick the answer that best fits. Your own guess is hidden.",
+                new PlayerControllerView(PlayerControllerKind.Choice, ChooseAnimationAnswerAction.ActionKind, true,
+                    "Lock in my answer", GameJson.From(new ChoiceControllerConfiguration(
+                        options, null, "answerOptionId", $"animates-turn-{state.TurnIndex}:choice"))),
+                GameJson.From(new { guessed = true, chosen = false, turn = state.TurnIndex }));
         }
 
-        var ownResult = state.Results.SingleOrDefault(result => result.PlayerId == playerId);
+        var award = state.Awards.SingleOrDefault(item => item.PlayerId == playerId);
         var instructions = current.Phase switch
         {
-            DrawingPhase => "Animation submitted. Waiting for everyone else...",
-            VotingPhase => state.Votes.ContainsKey(playerId)
-                ? "Vote locked. Waiting for the reveal..."
-                : "There is no eligible animation for you to vote on.",
-            ResultsPhase => ownResult is null
-                ? "Watch the creator reveal on the main screen."
-                : $"You received {ownResult.Votes} vote(s) and earned {ownResult.PointsAwarded:N0} points.",
+            DrawingPhase => "Animation submitted. Relax while everyone else finishes...",
+            GuessingPhase => playerId == animator.PlayerId
+                ? "Your animation is on the main screen. Wait for everyone to guess."
+                : "Guess locked. Waiting for the other players...",
+            ChoosingPhase => playerId == animator.PlayerId
+                ? "Watch everyone choose on the main screen."
+                : "Answer locked. Waiting for the reveal...",
+            ResultsPhase => award is null
+                ? "No points this turn. The next animator is up soon."
+                : $"You earned {award.Points:N0} points this turn.",
             _ => "AniMates complete."
         };
-        return Waiting(current.Phase == ResultsPhase ? "Results" : "Please wait", instructions);
+        return Waiting(current.Phase == ResultsPhase ? "Answer revealed" : "Please wait", instructions);
     }
 
     private static HostGameViewPayload HostView(GameModuleState current, AnimateState state) => new(
-        "AniMates",
-        current.Phase == DrawingPhase ? "Players are creating three-frame animations" : "Favourite animation",
-        PhaseMessage(current, state),
-        current.Phase == DrawingPhase ? state.Submissions.Count : state.Votes.Count,
-        current.Phase == DrawingPhase ? state.Participants.Count : EligibleVoters(state).Length,
+        current.Phase == DrawingPhase
+            ? "AniMates — Drawing"
+            : $"AniMates — Reveal {state.TurnIndex + 1}/{state.Submissions.Count}",
+        current.Phase == ResultsPhase ? Prompt(state) : current.Phase == DrawingPhase
+            ? "Everyone is animating at once"
+            : $"{Animator(state).DisplayName}'s animation",
+        PhaseMessage(current, state), SubmittedCount(current, state), RequiredCount(current, state),
         current.Phase == ResultsPhase,
         current.Phase == ResultsPhase ? AdvanceAniMatesAction.ActionKind : null,
-        current.Phase == ResultsPhase ? "Finish AniMates" : null,
+        current.Phase == ResultsPhase
+            ? NextSubmittedIndex(state, state.TurnIndex) < 0 ? "Finish AniMates" : "Next animation"
+            : null,
         Entries(current, state));
 
-    private static DisplayGameViewPayload DisplayView(GameModuleState current, AnimateState state) => new(
-        "AniMates",
-        current.Phase == DrawingPhase ? "Draw your prompts!" : "Vote for your favourite animation",
-        PhaseMessage(current, state),
-        current.Phase == DrawingPhase ? state.Submissions.Count : state.Votes.Count,
-        current.Phase == DrawingPhase ? state.Participants.Count : EligibleVoters(state).Length,
-        Entries(current, state),
-        current.Phase is VotingPhase or ResultsPhase
-            ? new DrawingPresentationView(
-                current.Phase == VotingPhase ? "Playback" : "Reveal",
-                150,
-                AnimationViews(current, state))
-            : null);
-
-    private static DrawingAnimationView[] AnimationViews(
-        GameModuleState current,
-        AnimateState state) => state.Submissions.Values
-        .OrderBy(submission => submission.PlayerId)
-        .Select(submission =>
+    private static DisplayGameViewPayload DisplayView(GameModuleState current, AnimateState state)
+    {
+        DrawingPresentationView? drawing = null;
+        if (current.Phase is GuessingPhase or ChoosingPhase or ResultsPhase && CurrentSubmission(state) is { } submission)
         {
-            var participant = state.Participants.Single(player => player.PlayerId == submission.PlayerId);
-            var result = state.Results.SingleOrDefault(item => item.PlayerId == submission.PlayerId);
-            return new DrawingAnimationView(
-                submission.PlayerId,
-                current.Phase == ResultsPhase ? participant.DisplayName : null,
-                participant.Prompt,
-                submission.FrameAssetIds,
-                result?.Votes ?? 0,
-                result?.Rank,
-                result?.PointsAwarded ?? 0);
-        }).ToArray();
+            drawing = new DrawingPresentationView(
+                current.Phase == ResultsPhase ? "Reveal" : "Playback", 150,
+                [new DrawingAnimationView(
+                    Animator(state).PlayerId,
+                    current.Phase == ResultsPhase ? Animator(state).DisplayName : null,
+                    current.Phase == ResultsPhase ? Prompt(state) : "Mystery animation",
+                    submission.FrameAssetIds, 0, null,
+                    state.Awards.SingleOrDefault(award => award.PlayerId == Animator(state).PlayerId)?.Points ?? 0)]);
+        }
+        return new DisplayGameViewPayload(
+            current.Phase == DrawingPhase
+                ? "ANIMATES — EVERYONE DRAW!"
+                : $"ANIMATES — {Animator(state).DisplayName.ToUpperInvariant()}'S ANIMATION",
+            current.Phase == ResultsPhase ? Prompt(state) : DisplayPrompt(current),
+            PhaseMessage(current, state), SubmittedCount(current, state), RequiredCount(current, state),
+            Entries(current, state), drawing);
+    }
 
-    private static GamePresentationEntry[] Entries(
-        GameModuleState current,
-        AnimateState state)
+    private static GamePresentationEntry[] Entries(GameModuleState current, AnimateState state)
     {
         if (current.Phase == DrawingPhase)
         {
             return state.Participants.Select(player => new GamePresentationEntry(
-                player.PlayerId,
-                player.DisplayName,
-                state.Submissions.ContainsKey(player.PlayerId) ? "Ready ✓" : "Drawing...",
-                null,
-                0)).ToArray();
+                player.PlayerId, player.DisplayName,
+                state.Submissions.ContainsKey(player.PlayerId) ? "Idle" : "Thinking", null, 0)).ToArray();
         }
-        if (current.Phase == VotingPhase)
+        if (current.Phase == GuessingPhase)
         {
-            return [];
+            return Guessers(state).Select(id =>
+            {
+                var player = RequiredParticipant(state, id);
+                return new GamePresentationEntry(
+                    id, player.DisplayName, state.Guesses.ContainsKey(id) ? "Guess locked" : "Writing...", null, 0);
+            }).ToArray();
         }
-        return state.Results.OrderBy(result => result.Rank).Select(result =>
+        if (current.Phase == ChoosingPhase)
         {
-            var player = state.Participants.Single(participant => participant.PlayerId == result.PlayerId);
-            return new GamePresentationEntry(
-                result.PlayerId,
-                player.DisplayName,
-                $"{result.Votes} vote(s)",
-                result.Rank,
-                result.PointsAwarded);
-        }).ToArray();
+            return state.Options.Select((option, index) => new GamePresentationEntry(
+                option.OptionId, Letter(index), option.Text, null, 0)).ToArray();
+        }
+        if (current.Phase == ResultsPhase)
+        {
+            var counts = state.Choices.Values.GroupBy(id => id).ToDictionary(group => group.Key, group => group.Count());
+            return state.Options.Select((option, index) =>
+            {
+                var picks = counts.GetValueOrDefault(option.OptionId);
+                var author = option.AuthorPlayerId is { } id
+                    ? RequiredParticipant(state, id).DisplayName : Animator(state).DisplayName;
+                var label = option.IsCorrect ? $"{Letter(index)} — CORRECT ANSWER" : $"{Letter(index)} — {author}";
+                var points = option.IsCorrect
+                    ? picks * (CorrectChoicePoints + AnimatorCorrectChoicePoints)
+                    : picks * GuessChosenPoints;
+                return new GamePresentationEntry(
+                    option.OptionId, label, $"{option.Text} — {picks} pick(s)", null, points);
+            }).ToArray();
+        }
+        return [];
     }
+
+    private static string DisplayPrompt(GameModuleState current) => current.Phase switch
+    {
+        DrawingPhase => "An absurd animation is being created...",
+        GuessingPhase => "What do you think this is?",
+        ChoosingPhase => "Choose the best-fitting answer",
+        _ => "The answer is..."
+    };
 
     private static string PhaseMessage(GameModuleState current, AnimateState state) => current.Phase switch
     {
-        DrawingPhase => $"{state.Submissions.Count}/{state.Participants.Count} animations submitted",
-        VotingPhase => $"{state.Votes.Count}/{EligibleVoters(state).Length} votes locked in",
-        ResultsPhase => "Creators revealed!",
+        DrawingPhase => $"{state.Submissions.Count}/{state.Participants.Count} animations ready",
+        GuessingPhase => $"{state.Guesses.Count}/{Guessers(state).Length} guesses locked in",
+        ChoosingPhase => $"{state.Choices.Count}/{EligibleChoosers(state).Length} choices locked in",
+        ResultsPhase => "Correct answer and writers revealed!",
         _ => "AniMates complete"
     };
 
-    private static Guid[] EligibleVoters(AnimateState state) => state.Participants
-        .Where(player => state.Submissions.Keys.Any(ownerId => ownerId != player.PlayerId))
-        .Select(player => player.PlayerId)
-        .ToArray();
+    private static int SubmittedCount(GameModuleState current, AnimateState state) => current.Phase switch
+    {
+        DrawingPhase => state.Submissions.Count,
+        GuessingPhase => state.Guesses.Count,
+        _ => state.Choices.Count
+    };
+
+    private static int RequiredCount(GameModuleState current, AnimateState state) => current.Phase switch
+    {
+        DrawingPhase => state.Participants.Count,
+        GuessingPhase => Guessers(state).Length,
+        _ => EligibleChoosers(state).Length
+    };
+
+    private static Guid[] Guessers(AnimateState state) => state.Participants
+        .Where(player => player.PlayerId != Animator(state).PlayerId)
+        .Select(player => player.PlayerId).ToArray();
+
+    private static Guid[] EligibleChoosers(AnimateState state) => Guessers(state)
+        .Where(id => state.Options.Any(option => option.AuthorPlayerId != id)).ToArray();
+
+    private static AnimateParticipant Animator(AnimateState state) => state.Participants[state.TurnIndex];
+    private static string Prompt(AnimateState state) => Prompts[state.TurnIndex % Prompts.Length];
+    private static string PromptForPlayer(AnimateState state, Guid playerId)
+    {
+        var index = state.Participants.ToList().FindIndex(player => player.PlayerId == playerId);
+        return Prompts[index % Prompts.Length];
+    }
+
+    private static AnimationSubmission? CurrentSubmission(AnimateState state) =>
+        state.Submissions.GetValueOrDefault(Animator(state).PlayerId);
+
+    private static int NextSubmittedIndex(AnimateState state, int afterIndex)
+    {
+        for (var index = afterIndex + 1; index < state.Participants.Count; index++)
+        {
+            if (state.Submissions.ContainsKey(state.Participants[index].PlayerId))
+            {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private static AnimateState MoveToNextSubmittedAnimation(AnimateState state, int afterIndex) =>
+        state with { TurnIndex = NextSubmittedIndex(state, afterIndex) };
+
+    private static AnimateParticipant RequiredParticipant(AnimateState state, Guid playerId) =>
+        state.Participants.SingleOrDefault(player => player.PlayerId == playerId)
+        ?? throw new GameRuleViolationException("player-required", "A current player is required.");
 
     private static Guid RequiredPlayer(AnimateState state, GameActionContext context)
     {
-        if (!context.Actor.TryGetPlayerId(out var playerId) ||
-            !state.Participants.Any(player => player.PlayerId == playerId))
+        if (!context.Actor.TryGetPlayerId(out var playerId))
         {
             throw new GameRuleViolationException("player-required", "A current player is required.");
         }
+        RequiredParticipant(state, playerId);
         return playerId;
     }
 
-    private static PlayerGameViewPayload Waiting(string heading, string instructions) => new(
-        heading,
-        instructions,
-        new PlayerControllerView(
-            PlayerControllerKind.Waiting,
-            string.Empty,
-            false,
-            string.Empty,
-            GameJson.Empty),
-        GameJson.Empty);
+    private static void RequirePhase(GameModuleState state, string phase, string message)
+    {
+        if (state.Phase != phase)
+        {
+            throw new GameRuleViolationException("wrong-phase", message);
+        }
+    }
+
+    private static string NormalizeGuess(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            throw new GameRuleViolationException("invalid-guess", "Enter a guess before submitting.");
+        }
+        var normalized = string.Join(' ', value.Trim().Split(
+            (char[]?)null, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+        if (normalized.Length > MaximumGuessLength || normalized.Any(char.IsControl))
+        {
+            throw new GameRuleViolationException(
+                "invalid-guess", $"Guesses must be at most {MaximumGuessLength} characters.");
+        }
+        return normalized;
+    }
+
+    private static string ReadText(JsonElement payload)
+    {
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty("value", out var value) &&
+            value.ValueKind == JsonValueKind.String && value.GetString() is { } text)
+        {
+            return text;
+        }
+        throw new GameRuleViolationException("invalid-guess", "A text guess is required.");
+    }
 
     private static List<Guid> ReadFrameAssetIds(JsonElement payload)
     {
         if (payload.ValueKind != JsonValueKind.Object ||
-            !payload.TryGetProperty("frameAssetIds", out var frames) ||
-            frames.ValueKind != JsonValueKind.Array ||
+            !payload.TryGetProperty("frameAssetIds", out var frames) || frames.ValueKind != JsonValueKind.Array ||
             frames.GetArrayLength() is < 1 or > RequiredFrameCount)
         {
             throw new GameRuleViolationException("invalid-frames", "One to three frame asset IDs are required.");
@@ -426,44 +526,47 @@ public sealed class AniMatesGameModule(
         var result = new List<Guid>(frames.GetArrayLength());
         foreach (var frame in frames.EnumerateArray())
         {
-            if (frame.ValueKind != JsonValueKind.String || !frame.TryGetGuid(out var assetId) || assetId == Guid.Empty)
+            if (frame.ValueKind != JsonValueKind.String || !frame.TryGetGuid(out var id) || id == Guid.Empty)
             {
                 throw new GameRuleViolationException("invalid-frames", "Every frame requires a valid asset ID.");
             }
-            result.Add(assetId);
+            result.Add(id);
         }
         return result;
     }
 
-    private static Guid ReadGuid(JsonElement payload, string propertyName, string errorCode)
+    private static Guid ReadGuid(JsonElement payload, string propertyName)
     {
-        if (payload.ValueKind == JsonValueKind.Object &&
-            payload.TryGetProperty(propertyName, out var value) &&
-            value.ValueKind == JsonValueKind.String &&
-            value.TryGetGuid(out var parsed) && parsed != Guid.Empty)
+        if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty(propertyName, out var value) &&
+            value.ValueKind == JsonValueKind.String && value.TryGetGuid(out var id) && id != Guid.Empty)
         {
-            return parsed;
+            return id;
         }
-        throw new GameRuleViolationException(errorCode, "A valid choice is required.");
+        throw new GameRuleViolationException("invalid-choice", "A valid answer choice is required.");
     }
 
-    private static int PointsForRank(int rank) => rank switch
+    private static void Shuffle(List<AnimationAnswerOption> options)
     {
-        1 => 1000,
-        2 => 600,
-        3 => 300,
-        _ => 0
-    };
+        for (var index = options.Count - 1; index > 0; index--)
+        {
+            var swap = RandomNumberGenerator.GetInt32(index + 1);
+            (options[index], options[swap]) = (options[swap], options[index]);
+        }
+    }
 
-    private static AnimateState ReadState(GameModuleState state) =>
-        state.Data.Deserialize<AnimateState>()
+    private static string Letter(int index) => ((char)('A' + index)).ToString();
+
+    private static PlayerGameViewPayload Waiting(string heading, string instructions) => new(
+        heading, instructions,
+        new PlayerControllerView(PlayerControllerKind.Waiting, string.Empty, false, string.Empty, GameJson.Empty),
+        GameJson.Empty);
+
+    private static AnimateState ReadState(GameModuleState state) => state.Data.Deserialize<AnimateState>()
         ?? throw new InvalidOperationException("AniMates state could not be read.");
 
     private static GameModuleState ModuleState(
-        string phase,
-        DateTimeOffset? deadline,
-        bool complete,
-        AnimateState state) => new(1, phase, deadline, complete, GameJson.From(state));
+        string phase, DateTimeOffset? deadline, bool complete, AnimateState state) =>
+        new(2, phase, deadline, complete, GameJson.From(state));
 
     private static readonly string[] Prompts =
     [
@@ -482,14 +585,16 @@ public sealed class AniMatesGameModule(
     ];
 
     private sealed record AnimateState(
+        int TurnIndex,
         IReadOnlyList<AnimateParticipant> Participants,
-        IReadOnlyDictionary<Guid, AnimationSubmission> Submissions,
-        IReadOnlyDictionary<Guid, Guid> Votes,
-        IReadOnlyList<AnimationResult> Results);
+        Dictionary<Guid, AnimationSubmission> Submissions,
+        Dictionary<Guid, string> Guesses,
+        IReadOnlyList<AnimationAnswerOption> Options,
+        IReadOnlyDictionary<Guid, Guid> Choices,
+        IReadOnlyList<AnimationAward> Awards);
 
-    private sealed record AnimateParticipant(Guid PlayerId, string DisplayName, string Prompt);
-
+    private sealed record AnimateParticipant(Guid PlayerId, string DisplayName);
     private sealed record AnimationSubmission(Guid PlayerId, IReadOnlyList<Guid> FrameAssetIds);
-
-    private sealed record AnimationResult(Guid PlayerId, int Votes, int Rank, int PointsAwarded);
+    private sealed record AnimationAnswerOption(Guid OptionId, string Text, bool IsCorrect, Guid? AuthorPlayerId);
+    private sealed record AnimationAward(Guid PlayerId, int Points);
 }

@@ -19,6 +19,7 @@ public sealed record PhaserPlayerSnapshot(
     string DisplayName,
     int Score,
     string Status,
+    string Activity,
     PhaserCharacterSnapshot Character);
 
 public sealed record PhaserCharacterSnapshot(
@@ -78,6 +79,7 @@ public static class PhaserPresentationMapper
         var mode = !session.IsPaired
             ? "Pairing"
             : gameView is null ? "Lobby" : "Game";
+        var activities = game?.Entries.ToDictionary(entry => entry.PlayerId, entry => entry.Value) ?? [];
         var presentationPlayers = players.Select(player => new PhaserPlayerSnapshot(
             player.PlayerId.ToString("N"),
             player.DisplayName,
@@ -85,6 +87,7 @@ public static class PhaserPresentationMapper
                 ? gameScore
                 : player.Score,
             player.Status.ToString(),
+            activities.GetValueOrDefault(player.PlayerId, "Idle"),
             new PhaserCharacterSnapshot(
                 player.Character.BodyType.ToString(),
                 player.Character.PrimaryColour,
@@ -108,13 +111,13 @@ public static class PhaserPresentationMapper
                 (int)player.Character.ShirtStyle,
                 (int)player.Character.TrouserStyle,
                 player.Character.BodySize.ToString()))).ToArray();
-        var results = game?.Entries
-            .Where(entry => entry.Rank.HasValue)
-            .Select(entry => new PhaserResultSnapshot(
-                entry.PlayerId.ToString("N"),
-                entry.Rank!.Value,
-                entry.PointsAwarded))
-            .ToArray() ?? [];
+        var results = gameView is { GameKey: "animates", Phase: "Results" }
+            ? RankedScores(presentationPlayers)
+            : game?.Entries
+                .Where(entry => entry.Rank.HasValue)
+                .Select(entry => new PhaserResultSnapshot(
+                    entry.PlayerId.ToString("N"), entry.Rank!.Value, entry.PointsAwarded))
+                .ToArray() ?? [];
         var drawing = game?.Drawing is { } presentation
             ? new PhaserDrawingPresentationSnapshot(
                 presentation.Mode,
@@ -137,5 +140,24 @@ public static class PhaserPresentationMapper
             presentationPlayers,
             results,
             drawing);
+    }
+
+    private static PhaserResultSnapshot[] RankedScores(IReadOnlyList<PhaserPlayerSnapshot> players)
+    {
+        var ordered = players.OrderByDescending(player => player.Score)
+            .ThenBy(player => player.DisplayName, StringComparer.Ordinal).ToArray();
+        var results = new PhaserResultSnapshot[ordered.Length];
+        int? previousScore = null;
+        var rank = 0;
+        for (var index = 0; index < ordered.Length; index++)
+        {
+            if (previousScore != ordered[index].Score)
+            {
+                rank = index + 1;
+                previousScore = ordered[index].Score;
+            }
+            results[index] = new PhaserResultSnapshot(ordered[index].PlayerId, rank, 0);
+        }
+        return results;
     }
 }

@@ -8,9 +8,15 @@ public sealed record SubmitAnimationAction(IReadOnlyList<Guid> FrameAssetIds) : 
     public string Kind => ActionKind;
 }
 
-public sealed record VoteForAnimationAction(Guid SubmissionPlayerId) : IGameAction
+public sealed record SubmitAnimationGuessAction(string Value) : IGameAction
 {
-    public const string ActionKind = "animates.vote";
+    public const string ActionKind = "animates.submit-guess";
+    public string Kind => ActionKind;
+}
+
+public sealed record ChooseAnimationAnswerAction(Guid AnswerOptionId) : IGameAction
+{
+    public const string ActionKind = "animates.choose-answer";
     public string Kind => ActionKind;
 }
 

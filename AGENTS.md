@@ -305,6 +305,17 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add authenticated, bounded, rate-limited player reactions such as kiss and angry, rendered only on that player's portrait.
 - [x] Add domain, persistence, join-flow, renderer, reaction, recovery, responsive, and browser coverage.
 
+### AniMates turn-based guessing expansion (completed 2026-08-31)
+
+- [x] Give every player a private absurd prompt and let all players create their three-frame animations simultaneously.
+- [x] Preserve submitted animations and run sequential Guessing → Choosing → Results cycles for each animator.
+- [x] Mix the real prompt with persisted, shuffled player guesses and present matching A/B/C lettered answer cards on display and phones.
+- [x] Hide each player's own guess and reject forged self-choices authoritatively.
+- [x] Award 100 points per fake-answer pick, 50 points to a correct chooser, and 100 points to the animator for each correct pick.
+- [x] Show unfinished artists thinking, submitted artists idle, and the server-owned countdown in the display's top-right corner.
+- [x] Present cumulative score-proportional podiums between reveals with winner cheering, lowest-place crying, and a static reduced-motion fallback.
+- [x] Preserve frame fallback, deadlines, idempotent asset submission, reconstructable options, recovery, and host-controlled progression.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

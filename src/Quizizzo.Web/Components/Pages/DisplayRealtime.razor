@@ -42,13 +42,13 @@
                 <p class="fs-3">@game.PhaseMessage</p>
                 @if (gameView.PhaseEndsAtUtc is not null)
                 {
-                    <p class="display-6"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+                    <p class="display-deadline" aria-label="Time remaining"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
                 }
 
                 <div class="display-results">
                     @foreach (var entry in game.Entries)
                     {
-                        <article class="display-result-card">
+                        <article class="display-result-card @(gameView.GameKey == "animates" && gameView.Phase == "Choosing" ? "animates-answer-card" : null)">
                             <h3>@entry.Label</h3>
                             <p>@entry.Value</p>
                             @if (entry.Rank is not null)

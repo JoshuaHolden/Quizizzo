@@ -458,6 +458,39 @@ fieldset {
     min-width: 0;
 }
 
+.animates-answer-card {
+    background: #fff;
+    color: #17131f;
+    border: .35rem solid #17131f;
+    border-radius: .55rem;
+    box-shadow: .65rem .65rem 0 rgb(23 19 31 / 45%);
+    min-height: 10rem;
+    text-align: left;
+}
+
+.animates-answer-card h3 {
+    color: #17131f;
+    font-size: clamp(2rem, 4vw, 4.5rem);
+}
+
+.display-deadline {
+    position: fixed;
+    z-index: 40;
+    top: max(1rem, env(safe-area-inset-top));
+    right: max(1rem, env(safe-area-inset-right));
+    min-width: 5.5rem;
+    margin: 0;
+    padding: .55rem .8rem;
+    border: .2rem solid rgb(255 255 255 / 72%);
+    border-radius: 999px;
+    background: rgb(20 10 43 / 88%);
+    color: #fff4a8;
+    font-size: clamp(1.5rem, 3vw, 3rem);
+    font-weight: 900;
+    line-height: 1;
+    box-shadow: 0 .35rem 1rem rgb(0 0 0 / 28%);
+}
+
 .scoreboard {
     list-style-position: inside;
     margin: 0;

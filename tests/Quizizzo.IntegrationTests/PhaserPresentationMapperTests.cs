@@ -123,4 +123,41 @@ public sealed class PhaserPresentationMapperTests
             assetIds.Select(assetId => $"/api/drawing-assets/{assetId:D}"),
             animation.FrameUrls);
     }
+
+    [Fact]
+    public void AniMates_results_map_cumulative_scores_to_podium_ranks_and_drawing_activity()
+    {
+        var partyId = Guid.NewGuid();
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var players = new[]
+        {
+            Player(firstId, partyId, "First"),
+            Player(secondId, partyId, "Second")
+        };
+        var payload = new DisplayGameViewPayload(
+            "AniMates", "Reveal", "Ready", 2, 2,
+            [
+                new GamePresentationEntry(firstId, "First", "Thinking", null, 0),
+                new GamePresentationEntry(secondId, "Second", "Idle", null, 0)
+            ]);
+        var game = new PartyGameView(
+            partyId, Guid.NewGuid(), "animates", GameAudienceRole.Display, "Results", 3, null, false,
+            GameJson.From(payload), new Dictionary<Guid, int> { [firstId] = 150, [secondId] = 50 });
+
+        var snapshot = PhaserPresentationMapper.Create(session, players, game, payload);
+
+        Assert.Equal("Thinking", snapshot.Players.Single(player => player.PlayerId == firstId.ToString("N")).Activity);
+        Assert.Equal(1, snapshot.Results.Single(result => result.PlayerId == firstId.ToString("N")).Rank);
+        Assert.Equal(2, snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).Rank);
+    }
+
+    private static PlayerView Player(Guid playerId, Guid partyId, string name) => new(
+        playerId, partyId, "K7XM", name, 0, PlayerStatus.Connected,
+        new CharacterView(
+            CharacterBodyType.Bean, "#4361EE", CharacterEyes.Bright,
+            CharacterMouth.Smile, CharacterAccessory.None),
+        DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
 }
