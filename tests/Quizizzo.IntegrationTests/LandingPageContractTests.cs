@@ -132,6 +132,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);
         Assert.Contains("presentation === \"Woman\" ? [4, 8]", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("Quizizzo Display", presentation, StringComparison.Ordinal);
+        Assert.Contains("animatePhaseTransition", presentation, StringComparison.Ordinal);
+        Assert.Contains("startsWith(\"Showdown\")", presentation, StringComparison.Ordinal);
 
         var designer = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");

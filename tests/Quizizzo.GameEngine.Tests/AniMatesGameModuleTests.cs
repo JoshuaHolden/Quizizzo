@@ -9,6 +9,24 @@ public sealed class AniMatesGameModuleTests
     private static readonly DateTimeOffset Now = new(2026, 8, 31, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void Start_waits_in_a_presenter_briefing_until_the_host_starts_round_one()
+    {
+        var module = new AniMatesGameModule();
+        var playerId = Guid.NewGuid();
+        var state = module.Start(new GameStartContext(
+            GameInstanceId.New(), Guid.NewGuid(), "host",
+            [new GameParticipant(playerId, "One"), new GameParticipant(Guid.NewGuid(), "Two")], Now));
+        var display = module.CreateView(state, new GameViewContext(GameAudienceRole.Display, "display", null))
+            .Data.Deserialize<DisplayGameViewPayload>()!;
+
+        Assert.Equal(AniMatesGameModule.BriefingPhase, state.Phase);
+        Assert.Contains("different secret prompt", display.Prompt, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(3, display.Tutorial!.FrameCount);
+        Assert.Contains(display.Tutorial.Steps, step => step.Contains("onion skin", StringComparison.OrdinalIgnoreCase));
+        Assert.Null(state.PhaseEndsAtUtc);
+    }
+
+    [Fact]
     public void Start_gives_every_player_a_private_three_frame_prompt_at_the_same_time()
     {
         var game = new Fixture();
@@ -93,14 +111,14 @@ public sealed class AniMatesGameModuleTests
     }
 
     [Fact]
-    public void Host_cycles_every_player_through_animator_then_completes()
+    public void Host_cycles_every_round_one_animation_then_opens_the_round_two_briefing()
     {
         var game = new Fixture();
         game.SubmitAllAnimations();
         for (var turn = 0; turn < game.PlayerIds.Length; turn++)
         {
             game.CompleteTurnWithoutChoices();
-            var transition = game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+            game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
             if (turn < game.PlayerIds.Length - 1)
             {
                 Assert.Equal(AniMatesGameModule.GuessingPhase, game.State.Phase);
@@ -109,9 +127,65 @@ public sealed class AniMatesGameModuleTests
             }
             else
             {
-                Assert.True(transition.State.IsComplete);
+                Assert.Equal(AniMatesGameModule.ShowdownBriefingPhase, game.State.Phase);
             }
         }
+    }
+
+    [Fact]
+    public void Same_prompt_showdown_uses_five_frames_anonymous_previews_and_simple_vote_scoring()
+    {
+        var game = new Fixture();
+        game.ReachShowdownBriefing();
+        Assert.Equal(5, game.DisplayView().Tutorial!.FrameCount);
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        var drawing = game.PlayerView(game.PlayerIds[0]).Controller.Configuration
+            .Deserialize<DrawingControllerConfiguration>();
+        Assert.Equal(5, drawing!.FrameCount);
+        Assert.All(game.PlayerIds, id => Assert.Equal(
+            "A grandma escaping from prison", game.PlayerView(id).Instructions));
+
+        game.SubmitAllAnimations(5);
+        Assert.Equal(AniMatesGameModule.ShowdownPlaybackPhase, game.State.Phase);
+        Assert.All(game.DisplayView().Drawing!.Animations, animation => Assert.Null(animation.CreatorName));
+        Assert.Equal(3, game.DisplayView().Drawing!.LoopsPerAnimation);
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+
+        var firstVote = game.VoteView(game.PlayerIds[0]);
+        Assert.DoesNotContain(firstVote.Options, option => option.Id == game.PlayerIds[0].ToString("N"));
+        var selfVote = Assert.Throws<GameRuleViolationException>(() => game.Apply(
+            GameActor.Player(game.PlayerIds[0]), new VoteForShowdownAnimationAction(game.PlayerIds[0])));
+        Assert.Equal("self-vote", selfVote.Code);
+        game.Vote(game.PlayerIds[0], game.PlayerIds[1]);
+        game.Vote(game.PlayerIds[1], game.PlayerIds[0]);
+        var reveal = game.Vote(game.PlayerIds[2], game.PlayerIds[0]);
+
+        Assert.Equal(AniMatesGameModule.ShowdownResultsPhase, game.State.Phase);
+        Assert.Equal(400, reveal.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[0]).Points);
+        Assert.Equal(100, reveal.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[1]).Points);
+        var revealedDrawing = game.DisplayView().Drawing!;
+        Assert.All(revealedDrawing.Animations, animation => Assert.NotNull(animation.CreatorName));
+        Assert.True(revealedDrawing.Animations.Single(animation =>
+            animation.SubmissionPlayerId == game.PlayerIds[0]).Rank == 1);
+        Assert.True(game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction()).State.IsComplete);
+    }
+
+    [Fact]
+    public void Same_prompt_showdown_awards_the_winner_bonus_to_every_tied_winner()
+    {
+        var game = new Fixture();
+        game.ReachShowdownBriefing();
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        game.SubmitAllAnimations(5);
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+
+        game.Vote(game.PlayerIds[0], game.PlayerIds[1]);
+        game.Vote(game.PlayerIds[1], game.PlayerIds[2]);
+        var reveal = game.Vote(game.PlayerIds[2], game.PlayerIds[0]);
+
+        Assert.Equal(3, reveal.ScoreAwards.Count);
+        Assert.All(reveal.ScoreAwards, award => Assert.Equal(300, award.Points));
+        Assert.All(game.DisplayView().Drawing!.Animations, animation => Assert.Equal(1, animation.Rank));
     }
 
     [Fact]
@@ -133,7 +207,7 @@ public sealed class AniMatesGameModuleTests
         var module = new AniMatesGameModule();
         var tooMany = JsonSerializer.SerializeToElement(new
         {
-            frameAssetIds = new[] { Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid() }
+            frameAssetIds = Enumerable.Range(0, 6).Select(_ => Guid.NewGuid()).ToArray()
         });
 
         Assert.Equal("invalid-frames", Assert.Throws<GameRuleViolationException>(() =>
@@ -158,6 +232,7 @@ public sealed class AniMatesGameModuleTests
             State = module.Start(new GameStartContext(new GameInstanceId(instanceId), partyId, "host",
                 PlayerIds.Select((id, index) => new GameParticipant(id, $"Player {index + 1}")).ToArray(), Now));
             LastTransition = GameTransition.To(State);
+            Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
         }
 
         public Guid[] PlayerIds { get; }
@@ -173,14 +248,14 @@ public sealed class AniMatesGameModuleTests
             return LastTransition;
         }
 
-        public void SubmitAnimation(Guid playerId) => Apply(GameActor.Player(playerId),
-            new SubmitAnimationAction([Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()]));
+        public void SubmitAnimation(Guid playerId, int frames = 3) => Apply(GameActor.Player(playerId),
+            new SubmitAnimationAction(Enumerable.Range(0, frames).Select(_ => Guid.NewGuid()).ToArray()));
 
-        public void SubmitAllAnimations()
+        public void SubmitAllAnimations(int frames = 3)
         {
             foreach (var playerId in PlayerIds)
             {
-                SubmitAnimation(playerId);
+                SubmitAnimation(playerId, frames);
             }
         }
 
@@ -214,6 +289,22 @@ public sealed class AniMatesGameModuleTests
 
         public ChoiceControllerConfiguration ChoiceView(Guid playerId) => PlayerView(playerId)
             .Controller.Configuration.Deserialize<ChoiceControllerConfiguration>()!;
+
+        public VoteControllerConfiguration VoteView(Guid playerId) => PlayerView(playerId)
+            .Controller.Configuration.Deserialize<VoteControllerConfiguration>()!;
+
+        public GameTransition Vote(Guid playerId, Guid submissionPlayerId) => Apply(
+            GameActor.Player(playerId), new VoteForShowdownAnimationAction(submissionPlayerId));
+
+        public void ReachShowdownBriefing()
+        {
+            SubmitAllAnimations();
+            for (var turn = 0; turn < PlayerIds.Length; turn++)
+            {
+                CompleteTurnWithoutChoices();
+                Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+            }
+        }
 
         public DisplayGameViewPayload DisplayView() => module.CreateView(State,
             new GameViewContext(GameAudienceRole.Display, "display", null))

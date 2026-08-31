@@ -20,6 +20,12 @@ public sealed record ChooseAnimationAnswerAction(Guid AnswerOptionId) : IGameAct
     public string Kind => ActionKind;
 }
 
+public sealed record VoteForShowdownAnimationAction(Guid SubmissionPlayerId) : IGameAction
+{
+    public const string ActionKind = "animates.showdown-vote";
+    public string Kind => ActionKind;
+}
+
 public sealed record AdvanceAniMatesAction : IGameAction
 {
     public const string ActionKind = "animates.advance";

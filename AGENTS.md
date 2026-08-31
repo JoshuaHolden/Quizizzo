@@ -316,6 +316,18 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Present cumulative score-proportional podiums between reveals with winner cheering, lowest-place crying, and a static reduced-motion fallback.
 - [x] Preserve frame fallback, deadlines, idempotent asset submission, reconstructable options, recovery, and host-controlled progression.
 
+### AniMates Same Prompt Showdown (completed 2026-08-31)
+
+- [x] Add presenter-led, host-advanced speech-bubble briefings before both AniMates rounds with a future voice-ready semantic boundary.
+- [x] Add Round 2 with one shared prompt, five simultaneous frames, and isolated round-scoped draft/upload validation.
+- [x] Play every animation anonymously for three complete loops before the host opens voting.
+- [x] Put self-excluding A/B/C animation previews on phones and reject forged self-votes server-side.
+- [x] Award 100 points per received vote plus a 200-point winner bonus, including explicit tied-winner handling.
+- [x] Reveal every animation creator together, enlarge the winner, run in the winning avatar, and fire confetti.
+- [x] Preserve accessible HTML, reduced-motion static results, deadlines, recovery, idempotency, and server authority.
+- [x] Give both presenter briefings a distinct animated stage and accessible frame/tool tutorial with a static reduced-motion fallback.
+- [x] Apply a cohesive locally served typography, phase palette, animation-card, title-stinger, and celebration system across both rounds.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

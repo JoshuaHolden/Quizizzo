@@ -118,10 +118,32 @@ public sealed class PhaserPresentationMapperTests
 
         var animation = Assert.Single(snapshot.Drawing!.Animations);
         Assert.Equal("Playback", snapshot.Drawing.Mode);
+        Assert.Equal(1, snapshot.Drawing.LoopsPerAnimation);
         Assert.Null(animation.CreatorName);
         Assert.Equal(
             assetIds.Select(assetId => $"/api/drawing-assets/{assetId:D}"),
             animation.FrameUrls);
+    }
+
+    [Fact]
+    public void AniMates_briefing_maps_voice_ready_presenter_copy()
+    {
+        var partyId = Guid.NewGuid();
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var payload = new DisplayGameViewPayload(
+            "AniMates", "Everyone gets a secret prompt", "Presenter briefing", 0, 2, [], null,
+            new TutorialPresentationView(
+                "HOW TO ANIMATE", 3, ["Draw", "Use onion skin", "Undo", "Send"]));
+        var game = new PartyGameView(
+            partyId, Guid.NewGuid(), "animates", GameAudienceRole.Display, "Briefing", 1, null, false,
+            GameJson.From(payload), new Dictionary<Guid, int>());
+
+        var snapshot = PhaserPresentationMapper.Create(session, [], game, payload);
+
+        Assert.Equal(payload.Prompt, snapshot.PresenterMessage);
+        Assert.Equal(3, snapshot.Tutorial!.FrameCount);
+        Assert.Contains("Use onion skin", snapshot.Tutorial.Steps);
     }
 
     [Fact]

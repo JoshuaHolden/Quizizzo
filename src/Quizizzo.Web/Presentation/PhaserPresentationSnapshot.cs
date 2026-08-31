@@ -12,7 +12,14 @@ public sealed record PhaserPresentationSnapshot(
     long Revision,
     IReadOnlyList<PhaserPlayerSnapshot> Players,
     IReadOnlyList<PhaserResultSnapshot> Results,
-    PhaserDrawingPresentationSnapshot? Drawing);
+    PhaserDrawingPresentationSnapshot? Drawing,
+    string? PresenterMessage,
+    PhaserTutorialPresentationSnapshot? Tutorial);
+
+public sealed record PhaserTutorialPresentationSnapshot(
+    string Title,
+    int FrameCount,
+    IReadOnlyList<string> Steps);
 
 public sealed record PhaserPlayerSnapshot(
     string PlayerId,
@@ -54,7 +61,8 @@ public sealed record PhaserResultSnapshot(
 public sealed record PhaserDrawingPresentationSnapshot(
     string Mode,
     int FrameDurationMilliseconds,
-    IReadOnlyList<PhaserDrawingAnimationSnapshot> Animations);
+    IReadOnlyList<PhaserDrawingAnimationSnapshot> Animations,
+    int LoopsPerAnimation);
 
 public sealed record PhaserDrawingAnimationSnapshot(
     string SubmissionPlayerId,
@@ -129,7 +137,8 @@ public static class PhaserPresentationMapper
                     animation.FrameAssetIds.Select(assetId => $"/api/drawing-assets/{assetId:D}").ToArray(),
                     animation.Votes,
                     animation.Rank,
-                    animation.PointsAwarded)).ToArray())
+                    animation.PointsAwarded)).ToArray(),
+                presentation.LoopsPerAnimation)
             : null;
 
         return new PhaserPresentationSnapshot(
@@ -139,7 +148,17 @@ public static class PhaserPresentationMapper
             gameView?.Revision ?? 0,
             presentationPlayers,
             results,
-            drawing);
+            drawing,
+            gameView?.Phase switch
+            {
+                "Briefing" => game?.Prompt,
+                "ShowdownBriefing" => game?.Prompt,
+                _ => null
+            },
+            game?.Tutorial is { } tutorial
+                ? new PhaserTutorialPresentationSnapshot(
+                    tutorial.Title, tutorial.FrameCount, tutorial.Steps)
+                : null);
     }
 
     private static PhaserResultSnapshot[] RankedScores(IReadOnlyList<PhaserPlayerSnapshot> players)

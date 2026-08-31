@@ -14,6 +14,8 @@ window.quizizzoPresentation = (() => {
 
     const characterAssetRoot = "/assets/kenney-presenter/spritesheets/";
     const characterSheets = ["face", "hair", "pants", "shirts", "shoes", "skin"];
+    const displayFont = '"Quizizzo Display", "Arial Rounded MT Bold", sans-serif';
+    const bodyFont = '"Quizizzo Sans", "Segoe UI", sans-serif';
 
     function colour(value, fallback = 0x7c3aed) {
         if (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value)) {
@@ -41,6 +43,11 @@ window.quizizzoPresentation = (() => {
             this.drawingTimer = null;
             this.drawingSignature = null;
             this.podiumContainer = null;
+            this.presenterContainer = null;
+            this.presenterMessage = null;
+            this.tutorialContainer = null;
+            this.tutorialSignature = null;
+            this.phaseChrome = null;
         }
 
         preload() {
@@ -88,14 +95,47 @@ window.quizizzoPresentation = (() => {
             }
         }
 
-        drawBackground(gameKey) {
-            const palette = gameKey === "estimate"
+        drawBackground(gameKey, phase) {
+            const briefing = gameKey === "animates" && ["Briefing", "ShowdownBriefing"].includes(phase);
+            const showdown = gameKey === "animates" && phase?.startsWith("Showdown");
+            const drawing = gameKey === "animates" && phase === "Drawing";
+            const choosing = gameKey === "animates" && ["Choosing", "ShowdownVoting"].includes(phase);
+            const results = gameKey === "animates" && ["Results", "ShowdownResults"].includes(phase);
+            const palette = briefing
+                ? [0x071a2e, 0x0f766e, 0x7c3aed]
+                : results ? [0x2e1065, 0x7c2d92, 0xf59e0b]
+                : choosing ? [0x111827, 0x312e81, 0xdb2777]
+                : drawing ? [0x082f49, 0x0e7490, 0xf97316]
+                : showdown ? [0x2e1065, 0x86198f, 0x0891b2]
+                : gameKey === "estimate"
                 ? [0x160b32, 0x39156b, 0x7132a8]
                 : [0x101735, 0x272a68, 0x513487];
             this.background.clear();
             this.background.fillGradientStyle(
                 palette[1], palette[2], palette[0], palette[1], 1);
             this.background.fillRect(0, 0, width, height);
+            if (briefing) {
+                this.background.fillStyle(0x22d3ee, .08);
+                for (let x = -120; x < width; x += 130) {
+                    this.background.fillTriangle(x, height, x + 260, height, x + 130, 0);
+                }
+                this.background.lineStyle(2, 0xffffff, .08);
+                for (let y = 80; y < height; y += 80) this.background.lineBetween(0, y, width, y);
+                for (let x = 80; x < width; x += 80) this.background.lineBetween(x, 0, x, height);
+                this.background.fillStyle(0xfacc15, .18);
+                this.background.fillCircle(110, 105, 72);
+                this.background.fillCircle(1170, 610, 110);
+            } else if (gameKey === "animates") {
+                this.background.lineStyle(3, 0xffffff, .055);
+                for (let offset = -height; offset < width; offset += 120) {
+                    this.background.lineBetween(offset, height, offset + height, 0);
+                }
+                this.background.fillStyle(results ? 0xfde68a : 0x67e8f9, .09);
+                this.background.fillCircle(85, 620, 150);
+                this.background.fillCircle(1190, 90, 125);
+                this.background.lineStyle(5, 0xffffff, .07);
+                this.background.strokeRoundedRect(32, 32, width - 64, height - 64, 30);
+            }
         }
 
         createParticleTexture() {
@@ -118,7 +158,10 @@ window.quizizzoPresentation = (() => {
             const characterMode = (snapshot.results || []).some(result => result.rank != null)
                 ? "full"
                 : "portrait";
-            this.drawBackground(snapshot.gameKey);
+            this.drawBackground(snapshot.gameKey, snapshot.phase);
+            if (!initial && this.previous?.phase !== snapshot.phase) {
+                this.animatePhaseTransition(snapshot.phase);
+            }
 
             for (const player of snapshot.players || []) {
                 let avatar = this.avatars.get(player.playerId);
@@ -147,9 +190,11 @@ window.quizizzoPresentation = (() => {
             }
 
             this.renderPodium(snapshot);
+            this.applyPresenter(snapshot.presenterMessage);
+            this.applyTutorial(snapshot.tutorial);
             this.layoutAvatars(snapshot, initial);
             if (!initial && this.isNewResult(snapshot)) {
-                this.animateResults(snapshot.results || []);
+                this.animateResults(snapshot.results || [], snapshot);
             }
             this.applyDrawing(snapshot.drawing);
             this.previous = cloneSnapshot(snapshot);
@@ -179,6 +224,99 @@ window.quizizzoPresentation = (() => {
             }).catch(() => { });
         }
 
+        applyPresenter(message) {
+            if (message === this.presenterMessage) return;
+            this.presenterMessage = message;
+            this.presenterContainer?.destroy(true);
+            this.presenterContainer = null;
+            if (!message) return;
+
+            const body = this.add.circle(-430, 80, 72, 0x7c3aed, 1).setStrokeStyle(7, 0xffffff, 1);
+            const face = this.add.circle(-430, -15, 58, 0xffd2b8, 1).setStrokeStyle(6, 0x24123f, 1);
+            const eyes = this.add.text(-430, -30, "•  •", {
+                color: "#24123f", fontFamily: displayFont, fontSize: "32px", fontStyle: "bold"
+            }).setOrigin(.5);
+            const mouth = this.add.text(-430, 8, "◡", {
+                color: "#24123f", fontFamily: displayFont, fontSize: "34px", fontStyle: "bold"
+            }).setOrigin(.5);
+            const bubble = this.add.rectangle(115, 0, 760, 250, 0xffffff, .97)
+                .setStrokeStyle(8, 0x24123f, 1);
+            const speech = this.add.text(115, 0, message, {
+                color: "#24123f", fontFamily: displayFont, fontSize: "31px", fontStyle: "bold",
+                align: "center", wordWrap: { width: 680 }
+            }).setOrigin(.5);
+            this.presenterContainer = this.add.container(width / 2, 260,
+                [body, face, eyes, mouth, bubble, speech]).setDepth(70);
+            if (!this.controller.reducedMotion) {
+                this.presenterContainer.x = -500;
+                this.tweens.add({ targets: this.presenterContainer, x: width / 2,
+                    duration: 700, ease: "Back.easeOut" });
+                this.tweens.add({ targets: mouth, scaleY: { from: .65, to: 1.2 },
+                    duration: 240, yoyo: true, repeat: -1 });
+            }
+        }
+
+        applyTutorial(tutorial) {
+            const signature = JSON.stringify(tutorial || null);
+            if (signature === this.tutorialSignature) return;
+            this.tutorialSignature = signature;
+            this.tutorialContainer?.destroy(true);
+            this.tutorialContainer = null;
+            if (!tutorial) return;
+
+            const items = [];
+            const panel = this.add.rectangle(0, 0, 1080, 250, 0x071a2e, .9)
+                .setStrokeStyle(5, 0x67e8f9, 1);
+            const title = this.add.text(0, -98, tutorial.title, {
+                color: "#fde68a", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold"
+            }).setOrigin(.5);
+            items.push(panel, title);
+
+            const frames = Math.max(1, tutorial.frameCount || 1);
+            const frameWidth = Math.min(115, 650 / frames);
+            const startX = -(frames - 1) * (frameWidth + 14) / 2;
+            for (let index = 0; index < frames; index++) {
+                const x = startX + index * (frameWidth + 14);
+                const card = this.add.rectangle(x, -35, frameWidth, 74, 0xffffff, .96)
+                    .setStrokeStyle(4, index === 0 ? 0xfacc15 : 0xa78bfa, 1);
+                const label = this.add.text(x, -35, `${index + 1}`, {
+                    color: "#24123f", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold"
+                }).setOrigin(.5);
+                items.push(card, label);
+                if (index < frames - 1) {
+                    items.push(this.add.text(x + frameWidth / 2 + 7, -35, "→", {
+                        color: "#67e8f9", fontFamily: displayFont, fontSize: "24px", fontStyle: "bold"
+                    }).setOrigin(.5));
+                }
+            }
+
+            const tools = ["✏ DRAW", "◉ ONION", "↶ UNDO", "⌫ ERASE", "✓ SEND"];
+            tools.forEach((tool, index) => {
+                const x = (index - 2) * 190;
+                const chip = this.add.text(x, 43, tool, {
+                    color: "#ffffff", backgroundColor: index === 4 ? "#7c3aed" : "#164e63",
+                    padding: { x: 14, y: 9 }, fontFamily: displayFont,
+                    fontSize: "19px", fontStyle: "bold"
+                }).setOrigin(.5);
+                items.push(chip);
+            });
+            const hint = this.add.text(0, 96, tutorial.steps?.join("  •  ") || "", {
+                color: "#dbeafe", fontFamily: bodyFont, fontSize: "16px",
+                align: "center", wordWrap: { width: 1000 }
+            }).setOrigin(.5);
+            items.push(hint);
+
+            this.tutorialContainer = this.add.container(width / 2, 555, items).setDepth(65);
+            if (!this.controller.reducedMotion) {
+                this.tutorialContainer.setAlpha(0).setScale(.92);
+                this.tweens.add({ targets: this.tutorialContainer, alpha: 1, scale: 1,
+                    duration: 600, delay: 420, ease: "Back.easeOut" });
+                const firstCard = items[2];
+                this.tweens.add({ targets: firstCard, scale: 1.08, duration: 450,
+                    yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+            }
+        }
+
         loadDrawingTexture(url) {
             const key = `drawing-${url.split("/").pop()}`;
             if (this.textures.exists(key)) {
@@ -199,26 +337,46 @@ window.quizizzoPresentation = (() => {
         }
 
         startDrawingPlayback(drawing) {
+            if (drawing.mode === "ShowdownReveal") {
+                this.startShowdownReveal(drawing);
+                return;
+            }
             let animationIndex = 0;
             let frameIndex = 0;
-            const panel = this.add.rectangle(0, 0, 500, 390, 0xffffff, 0.97)
-                .setStrokeStyle(8, 0x24123f, 1);
+            let completedLoops = 0;
+            const shadow = this.add.rectangle(18, 20, 530, 430, 0x090516, .4);
+            const panel = this.add.rectangle(0, 0, 530, 430, 0xfffbeb, 0.99)
+                .setStrokeStyle(9, 0x24123f, 1);
+            const inner = this.add.rectangle(0, -18, 370, 370, 0xffffff, 1)
+                .setStrokeStyle(3, 0xa78bfa, .8);
+            const tapeLeft = this.add.rectangle(-205, -190, 90, 28, 0xfde68a, .78).setAngle(-8);
+            const tapeRight = this.add.rectangle(205, -190, 90, 28, 0x67e8f9, .72).setAngle(8);
             const frame = this.add.image(0, -20, `drawing-${drawing.animations[0].frameUrls[0].split("/").pop()}`)
-                .setDisplaySize(330, 330);
+                .setDisplaySize(350, 350);
             const caption = this.add.text(0, 172, "", {
                 color: "#24123f",
-                fontFamily: "Arial, sans-serif",
-                fontSize: "24px",
+                fontFamily: displayFont,
+                fontSize: "25px",
                 fontStyle: "bold",
                 align: "center",
                 wordWrap: { width: 450 }
             }).setOrigin(0.5);
-            this.drawingContainer = this.add.container(width / 2, 275, [panel, frame, caption]).setDepth(12);
+            const frameDots = Array.from({ length: drawing.animations[0].frameUrls.length }, (_, index) =>
+                this.add.circle((index - (drawing.animations[0].frameUrls.length - 1) / 2) * 18, 202, 5,
+                    index === 0 ? 0xdb2777 : 0xc4b5fd, 1));
+            this.drawingContainer = this.add.container(width / 2, 285,
+                [shadow, panel, inner, tapeLeft, tapeRight, frame, caption, ...frameDots]).setDepth(12);
+            if (!this.controller.reducedMotion) {
+                this.drawingContainer.setScale(.82).setAlpha(0).setAngle(-2);
+                this.tweens.add({ targets: this.drawingContainer, scale: 1, alpha: 1, angle: 0,
+                    duration: 520, ease: "Back.easeOut" });
+            }
 
             const show = () => {
                 const animation = drawing.animations[animationIndex];
                 const url = animation.frameUrls[frameIndex];
                 frame.setTexture(`drawing-${url.split("/").pop()}`);
+                frameDots.forEach((dot, index) => dot.setFillStyle(index === frameIndex ? 0xdb2777 : 0xc4b5fd));
                 const reveal = drawing.mode === "Reveal" && animation.creatorName
                     ? `${animation.prompt}\n${animation.creatorName} — ${animation.votes} vote(s)`
                     : animation.prompt;
@@ -226,7 +384,11 @@ window.quizizzoPresentation = (() => {
                 frameIndex += 1;
                 if (frameIndex >= animation.frameUrls.length) {
                     frameIndex = 0;
-                    animationIndex = (animationIndex + 1) % drawing.animations.length;
+                    completedLoops += 1;
+                    if (completedLoops >= Math.max(1, drawing.loopsPerAnimation || 1)) {
+                        completedLoops = 0;
+                        animationIndex = (animationIndex + 1) % drawing.animations.length;
+                    }
                 }
             };
             show();
@@ -237,6 +399,69 @@ window.quizizzoPresentation = (() => {
                     callback: show
                 });
             }
+        }
+
+        animatePhaseTransition(phase) {
+            if (this.controller.reducedMotion) return;
+            this.phaseChrome?.destroy(true);
+            const labels = {
+                Drawing: "DRAW!", Guessing: "WHAT IS IT?", Choosing: "PICK AN ANSWER",
+                Results: "REVEAL!", ShowdownPlayback: "SHOWDOWN", ShowdownVoting: "VOTE NOW",
+                ShowdownResults: "THE WINNER"
+            };
+            const label = labels[phase];
+            if (!label) return;
+            const band = this.add.rectangle(0, 0, width + 180, 125, 0x090516, .92)
+                .setStrokeStyle(5, 0xfde68a, 1);
+            const text = this.add.text(0, 0, label, {
+                color: "#ffffff", fontFamily: displayFont, fontSize: "58px", fontStyle: "bold",
+                stroke: "#db2777", strokeThickness: 8
+            }).setOrigin(.5);
+            this.phaseChrome = this.add.container(width + 760, height / 2, [band, text]).setDepth(100).setAngle(-3);
+            this.tweens.add({ targets: this.phaseChrome, x: width / 2, duration: 360, ease: "Back.easeOut",
+                hold: 520, yoyo: true, onComplete: () => {
+                    this.phaseChrome?.destroy(true);
+                    this.phaseChrome = null;
+                } });
+            this.cameras.main.shake(120, .004);
+        }
+
+        startShowdownReveal(drawing) {
+            const animations = drawing.animations || [];
+            const columns = Math.min(4, animations.length);
+            const cardWidth = 250;
+            const cardHeight = 245;
+            const items = [];
+            animations.forEach((animation, index) => {
+                const row = Math.floor(index / columns);
+                const column = index % columns;
+                const x = (column - (Math.min(columns, animations.length - row * columns) - 1) / 2) * 280;
+                const y = row * 275;
+                const shadow = this.add.rectangle(x + 10, y + 12, cardWidth, cardHeight, 0x090516, .38);
+                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, .99)
+                    .setStrokeStyle(animation.rank === 1 ? 9 : 5,
+                        animation.rank === 1 ? 0xfacc15 : 0x24123f, 1);
+                const frameUrl = animation.frameUrls[0];
+                const frame = this.add.image(x, y - 22, `drawing-${frameUrl.split("/").pop()}`)
+                    .setDisplaySize(190, 190);
+                const caption = this.add.text(x, y + 102,
+                    `${animation.prompt} — ${animation.creatorName || "?"}`, {
+                        color: "#24123f", fontFamily: displayFont, fontSize: "19px",
+                        fontStyle: "bold", align: "center", wordWrap: { width: 225 }
+                    }).setOrigin(.5);
+                const badge = this.add.text(x - 102, y - 101, animation.prompt, {
+                    color: "#ffffff", backgroundColor: animation.rank === 1 ? "#db2777" : "#312e81",
+                    padding: { x: 9, y: 5 }, fontFamily: displayFont, fontSize: "18px", fontStyle: "bold"
+                }).setOrigin(0, .5).setAngle(-2);
+                items.push(shadow, panel, frame, caption, badge);
+                if (animation.rank === 1 && !this.controller.reducedMotion) {
+                    this.tweens.add({ targets: [shadow, panel, frame, caption, badge], scale: 1.12,
+                        duration: 450, yoyo: true, repeat: 1, ease: "Back.easeOut" });
+                    this.burst(width / 2 + x, 160 + y, 60);
+                }
+            });
+            const totalRows = Math.ceil(animations.length / columns);
+            this.drawingContainer = this.add.container(width / 2, totalRows > 1 ? 165 : 275, items).setDepth(12);
         }
 
         isNewResult(snapshot) {
@@ -269,7 +494,7 @@ window.quizizzoPresentation = (() => {
                     result.rank === 1 ? 0xfacc15 : result.rank === 2 ? 0xcbd5e1 : 0xc08457, .92)
                     .setStrokeStyle(4, 0x24123f, 1);
                 const rank = this.add.text(x, 650 - podiumHeight, `#${result.rank}`, {
-                    color: "#24123f", fontFamily: "Arial, sans-serif", fontSize: "28px", fontStyle: "bold"
+                    color: "#24123f", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
                 }).setOrigin(.5);
                 items.push(block, rank);
                 if (!this.controller.reducedMotion) {
@@ -290,13 +515,13 @@ window.quizizzoPresentation = (() => {
             const character = this.add.container(0, -58);
             const presence = this.add.text(0, -84, "", {
                 color: "#fef3c7",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: displayFont,
                 fontSize: "18px",
                 fontStyle: "bold"
             }).setOrigin(0.5);
             const name = this.add.text(0, 86, player.displayName, {
                 color: "#ffffff",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: bodyFont,
                 fontSize: "22px",
                 fontStyle: "bold",
                 stroke: "#130828",
@@ -304,7 +529,7 @@ window.quizizzoPresentation = (() => {
             }).setOrigin(0.5);
             const score = this.add.text(0, 114, `${player.score.toLocaleString()} pts`, {
                 color: "#fde68a",
-                fontFamily: "Arial, sans-serif",
+                fontFamily: displayFont,
                 fontSize: "18px",
                 fontStyle: "bold",
                 stroke: "#130828",
@@ -312,7 +537,7 @@ window.quizizzoPresentation = (() => {
             }).setOrigin(0.5);
             const activity = this.add.text(48, -142, "", {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
-                fontFamily: "Arial, sans-serif", fontSize: "22px", fontStyle: "bold"
+                fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
             }).setOrigin(.5);
             container.add([shadow, character, presence, name, score, activity]);
             container.setDepth(20);
@@ -669,7 +894,7 @@ window.quizizzoPresentation = (() => {
             }
         }
 
-        animateResults(results) {
+        animateResults(results, snapshot) {
             if (this.controller.reducedMotion) {
                 return;
             }
@@ -678,6 +903,12 @@ window.quizizzoPresentation = (() => {
                 const avatar = this.avatars.get(result.playerId);
                 if (!avatar) {
                     return;
+                }
+                if (snapshot?.gameKey === "animates" && snapshot?.phase === "ShowdownResults") {
+                    const destinationX = avatar.container.x;
+                    avatar.container.x = -160;
+                    this.tweens.add({ targets: avatar.container, x: destinationX,
+                        duration: 850, ease: "Cubic.easeOut" });
                 }
                 this.tweens.add({
                     targets: avatar.container,
@@ -694,7 +925,7 @@ window.quizizzoPresentation = (() => {
                 const avatar = this.avatars.get(result.playerId);
                 if (!avatar) return;
                 const tears = this.add.text(avatar.container.x + 38, avatar.container.y - 115, "😭", {
-                    fontFamily: "Arial, sans-serif", fontSize: "42px"
+                    fontFamily: displayFont, fontSize: "42px"
                 }).setOrigin(.5).setDepth(80);
                 this.tweens.add({ targets: avatar.character, angle: { from: -4, to: 4 }, duration: 130,
                     yoyo: true, repeat: 5, onComplete: () => avatar.character.setAngle(0) });
@@ -712,7 +943,7 @@ window.quizizzoPresentation = (() => {
                 avatar.container.x + 42,
                 avatar.container.y - 150,
                 symbols[reaction] || "✨",
-                { fontFamily: "Arial, sans-serif", fontSize: "46px" })
+                { fontFamily: displayFont, fontSize: "46px" })
                 .setOrigin(.5)
                 .setDepth(80);
             const amount = reaction === "Angry" ? 9 : 4;
@@ -764,6 +995,13 @@ window.quizizzoPresentation = (() => {
         const parent = document.getElementById(elementId);
         if (!parent) {
             throw new Error("The Phaser presentation container was not found.");
+        }
+
+        if (document.fonts) {
+            await Promise.all([
+                document.fonts.load('700 32px "Quizizzo Display"'),
+                document.fonts.load('600 20px "Quizizzo Sans"')
+            ]);
         }
 
         const resolution = renderResolution(parent);

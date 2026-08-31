@@ -68,7 +68,13 @@ public sealed record DrawingAnimationView(
 public sealed record DrawingPresentationView(
     string Mode,
     int FrameDurationMilliseconds,
-    IReadOnlyList<DrawingAnimationView> Animations);
+    IReadOnlyList<DrawingAnimationView> Animations,
+    int LoopsPerAnimation = 1);
+
+public sealed record TutorialPresentationView(
+    string Title,
+    int FrameCount,
+    IReadOnlyList<string> Steps);
 
 public sealed record PlayerGameViewPayload(
     string Heading,
@@ -101,4 +107,5 @@ public sealed record DisplayGameViewPayload(
     int SubmittedPlayers,
     int TotalPlayers,
     IReadOnlyList<GamePresentationEntry> Entries,
-    DrawingPresentationView? Drawing = null);
+    DrawingPresentationView? Drawing = null,
+    TutorialPresentationView? Tutorial = null);

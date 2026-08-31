@@ -13,6 +13,26 @@ const assets = [
     name: "Phaser",
     source: "node_modules/phaser/dist/phaser.min.js",
     destination: "src/Quizizzo.Web/wwwroot/vendor/phaser.min.js"
+  },
+  {
+    name: "Fredoka 600",
+    source: "node_modules/@fontsource/fredoka/files/fredoka-latin-600-normal.woff2",
+    destination: "src/Quizizzo.Web/wwwroot/fonts/fredoka-600.woff2"
+  },
+  {
+    name: "Fredoka 700",
+    source: "node_modules/@fontsource/fredoka/files/fredoka-latin-700-normal.woff2",
+    destination: "src/Quizizzo.Web/wwwroot/fonts/fredoka-700.woff2"
+  },
+  {
+    name: "Nunito 600",
+    source: "node_modules/@fontsource/nunito/files/nunito-latin-600-normal.woff2",
+    destination: "src/Quizizzo.Web/wwwroot/fonts/nunito-600.woff2"
+  },
+  {
+    name: "Nunito 800",
+    source: "node_modules/@fontsource/nunito/files/nunito-latin-800-normal.woff2",
+    destination: "src/Quizizzo.Web/wwwroot/fonts/nunito-800.woff2"
   }
 ];
 

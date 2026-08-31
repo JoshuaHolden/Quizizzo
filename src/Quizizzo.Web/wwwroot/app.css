@@ -29,6 +29,38 @@ html {
     -webkit-text-size-adjust: 100%;
 }
 
+@font-face {
+    font-family: "Quizizzo Display";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/fredoka-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Quizizzo Display";
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url("/fonts/fredoka-700.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Quizizzo Sans";
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url("/fonts/nunito-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Quizizzo Sans";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("/fonts/nunito-800.woff2") format("woff2");
+}
+
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     min-height: 100%;
@@ -394,6 +426,10 @@ fieldset {
 }
 
 .display-game-panel > h2 {
+    font-family: "Quizizzo Display", "Arial Rounded MT Bold", sans-serif;
+    font-weight: 700;
+    letter-spacing: -.025em;
+    text-wrap: balance;
     font-size: clamp(2rem, 4.2vw, 4.75rem);
     margin-inline: auto;
     max-width: 70rem;
@@ -450,6 +486,18 @@ fieldset {
     max-width: 75rem;
 }
 
+.display-game-panel {
+    font-family: "Quizizzo Sans", "Segoe UI", sans-serif;
+}
+
+.display-game-panel > .text-uppercase {
+    color: #fde68a;
+    font-family: "Quizizzo Display", sans-serif;
+    font-size: clamp(1.1rem, 2vw, 1.8rem);
+    font-weight: 700;
+    letter-spacing: .12em;
+}
+
 .display-result-card {
     background: rgba(255, 255, 255, 0.94);
     border-radius: 1rem;
@@ -459,18 +507,28 @@ fieldset {
 }
 
 .animates-answer-card {
-    background: #fff;
+    background: linear-gradient(145deg, #fff 0%, #fff8e8 100%);
     color: #17131f;
     border: .35rem solid #17131f;
     border-radius: .55rem;
-    box-shadow: .65rem .65rem 0 rgb(23 19 31 / 45%);
+    box-shadow: .65rem .65rem 0 rgb(23 19 31 / 45%), inset 0 0 0 .12rem rgb(255 255 255 / 75%);
     min-height: 10rem;
     text-align: left;
+    transform: rotate(var(--answer-tilt, -.5deg));
 }
+
+.animates-answer-card:nth-child(even) { --answer-tilt: .65deg; }
+.animates-answer-card:nth-child(3n) { --answer-tilt: -.9deg; }
 
 .animates-answer-card h3 {
     color: #17131f;
     font-size: clamp(2rem, 4vw, 4.5rem);
+}
+
+.animates-answer-card p {
+    font-family: "Quizizzo Display", sans-serif;
+    font-size: clamp(1.15rem, 2vw, 1.8rem);
+    font-weight: 600;
 }
 
 .display-deadline {
@@ -489,6 +547,43 @@ fieldset {
     font-weight: 900;
     line-height: 1;
     box-shadow: 0 .35rem 1rem rgb(0 0 0 / 28%);
+}
+
+.drawing-tutorial-fallback {
+    width: min(68rem, 94vw);
+    margin: 1.5rem auto;
+    padding: clamp(1rem, 2vw, 2rem);
+    border: .25rem solid #67e8f9;
+    border-radius: 1rem;
+    background: rgb(7 26 46 / 94%);
+    box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+    text-align: left;
+}
+
+.drawing-tutorial-fallback h3 {
+    color: #fde68a;
+    text-align: center;
+}
+
+.tutorial-frame-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5rem, 1fr));
+    gap: .65rem;
+    margin: 1rem 0;
+}
+
+.tutorial-frame-strip span {
+    padding: .8rem .5rem;
+    border: .2rem solid #a78bfa;
+    border-radius: .55rem;
+    background: #fff;
+    color: #24123f;
+    font-weight: 900;
+    text-align: center;
+}
+
+.drawing-tutorial-fallback li + li {
+    margin-top: .55rem;
 }
 
 .scoreboard {

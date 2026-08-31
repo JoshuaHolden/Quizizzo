@@ -61,6 +61,20 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
     }
 
     [Fact]
+    public async Task Presentation_fonts_are_served_locally()
+    {
+        using var displayFont = await client.GetAsync("/fonts/fredoka-700.woff2");
+        using var bodyFont = await client.GetAsync("/fonts/nunito-600.woff2");
+
+        displayFont.EnsureSuccessStatusCode();
+        bodyFont.EnsureSuccessStatusCode();
+        Assert.Equal("font/woff2", displayFont.Content.Headers.ContentType?.MediaType);
+        Assert.Equal("font/woff2", bodyFont.Content.Headers.ContentType?.MediaType);
+        Assert.True((await displayFont.Content.ReadAsByteArrayAsync()).Length > 10_000);
+        Assert.True((await bodyFont.Content.ReadAsByteArrayAsync()).Length > 10_000);
+    }
+
+    [Fact]
     public async Task Browser_shell_loads_Phaser_before_the_presentation_bridge_and_Blazor()
     {
         using var response = await client.GetAsync("/");

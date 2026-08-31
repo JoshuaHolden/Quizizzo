@@ -106,6 +106,12 @@ public sealed class AniMatesSubmissionTests
             state.Party.Id.Value,
             RecoveryWebApplicationFactory.HostUserId,
             AniMatesGameModule.GameKey);
+        await games.ExecuteHostActionAsync(
+            state.Party.Id.Value,
+            RecoveryWebApplicationFactory.HostUserId,
+            Guid.NewGuid(),
+            AdvanceAniMatesAction.ActionKind,
+            GameJson.Empty);
     }
 
     private static HttpClient PlayerClient(WebApplicationFactory<Program> factory)
@@ -125,7 +131,7 @@ public sealed class AniMatesSubmissionTests
     {
         var content = new MultipartFormDataContent();
         content.Add(new StringContent(state.Party.CurrentGameInstanceId!.Value.ToString("D")), "gameInstanceId");
-        content.Add(new StringContent("animates-drawing"), "roundId");
+        content.Add(new StringContent("animates-round-1"), "roundId");
         content.Add(new StringContent(commandId.ToString("D")), "commandId");
         for (var index = 0; index < 3; index++)
         {

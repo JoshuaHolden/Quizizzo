@@ -78,6 +78,25 @@
                     </div>
                 }
 
+                @if (game.Tutorial is { } tutorial)
+                {
+                    <section class="drawing-tutorial-fallback" aria-labelledby="drawing-tutorial-title">
+                        <h3 id="drawing-tutorial-title">@tutorial.Title</h3>
+                        <div class="tutorial-frame-strip" aria-label="@tutorial.FrameCount animation frames">
+                            @for (var frame = 1; frame <= tutorial.FrameCount; frame++)
+                            {
+                                <span>Frame @frame</span>
+                            }
+                        </div>
+                        <ol>
+                            @foreach (var step in tutorial.Steps)
+                            {
+                                <li>@step</li>
+                            }
+                        </ol>
+                    </section>
+                }
+
                 <div class="display-score-panel">
                     <h3>Scores</h3>
                     <ol class="scoreboard display-scoreboard">

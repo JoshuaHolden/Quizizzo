@@ -86,7 +86,7 @@ public static class DrawingAssetEndpoints
                 if (playerView.Controller.Kind != PlayerControllerKind.Drawing ||
                     !playerView.Controller.IsEnabled ||
                     playerView.Controller.ActionKind != SubmitAnimationAction.ActionKind ||
-                    drawing is null || drawing.FrameCount != AniMatesGameModule.RequiredFrameCount ||
+                    drawing is null || drawing.FrameCount is < 1 or > AniMatesGameModule.MaximumFrameCount ||
                     drawing.LogicalWidth != AniMatesGameModule.LogicalSize ||
                     drawing.LogicalHeight != AniMatesGameModule.LogicalSize ||
                     !string.Equals(drawing.DraftScope, roundId, StringComparison.Ordinal))
@@ -94,10 +94,10 @@ public static class DrawingAssetEndpoints
                     return Results.BadRequest("This drawing does not belong to the active AniMates round.");
                 }
                 var files = form.Files.GetFiles("frames");
-                if (files.Count is < 1 or > AniMatesGameModule.RequiredFrameCount ||
+                if (files.Count < 1 || files.Count > drawing.FrameCount ||
                     files.Sum(file => file.Length) > AniMatesGameModule.MaximumSubmissionPayloadBytes)
                 {
-                    return Results.BadRequest("Submit one to three bounded drawing frames.");
+                    return Results.BadRequest($"Submit one to {drawing.FrameCount} bounded drawing frames.");
                 }
                 registered = await SaveFramesAsync(
                     files,
