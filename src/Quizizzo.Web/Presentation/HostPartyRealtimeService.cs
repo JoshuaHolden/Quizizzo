@@ -83,6 +83,20 @@ public sealed class HostPartyRealtimeService(
             result.IsComplete ? "GameCompleted" : "GameAdvanced",
             cancellationToken);
     }
+
+    public async Task CloseLobbyAsync(
+        Guid partyId,
+        string hostUserId,
+        CancellationToken cancellationToken = default)
+    {
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PartyService>()
+                .CloseLobbyAsync(partyId, hostUserId, cancellationToken);
+        }
+
+        await realtime.PartyChangedAsync(partyId, "LobbyClosed", cancellationToken);
+    }
 }
 
 public sealed record HostPartyRealtimeState(

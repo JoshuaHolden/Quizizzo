@@ -6,6 +6,7 @@ namespace Quizizzo.Application.Parties;
 public sealed class PartyService(
     IPartyRepository parties,
     IRoomCodeGenerator roomCodes,
+    PartyMutationCoordinator partyMutations,
     TimeProvider timeProvider)
 {
     private const int RoomCodeAttempts = 32;
@@ -50,6 +51,25 @@ public sealed class PartyService(
         ArgumentException.ThrowIfNullOrWhiteSpace(hostUserId);
         var party = await parties.GetActiveByHostAsync(hostUserId, cancellationToken);
         return party is null ? null : Map(party);
+    }
+
+    public async Task<PartyView> CloseLobbyAsync(
+        Guid partyId,
+        string hostUserId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostUserId);
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
+        var party = await GetOwnedPartyAsync(partyId, hostUserId, cancellationToken);
+        if (party.Status != PartyStatus.Lobby || party.CurrentGameInstanceId.HasValue)
+        {
+            throw new InvalidOperationException("Only an open lobby with no game in progress can be closed.");
+        }
+
+        party.Abandon(timeProvider.GetUtcNow());
+        await parties.SaveChangesAsync(cancellationToken);
+        return Map(party);
     }
 
     public async Task<IReadOnlyList<PartyView>> ListRecentAsync(

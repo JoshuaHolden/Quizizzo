@@ -36,6 +36,10 @@ public sealed class RealtimeOperationScopeTests
         Assert.DoesNotContain("@inject PartyGameService", host, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject PartyGameService", player, StringComparison.Ordinal);
         Assert.Contains("scopeFactory.CreateAsyncScope()", hostService, StringComparison.Ordinal);
+        Assert.Contains("CloseLobbyAsync", hostService, StringComparison.Ordinal);
+        Assert.Contains("LobbyClosed", hostService, StringComparison.Ordinal);
+        Assert.Contains("Close lobby", host, StringComparison.Ordinal);
+        Assert.Contains("Yes, close lobby", host, StringComparison.Ordinal);
         Assert.Contains("scopeFactory.CreateAsyncScope()", playerLoader, StringComparison.Ordinal);
     }
 

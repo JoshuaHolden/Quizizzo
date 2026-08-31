@@ -12,7 +12,7 @@ public sealed class PartyServiceTests
         var repository = new FakePartyRepository();
         repository.Parties.Add(Party.Create("other-host", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow));
         var generator = new SequenceRoomCodeGenerator("K7XM", "B4TP");
-        var service = new PartyService(repository, generator, new FixedTimeProvider());
+        var service = CreateService(repository, generator);
 
         var created = await service.CreateAsync("host-1");
 
@@ -27,7 +27,7 @@ public sealed class PartyServiceTests
         var repository = new FakePartyRepository();
         var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
         repository.Parties.Add(party);
-        var service = new PartyService(repository, new SequenceRoomCodeGenerator("B4TP"), new FixedTimeProvider());
+        var service = CreateService(repository);
 
         await Assert.ThrowsAsync<PartyAccessDeniedException>(
             () => service.GetOwnedAsync(party.Id.Value, "host-2"));
@@ -38,7 +38,7 @@ public sealed class PartyServiceTests
     {
         var repository = new FakePartyRepository();
         repository.Parties.Add(Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow));
-        var service = new PartyService(repository, new SequenceRoomCodeGenerator("B4TP"), new FixedTimeProvider());
+        var service = CreateService(repository);
 
         var exception = await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.CreateAsync("host-1"));
@@ -46,10 +46,57 @@ public sealed class PartyServiceTests
         Assert.Contains("active party", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task Owner_can_close_an_open_lobby_and_retire_its_room_code()
+    {
+        var repository = new FakePartyRepository();
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        repository.Parties.Add(party);
+        var service = CreateService(repository);
+
+        var closed = await service.CloseLobbyAsync(party.Id.Value, "host-1");
+
+        Assert.Equal(PartyStatus.Abandoned, closed.Status);
+        Assert.False(party.HasActiveRoomCode);
+        Assert.NotNull(closed.CompletedAt);
+        Assert.Null(await service.GetActiveAsync("host-1"));
+    }
+
+    [Fact]
+    public async Task Closing_a_lobby_rejects_a_different_host()
+    {
+        var repository = new FakePartyRepository();
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        repository.Parties.Add(party);
+        var service = CreateService(repository);
+
+        await Assert.ThrowsAsync<PartyAccessDeniedException>(
+            () => service.CloseLobbyAsync(party.Id.Value, "host-2"));
+    }
+
+    [Fact]
+    public async Task Lobby_cannot_be_closed_while_a_game_is_active()
+    {
+        var repository = new FakePartyRepository();
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        party.StartGame(Guid.NewGuid(), "animates", DateTimeOffset.UtcNow);
+        repository.Parties.Add(party);
+        var service = CreateService(repository);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.CloseLobbyAsync(party.Id.Value, "host-1"));
+    }
+
     private sealed class FixedTimeProvider : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(2026, 8, 26, 12, 0, 0, TimeSpan.Zero);
     }
+
+    private static PartyService CreateService(
+        FakePartyRepository repository,
+        IRoomCodeGenerator? roomCodes = null) =>
+        new(repository, roomCodes ?? new SequenceRoomCodeGenerator("B4TP"),
+            new PartyMutationCoordinator(), new FixedTimeProvider());
 
     private sealed class SequenceRoomCodeGenerator(params string[] codes) : IRoomCodeGenerator
     {
