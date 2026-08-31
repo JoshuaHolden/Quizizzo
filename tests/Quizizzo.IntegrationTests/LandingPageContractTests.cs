@@ -226,6 +226,13 @@ public sealed class LandingPageContractTests
         Assert.Contains("<FrameAnimation FrameAssetIds=\"review.FrameAssetIds\"", optionController,
             StringComparison.Ordinal);
         Assert.Contains("private void CloseReview()", optionController, StringComparison.Ordinal);
+
+        var playerPage = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+        Assert.Contains("SubmitSelectionAsync(voteActionKind, voteSelectionProperty, optionId)", playerPage,
+            StringComparison.Ordinal);
+        Assert.Contains("new Dictionary<string, string> { [propertyName] = optionId }", playerPage,
+            StringComparison.Ordinal);
     }
 
     [Fact]

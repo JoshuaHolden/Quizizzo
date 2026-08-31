@@ -315,6 +315,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Open a server-owned 90-second showdown vote as soon as all animations arrive, reveal early when everyone votes, and discard missing votes at timeout.
 - [x] Let phone players open each A–F option in a looping review modal before explicitly locking in or closing it.
 - [x] Keep an owner-confirmed Close party escape hatch visible during active games and abandon the active party atomically so a replacement can be created.
+- [x] Bind vote action kinds and selection properties immutably so the review modal submits `animates.showdown-vote` with `submissionPlayerId` rather than a stale answer action.
 
 ### Main-display composition hotfix (completed 2026-08-31)
 
