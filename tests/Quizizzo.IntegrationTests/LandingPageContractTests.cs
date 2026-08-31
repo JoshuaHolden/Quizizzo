@@ -208,6 +208,8 @@ public sealed class LandingPageContractTests
         Assert.Contains("const compactShowdown", presentation, StringComparison.Ordinal);
         Assert.Contains("Math.floor(250 / Math.max(10, player.displayName.length))", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("setVisible(isThinking)", presentation, StringComparison.Ordinal);
+        Assert.Contains("mode === \"full\" ? .31 : .7", presentation, StringComparison.Ordinal);
     }
 
     [Fact]

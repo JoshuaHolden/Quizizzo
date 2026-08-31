@@ -311,6 +311,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Replace sequential Same Prompt Showdown playback with a simultaneous, adaptive A–F gallery that animates every entry together.
 - [x] Scale the creator reveal to the same bounded three-column grid and keep one- to six-entry layouts inside the 16:9 stage.
 - [x] Replace loose overlapping portraits with compact bottom player cards and fit long player names within their card.
+- [x] Hide empty activity badges and fit the portrait, presence, name, and score inside each square player card.
 
 ### Main-display composition hotfix (completed 2026-08-31)
 

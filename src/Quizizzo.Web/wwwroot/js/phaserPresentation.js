@@ -588,20 +588,20 @@ window.quizizzoPresentation = (() => {
 
         createAvatar(player) {
             const container = this.add.container(width / 2, height + 100);
-            const cardShadow = this.add.rectangle(5, 9, 174, 178, 0x090516, .34)
+            const cardShadow = this.add.rectangle(5, 7, 174, 174, 0x090516, .34)
                 .setOrigin(.5);
-            const card = this.add.rectangle(0, 3, 174, 178, 0x24123f, .94)
+            const card = this.add.rectangle(0, 0, 174, 174, 0x24123f, .94)
                 .setStrokeStyle(3, 0x67e8f9, .72)
                 .setOrigin(.5);
             const shadow = this.add.ellipse(0, 62, 112, 26, 0x090516, 0.32);
             const character = this.add.container(0, -58);
-            const presence = this.add.text(0, -84, "", {
+            const presence = this.add.text(0, -70, "", {
                 color: "#fef3c7",
                 fontFamily: displayFont,
                 fontSize: "18px",
                 fontStyle: "bold"
             }).setOrigin(0.5);
-            const name = this.add.text(0, 86, player.displayName, {
+            const name = this.add.text(0, 55, player.displayName, {
                 color: "#ffffff",
                 fontFamily: bodyFont,
                 fontSize: "22px",
@@ -609,7 +609,7 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 5
             }).setOrigin(0.5);
-            const score = this.add.text(0, 114, `${player.score.toLocaleString()} pts`, {
+            const score = this.add.text(0, 78, `${player.score.toLocaleString()} pts`, {
                 color: "#fde68a",
                 fontFamily: displayFont,
                 fontSize: "18px",
@@ -639,9 +639,10 @@ window.quizizzoPresentation = (() => {
             avatar.score.setText(`${player.score.toLocaleString()} pts`);
             const disconnected = player.status === "Disconnected";
             avatar.presence.setText(disconnected ? "OFFLINE" : "");
-            avatar.activity.setText(player.activity === "Thinking" ? "…?" : "");
+            const isThinking = player.activity === "Thinking";
+            avatar.activity.setText(isThinking ? "…?" : "").setVisible(isThinking);
             avatar.container.setAlpha(disconnected ? 0.42 : 1);
-            if (!this.controller.reducedMotion && player.activity === "Thinking" && !avatar.thinkingTween) {
+            if (!this.controller.reducedMotion && isThinking && !avatar.thinkingTween) {
                 avatar.thinkingTween = this.tweens.add({ targets: avatar.activity, y: { from: -142, to: -154 },
                     duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
             } else if (player.activity !== "Thinking" && avatar.thinkingTween) {
@@ -694,8 +695,8 @@ window.quizizzoPresentation = (() => {
             add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
             add(0, 132, "face", variants.mouth);
 
-            avatar.character.setScale(mode === "full" ? .31 : .5);
-            avatar.character.setPosition(0, mode === "full" ? -160 : -78);
+            avatar.character.setScale(mode === "full" ? .31 : .7);
+            avatar.character.setPosition(0, mode === "full" ? -160 : -82);
             avatar.shadow.setVisible(mode === "full");
             avatar.card.setVisible(mode === "portrait");
             avatar.cardShadow.setVisible(mode === "portrait");
