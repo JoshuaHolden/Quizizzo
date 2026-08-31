@@ -254,6 +254,21 @@ public sealed class LandingPageContractTests
         Assert.Contains("\"Connected\" => \"You're live\"", roleViews, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Host_lobby_uses_a_responsive_control_room_presentation()
+    {
+        var page = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor");
+        var styles = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor.css");
+
+        Assert.Contains("host-room-hero", page, StringComparison.Ordinal);
+        Assert.Contains("host-lobby-grid", page, StringComparison.Ordinal);
+        Assert.Contains("host-game-tile", page, StringComparison.Ordinal);
+        Assert.Contains("host-danger-zone", page, StringComparison.Ordinal);
+        Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);
+        Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
+        Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(string relativePath)
         => File.ReadAllText(RepositoryPath(relativePath));
 

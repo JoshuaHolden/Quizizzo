@@ -325,6 +325,12 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Serialize closure against player admission and game start, retire the room code, reject non-owners and active games, and return the host to the dashboard.
 - [x] Broadcast a reconstructable lobby-closed refresh hint after persistence succeeds.
 
+### Host lobby visual refresh (completed 2026-08-31)
+
+- [x] Replace the legacy host lobby card with a branded control-room layout and prominent room-code hero.
+- [x] Separate display connection, player roster, game selection, and destructive closure into clear responsive regions.
+- [x] Give each game a distinctive launch tile while preserving disabled player-count rules, touch targets, reduced motion, and forced-colour support.
+
 ### AniMates turn-based guessing expansion (completed 2026-08-31)
 
 - [x] Give every player a private absurd prompt and let all players create their three-frame animations simultaneously.

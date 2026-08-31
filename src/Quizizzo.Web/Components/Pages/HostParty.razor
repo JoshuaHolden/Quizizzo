@@ -7,6 +7,7 @@
 @using Quizizzo.Application.Games
 @using Quizizzo.Application.Parties
 @using Quizizzo.Application.Players
+@using Quizizzo.Domain
 @using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
 @using Quizizzo.Web.Presentation
@@ -17,6 +18,7 @@
 
 <PageTitle>Party controls</PageTitle>
 
+<div class="host-control-room">
 @if (party is null)
 {
     <p>@message</p>
@@ -28,13 +30,16 @@ else
                              StateChanged="RefreshFromServerAsync"
                              ConnectionStatusChanged="SetConnectionStatus" />
 
-    <header class="text-center my-4">
-        <p class="text-uppercase mb-1">Room code</p>
-        <h1 class="display-1 fw-bold letter-spacing-wide">@party.RoomCode</h1>
-        <p class="lead">Party status: @party.Status</p>
-        <span class="badge @ConnectionBadgeClass" aria-live="polite">
-            Updates: @ConnectionLabel
-        </span>
+    <header class="host-room-hero">
+        <div>
+            <p class="host-eyebrow">Your live party</p>
+            <p class="host-room-label">Room code</p>
+            <h1>@party.RoomCode</h1>
+        </div>
+        <div class="host-room-status">
+            <span class="host-status-chip"><i class="host-status-dot" aria-hidden="true"></i>@party.Status</span>
+            <span class="host-status-chip @ConnectionBadgeClass" aria-live="polite">@ConnectionLabel</span>
+        </div>
     </header>
 
     @if (!string.IsNullOrWhiteSpace(actionError))
@@ -94,81 +99,126 @@ else
     }
     else
     {
-        <section class="responsive-card card">
-            <h2>Lobby</h2>
-            <div class="host-display-actions mb-3">
+        <section class="host-lobby-panel">
+            <div class="host-lobby-heading">
+                <div>
+                    <p class="host-eyebrow">Control room</p>
+                    <h2>Get everyone ready</h2>
+                    <p>Connect the big screen, welcome your players, then choose the first game.</p>
+                </div>
+                <span class="host-player-count">@players.Count / @QuizizzoLimits.MaximumPlayers players</span>
+            </div>
+
+            <div class="host-lobby-grid">
+            <section class="host-lobby-card host-screen-card" aria-labelledby="screen-heading">
+                <span class="host-card-icon" aria-hidden="true">▣</span>
+                <div>
+                    <p class="host-card-kicker">Big screen</p>
+                    <h3 id="screen-heading">@(presence.DisplayConnected ? "Display connected" : "Connect your display")</h3>
+                    <p>@(presence.DisplayConnected ? "The party screen is live and ready." : "Present here, or pair a TV or projector.")</p>
+                </div>
+                <div class="host-display-actions">
                 <form method="post" action="@($"/host/party/{PartyId}/present")">
                     <AntiforgeryToken />
-                    <button class="btn btn-primary btn-lg" type="submit">Present on this device</button>
+                    <button class="host-primary-action" type="submit">Present on this device <span aria-hidden="true">→</span></button>
                 </form>
-                <details class="mt-3">
+                <details>
                     <summary>Connect another screen</summary>
-                    <p class="mt-2 mb-0">
+                    <p>
                         On the TV or projector, open <strong>quizizzo.com/display</strong>, then scan the QR code shown there.
                     </p>
                 </details>
-            </div>
-            <p aria-live="polite">
-                @presence.Players player@(presence.Players == 1 ? string.Empty : "s") online
-                · Display @(presence.DisplayConnected ? "connected" : "not connected")
-            </p>
+                </div>
+            </section>
+
+            <section class="host-lobby-card host-players-card" aria-labelledby="players-heading">
+                <span class="host-card-icon host-card-icon-pink" aria-hidden="true">☺</span>
+                <div>
+                    <p class="host-card-kicker">Party people</p>
+                    <h3 id="players-heading">@presence.Players online</h3>
+                    <p aria-live="polite">Players appear here as soon as they join with <strong>@party.RoomCode</strong>.</p>
+                </div>
             @if (players.Count == 0)
             {
-                <p>No players have joined yet.</p>
+                <div class="host-empty-roster"><span aria-hidden="true">✦</span> Waiting for the first player…</div>
             }
             else
             {
-                <ul class="list-group mb-3">
+                <ul class="host-player-list">
                     @foreach (var player in players)
                     {
-                        <li class="list-group-item responsive-list-row">
-                            <span>@player.DisplayName</span>
-                            <span>@player.Status · @player.Score.ToString("N0") points</span>
+                        <li>
+                            <span class="host-player-initial" aria-hidden="true">@player.DisplayName[..1].ToUpperInvariant()</span>
+                            <strong>@player.DisplayName</strong>
+                            <span>@player.Status · @player.Score.ToString("N0") pts</span>
                         </li>
                     }
                 </ul>
             }
-            <div class="host-game-actions d-flex flex-wrap gap-2">
+            </section>
+            </div>
+
+            <section class="host-game-picker" aria-labelledby="games-heading">
+                <div class="host-section-heading">
+                    <div>
+                        <p class="host-card-kicker">Choose the chaos</p>
+                        <h3 id="games-heading">Pick a game</h3>
+                    </div>
+                    @if (players.Count == 0)
+                    {
+                        <span>Waiting for players</span>
+                    }
+                </div>
+                <div class="host-game-actions">
                 @foreach (var availableGame in availableGames)
                 {
-                    <button class="btn btn-primary btn-lg"
+                    <button class="host-game-tile host-game-@availableGame.Key"
                             disabled="@(players.Count < availableGame.MinimumPlayers ||
                                 players.Count > availableGame.MaximumPlayers || actionPending ||
                                 party.Status != PartyStatus.Lobby)"
                             @onclick="() => StartGameAsync(availableGame.Key)">
-                        @(actionPending ? "Starting..." : $"Start {availableGame.DisplayName}")
+                        <span class="host-game-icon" aria-hidden="true">@GameIcon(availableGame.Key)</span>
+                        <span><strong>@(actionPending ? "Starting..." : availableGame.DisplayName)</strong>
+                            <small>@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</small></span>
+                        <span class="host-game-arrow" aria-hidden="true">→</span>
                     </button>
                 }
-            </div>
-            <div class="border-top mt-4 pt-3">
-                @if (!closeConfirmationRequested)
-                {
-                    <button class="btn btn-outline-danger mobile-full-width" disabled="@actionPending"
-                            @onclick="() => closeConfirmationRequested = true">
-                        Close lobby
-                    </button>
-                }
-                else
-                {
-                    <div class="alert alert-warning mb-0" role="alert">
-                        <strong>Close room @party.RoomCode?</strong>
-                        <p class="mb-3">Players will no longer be able to join, and this room code will be retired.</p>
-                        <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-danger" disabled="@actionPending" @onclick="CloseLobbyAsync">
-                                @(actionPending ? "Closing..." : "Yes, close lobby")
-                            </button>
-                            <button class="btn btn-secondary" disabled="@actionPending"
-                                    @onclick="() => closeConfirmationRequested = false">
-                                Keep it open
-                            </button>
-                        </div>
+                </div>
+            </section>
+
+            <div class="host-danger-zone">
+                <div><strong>Finished for now?</strong><span>Closing retires this room code permanently.</span></div>
+                <div>
+            @if (!closeConfirmationRequested)
+            {
+                <button class="host-close-action" disabled="@actionPending"
+                        @onclick="() => closeConfirmationRequested = true">
+                    Close lobby
+                </button>
+            }
+            else
+            {
+                <div class="host-close-confirmation" role="alert">
+                    <strong>Close room @party.RoomCode?</strong>
+                    <p>Players will no longer be able to join.</p>
+                    <div>
+                        <button class="btn btn-danger" disabled="@actionPending" @onclick="CloseLobbyAsync">
+                            @(actionPending ? "Closing..." : "Yes, close lobby")
+                        </button>
+                        <button class="btn btn-secondary" disabled="@actionPending"
+                                @onclick="() => closeConfirmationRequested = false">
+                            Keep it open
+                        </button>
                     </div>
-                }
+                </div>
+            }
+                </div>
             </div>
-            <small class="text-muted d-block mt-3">Last update: @lastUpdateReason</small>
+            <small class="host-last-update">Last update: @lastUpdateReason</small>
         </section>
     }
 }
+</div>
 
 @code {
     [Parameter] public Guid PartyId { get; set; }
@@ -294,6 +344,15 @@ else
 
     private string PlayerName(Guid playerId) =>
         players.FirstOrDefault(player => player.PlayerId == playerId)?.DisplayName ?? "Player";
+
+    private static string GameIcon(string gameKey) => gameKey switch
+    {
+        "animates" => "✎",
+        "bullshit" => "!?",
+        "estimate" => "≈",
+        "majority-rules" => "★",
+        _ => "▶"
+    };
 
     private Task SetConnectionStatus(string status)
     {
