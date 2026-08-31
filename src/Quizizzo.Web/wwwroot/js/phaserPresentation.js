@@ -231,28 +231,37 @@ window.quizizzoPresentation = (() => {
             this.presenterContainer = null;
             if (!message) return;
 
-            const body = this.add.circle(-430, 80, 72, 0x7c3aed, 1).setStrokeStyle(7, 0xffffff, 1);
-            const face = this.add.circle(-430, -15, 58, 0xffd2b8, 1).setStrokeStyle(6, 0x24123f, 1);
-            const eyes = this.add.text(-430, -30, "•  •", {
-                color: "#24123f", fontFamily: displayFont, fontSize: "32px", fontStyle: "bold"
-            }).setOrigin(.5);
-            const mouth = this.add.text(-430, 8, "◡", {
-                color: "#24123f", fontFamily: displayFont, fontSize: "34px", fontStyle: "bold"
-            }).setOrigin(.5);
-            const bubble = this.add.rectangle(115, 0, 760, 250, 0xffffff, .97)
+            const hostCharacter = {
+                bodyType: "Bean", presentation: "Man", skinTone: 3,
+                hairColour: "Brown", shirtColour: "Navy", trouserColour: "Navy",
+                trouserLength: "Long", shoeColour: "Brown", hairStyle: 5,
+                eyeColour: "Blue", eyeSize: "Large", faceShape: "Round",
+                noseShape: 1, browShape: 1, shoeStyle: 1, shirtStyle: 5,
+                trouserStyle: 1, bodySize: "Regular"
+            };
+            const host = this.createAvatar({ displayName: "", score: 0 });
+            this.drawCharacter(host, hostCharacter, "full");
+            host.name.setVisible(false);
+            host.score.setVisible(false);
+            host.presence.setVisible(false);
+            host.activity.setVisible(false);
+            host.container.setPosition(-430, 205).setScale(.68);
+
+            const bubble = this.add.rectangle(115, -15, 760, 235, 0xffffff, .97)
                 .setStrokeStyle(8, 0x24123f, 1);
-            const speech = this.add.text(115, 0, message, {
-                color: "#24123f", fontFamily: displayFont, fontSize: "31px", fontStyle: "bold",
+            const speech = this.add.text(115, -15, message, {
+                color: "#24123f", fontFamily: displayFont, fontSize: "29px", fontStyle: "bold",
                 align: "center", wordWrap: { width: 680 }
             }).setOrigin(.5);
             this.presenterContainer = this.add.container(width / 2, 260,
-                [body, face, eyes, mouth, bubble, speech]).setDepth(70);
+                [host.container, bubble, speech]).setDepth(70);
             if (!this.controller.reducedMotion) {
                 this.presenterContainer.x = -500;
                 this.tweens.add({ targets: this.presenterContainer, x: width / 2,
                     duration: 700, ease: "Back.easeOut" });
-                this.tweens.add({ targets: mouth, scaleY: { from: .65, to: 1.2 },
-                    duration: 240, yoyo: true, repeat: -1 });
+                this.tweens.add({ targets: host.character, y: { from: -164, to: -154 },
+                    angle: { from: -1.5, to: 1.5 }, duration: 620, yoyo: true,
+                    repeat: -1, ease: "Sine.easeInOut" });
             }
         }
 
@@ -344,6 +353,9 @@ window.quizizzoPresentation = (() => {
             let animationIndex = 0;
             let frameIndex = 0;
             let completedLoops = 0;
+            const hasSideCards = ["Choosing", "Results"].includes(this.controller.snapshot?.phase);
+            const targetScale = hasSideCards ? .72 : .78;
+            const targetX = hasSideCards ? 350 : width / 2;
             const shadow = this.add.rectangle(18, 20, 530, 430, 0x090516, .4);
             const panel = this.add.rectangle(0, 0, 530, 430, 0xfffbeb, 0.99)
                 .setStrokeStyle(9, 0x24123f, 1);
@@ -364,11 +376,12 @@ window.quizizzoPresentation = (() => {
             const frameDots = Array.from({ length: drawing.animations[0].frameUrls.length }, (_, index) =>
                 this.add.circle((index - (drawing.animations[0].frameUrls.length - 1) / 2) * 18, 202, 5,
                     index === 0 ? 0xdb2777 : 0xc4b5fd, 1));
-            this.drawingContainer = this.add.container(width / 2, 285,
-                [shadow, panel, inner, tapeLeft, tapeRight, frame, caption, ...frameDots]).setDepth(12);
+            this.drawingContainer = this.add.container(targetX, 310,
+                [shadow, panel, inner, tapeLeft, tapeRight, frame, caption, ...frameDots])
+                .setDepth(12).setScale(targetScale);
             if (!this.controller.reducedMotion) {
-                this.drawingContainer.setScale(.82).setAlpha(0).setAngle(-2);
-                this.tweens.add({ targets: this.drawingContainer, scale: 1, alpha: 1, angle: 0,
+                this.drawingContainer.setScale(targetScale * .82).setAlpha(0).setAngle(-2);
+                this.tweens.add({ targets: this.drawingContainer, scale: targetScale, alpha: 1, angle: 0,
                     duration: 520, ease: "Back.easeOut" });
             }
 
@@ -786,12 +799,15 @@ window.quizizzoPresentation = (() => {
                 : null;
             const maximumScore = Math.max(1, ...players.map(player => player.score));
             players.forEach((player, index) => {
+                const avatar = this.avatars.get(player.playerId);
+                if (avatar) {
+                    avatar.container.setVisible(!snapshot.presenterMessage);
+                }
                 if (podiumResults?.length) {
                     const podiumIndex = podiumResults.findIndex(result => result.playerId === player.playerId);
                     const spacing = Math.min(180, 1080 / podiumResults.length);
                     const x = width / 2 + (podiumIndex - (podiumResults.length - 1) / 2) * spacing;
                     const podiumHeight = 70 + (player.score / maximumScore) * 145;
-                    const avatar = this.avatars.get(player.playerId);
                     const y = 565 - podiumHeight;
                     if (avatar) {
                         avatar.container.setDepth(20);
@@ -809,7 +825,6 @@ window.quizizzoPresentation = (() => {
                 const column = index % columns;
                 const x = width / 2 + (column - (itemsInRow - 1) / 2) * horizontalSpacing;
                 const y = baseY + (row - (rows - 1) / 2) * rowSpacing;
-                const avatar = this.avatars.get(player.playerId);
                 if (!avatar) {
                     return;
                 }

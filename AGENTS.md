@@ -305,6 +305,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add authenticated, bounded, rate-limited player reactions such as kiss and angry, rendered only on that player's portrait.
 - [x] Add domain, persistence, join-flow, renderer, reaction, recovery, responsive, and browser coverage.
 
+### Main-display composition hotfix (completed 2026-08-31)
+
+- [x] Promote the Phaser scene to the sole visual presentation after successful startup while retaining the complete HTML view as an accessible and no-canvas fallback.
+- [x] Keep persistent headings, deadlines, animations, answer cards, avatars, and scores in bounded, non-overlapping stage regions.
+- [x] Replace the temporary geometric briefing presenter with an animated full-body character assembled by the production Kenney atlas rig.
+- [x] Hide player avatars during presenter briefings and keep the drawing tutorial within its dedicated lower-stage region.
+- [x] Validate JavaScript syntax, rebuild client assets, pass all 9 client tests, build with zero warnings, and pass all 174 .NET tests.
+
 ### AniMates turn-based guessing expansion (completed 2026-08-31)
 
 - [x] Give every player a private absurd prompt and let all players create their three-frame animations simultaneously.

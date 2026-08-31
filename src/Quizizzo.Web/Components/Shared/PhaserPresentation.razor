@@ -7,6 +7,7 @@
 
 @code {
     [Parameter, EditorRequired] public PhaserPresentationSnapshot Snapshot { get; set; } = default!;
+    [Parameter] public EventCallback Started { get; set; }
 
     private readonly string presentationKey = Guid.NewGuid().ToString("N");
     private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
@@ -25,6 +26,7 @@
                     "quizizzoPresentation.start", presentationKey, elementId, Snapshot);
                 started = true;
                 updatePending = false;
+                await Started.InvokeAsync();
                 return;
             }
 

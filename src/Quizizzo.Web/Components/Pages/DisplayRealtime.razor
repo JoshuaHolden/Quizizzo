@@ -15,8 +15,8 @@
                          ConnectionStatusChanged="SetConnectionStatus"
                          PlayerReacted="HandlePlayerReactionAsync" />
 
-<main class="display-stage text-center">
-    <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot" />
+<main class="display-stage text-center @(phaserReady ? "phaser-enhanced" : null) @DisplayPhaseClass">
+    <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot" Started="HandlePhaserStartedAsync" />
     <div class="display-overlay">
         <h1 class="display-2 fw-bold">QUIZIZZO</h1>
         <span class="badge display-connection-pill @ConnectionBadgeClass"
@@ -37,15 +37,17 @@
         else if (gameView is not null && game is not null)
         {
             <section class="display-game-panel">
-                <p class="text-uppercase mt-4 mb-1">@game.Title</p>
-                <h2 class="display-4 fw-bold">@game.Prompt</h2>
-                <p class="fs-3">@game.PhaseMessage</p>
+                <header class="display-game-header">
+                    <p class="text-uppercase mb-1">@game.Title</p>
+                    <h2 class="display-4 fw-bold">@game.Prompt</h2>
+                    <p class="fs-3">@game.PhaseMessage</p>
+                </header>
                 @if (gameView.PhaseEndsAtUtc is not null)
                 {
                     <p class="display-deadline" aria-label="Time remaining"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
                 }
 
-                <div class="display-results">
+                <div class="display-results display-game-entries @(ShowEntriesOverCanvas ? "canvas-side-cards" : "canvas-duplicate")">
                     @foreach (var entry in game.Entries)
                     {
                         <article class="display-result-card @(gameView.GameKey == "animates" && gameView.Phase == "Choosing" ? "animates-answer-card" : null)">
@@ -140,6 +142,7 @@
     private DisplayGameViewPayload? game;
     private string connectionStatus = "Connecting";
     private PhaserPresentation? phaserPresentation;
+    private bool phaserReady;
     private string PairingPath => $"host/pair-display/{session.PairingCode}";
     private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
@@ -148,6 +151,21 @@
     private string ConnectionBadgeClass => connectionStatus == "Connected"
         ? "text-bg-success"
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+    private bool ShowEntriesOverCanvas => gameView?.GameKey == "animates"
+        && (gameView.Phase is "Choosing" or "Results")
+        && game?.Entries.Count > 0;
+    private string DisplayPhaseClass => gameView?.Phase switch
+    {
+        "Briefing" or "ShowdownBriefing" => "display-phase-briefing",
+        "Choosing" or "Results" => "display-phase-with-cards",
+        _ => string.Empty
+    };
+
+    private Task HandlePhaserStartedAsync()
+    {
+        phaserReady = true;
+        return InvokeAsync(StateHasChanged);
+    }
     private string ConnectionLabel => connectionStatus switch
     {
         "Connected" => "Live",
