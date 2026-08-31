@@ -305,6 +305,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add authenticated, bounded, rate-limited player reactions such as kiss and angry, rendered only on that player's portrait.
 - [x] Add domain, persistence, join-flow, renderer, reaction, recovery, responsive, and browser coverage.
 
+### AniMates six-player showdown gallery (completed 2026-08-31)
+
+- [x] Cap AniMates at six players through its server-owned game descriptor while preserving the wider platform party limit for other games.
+- [x] Replace sequential Same Prompt Showdown playback with a simultaneous, adaptive A–F gallery that animates every entry together.
+- [x] Scale the creator reveal to the same bounded three-column grid and keep one- to six-entry layouts inside the 16:9 stage.
+- [x] Replace loose overlapping portraits with compact bottom player cards and fit long player names within their card.
+
 ### Main-display composition hotfix (completed 2026-08-31)
 
 - [x] Promote the Phaser scene to the sole visual presentation after successful startup while retaining the complete HTML view as an accessible and no-canvas fallback.

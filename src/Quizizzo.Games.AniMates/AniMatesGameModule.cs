@@ -27,6 +27,7 @@ public sealed class AniMatesGameModule(
     public const int LogicalSize = 512;
     public const int MaximumSubmissionPayloadBytes = 6 * 1024 * 1024;
     public const int MaximumGuessLength = 200;
+    public const int MaximumPlayers = 6;
     public const int GuessChosenPoints = 100;
     public const int CorrectChoicePoints = 50;
     public const int AnimatorCorrectChoicePoints = 100;
@@ -37,7 +38,7 @@ public sealed class AniMatesGameModule(
     private readonly TimeSpan guessingDuration = guessingDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, 12);
+    public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, MaximumPlayers);
 
     public GameModuleState Start(GameStartContext context)
     {

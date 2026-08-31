@@ -9,6 +9,14 @@ public sealed class AniMatesGameModuleTests
     private static readonly DateTimeOffset Now = new(2026, 8, 31, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void Descriptor_limits_an_animates_party_to_six_players()
+    {
+        var module = new AniMatesGameModule();
+
+        Assert.Equal(6, module.Descriptor.MaximumPlayers);
+    }
+
+    [Fact]
     public void Start_waits_in_a_presenter_briefing_until_the_host_starts_round_one()
     {
         var module = new AniMatesGameModule();

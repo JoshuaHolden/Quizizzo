@@ -350,6 +350,10 @@ window.quizizzoPresentation = (() => {
                 this.startShowdownReveal(drawing);
                 return;
             }
+            if (drawing.mode === "ShowdownPlayback") {
+                this.startShowdownGallery(drawing);
+                return;
+            }
             let animationIndex = 0;
             let frameIndex = 0;
             let completedLoops = 0;
@@ -414,6 +418,65 @@ window.quizizzoPresentation = (() => {
             }
         }
 
+        showdownGrid(animations, availableHeight = 350) {
+            const columns = Math.min(3, animations.length);
+            const rows = Math.ceil(animations.length / columns);
+            const gapX = 18;
+            const gapY = 16;
+            const cardWidth = Math.min(330, Math.floor((1120 - gapX * (columns - 1)) / columns));
+            const cardHeight = Math.min(rows === 1 ? 310 : 167,
+                Math.floor((availableHeight - gapY * (rows - 1)) / rows));
+            return { columns, rows, gapX, gapY, cardWidth, cardHeight };
+        }
+
+        startShowdownGallery(drawing) {
+            const animations = drawing.animations || [];
+            if (animations.length === 0) return;
+            const grid = this.showdownGrid(animations);
+            const frameSize = Math.max(82, Math.min(grid.cardWidth - 22, grid.cardHeight - 50));
+            const items = [];
+            const cards = [];
+            animations.forEach((animation, index) => {
+                const row = Math.floor(index / grid.columns);
+                const itemsInRow = Math.min(grid.columns, animations.length - row * grid.columns);
+                const column = index % grid.columns;
+                const x = (column - (itemsInRow - 1) / 2) * (grid.cardWidth + grid.gapX);
+                const y = row * (grid.cardHeight + grid.gapY);
+                const shadow = this.add.rectangle(x + 7, y + 9, grid.cardWidth, grid.cardHeight, 0x090516, .38);
+                const panel = this.add.rectangle(x, y, grid.cardWidth, grid.cardHeight, 0xfffbeb, .99)
+                    .setStrokeStyle(5, 0x24123f, 1);
+                const frame = this.add.image(x, y - 13,
+                    `drawing-${animation.frameUrls[0].split("/").pop()}`)
+                    .setDisplaySize(frameSize, frameSize);
+                const label = this.add.text(x, y + grid.cardHeight / 2 - 17, animation.prompt, {
+                    color: "#ffffff", backgroundColor: "#312e81", padding: { x: 11, y: 5 },
+                    fontFamily: displayFont, fontSize: grid.rows > 1 ? "17px" : "21px", fontStyle: "bold"
+                }).setOrigin(.5).setAngle(index % 2 === 0 ? -1 : 1);
+                items.push(shadow, panel, frame, label);
+                cards.push({ animation, frame, frameIndex: 0 });
+            });
+            this.drawingContainer = this.add.container(width / 2, 138 + grid.cardHeight / 2,
+                items).setDepth(12);
+            if (!this.controller.reducedMotion) {
+                this.drawingContainer.setAlpha(0).setScale(.94);
+                this.tweens.add({ targets: this.drawingContainer, alpha: 1, scale: 1,
+                    duration: 420, ease: "Back.easeOut" });
+            }
+            const show = () => cards.forEach(card => {
+                const url = card.animation.frameUrls[card.frameIndex];
+                card.frame.setTexture(`drawing-${url.split("/").pop()}`);
+                card.frameIndex = (card.frameIndex + 1) % card.animation.frameUrls.length;
+            });
+            show();
+            if (!this.controller.reducedMotion) {
+                this.drawingTimer = this.time.addEvent({
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    loop: true,
+                    callback: show
+                });
+            }
+        }
+
         animatePhaseTransition(phase) {
             if (this.controller.reducedMotion) return;
             this.phaseChrome?.destroy(true);
@@ -441,40 +504,41 @@ window.quizizzoPresentation = (() => {
 
         startShowdownReveal(drawing) {
             const animations = drawing.animations || [];
-            const columns = Math.min(4, animations.length);
-            const cardWidth = 250;
-            const cardHeight = 245;
+            if (animations.length === 0) return;
+            const grid = this.showdownGrid(animations);
+            const frameSize = Math.max(78, Math.min(grid.cardWidth - 24, grid.cardHeight - 66));
             const items = [];
             animations.forEach((animation, index) => {
-                const row = Math.floor(index / columns);
-                const column = index % columns;
-                const x = (column - (Math.min(columns, animations.length - row * columns) - 1) / 2) * 280;
-                const y = row * 275;
-                const shadow = this.add.rectangle(x + 10, y + 12, cardWidth, cardHeight, 0x090516, .38);
-                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, .99)
+                const row = Math.floor(index / grid.columns);
+                const column = index % grid.columns;
+                const x = (column - (Math.min(grid.columns, animations.length - row * grid.columns) - 1) / 2)
+                    * (grid.cardWidth + grid.gapX);
+                const y = row * (grid.cardHeight + grid.gapY);
+                const shadow = this.add.rectangle(x + 7, y + 9, grid.cardWidth, grid.cardHeight, 0x090516, .38);
+                const panel = this.add.rectangle(x, y, grid.cardWidth, grid.cardHeight, 0xfffbeb, .99)
                     .setStrokeStyle(animation.rank === 1 ? 9 : 5,
                         animation.rank === 1 ? 0xfacc15 : 0x24123f, 1);
                 const frameUrl = animation.frameUrls[0];
-                const frame = this.add.image(x, y - 22, `drawing-${frameUrl.split("/").pop()}`)
-                    .setDisplaySize(190, 190);
-                const caption = this.add.text(x, y + 102,
+                const frame = this.add.image(x, y - 17, `drawing-${frameUrl.split("/").pop()}`)
+                    .setDisplaySize(frameSize, frameSize);
+                const caption = this.add.text(x, y + grid.cardHeight / 2 - 17,
                     `${animation.prompt} — ${animation.creatorName || "?"}`, {
                         color: "#24123f", fontFamily: displayFont, fontSize: "19px",
-                        fontStyle: "bold", align: "center", wordWrap: { width: 225 }
+                        fontStyle: "bold", align: "center", wordWrap: { width: grid.cardWidth - 20 }
                     }).setOrigin(.5);
-                const badge = this.add.text(x - 102, y - 101, animation.prompt, {
+                const badge = this.add.text(x - grid.cardWidth / 2 + 10, y - grid.cardHeight / 2 + 10,
+                    animation.prompt, {
                     color: "#ffffff", backgroundColor: animation.rank === 1 ? "#db2777" : "#312e81",
                     padding: { x: 9, y: 5 }, fontFamily: displayFont, fontSize: "18px", fontStyle: "bold"
-                }).setOrigin(0, .5).setAngle(-2);
+                }).setOrigin(0, 0).setAngle(-2);
                 items.push(shadow, panel, frame, caption, badge);
                 if (animation.rank === 1 && !this.controller.reducedMotion) {
                     this.tweens.add({ targets: [shadow, panel, frame, caption, badge], scale: 1.12,
                         duration: 450, yoyo: true, repeat: 1, ease: "Back.easeOut" });
-                    this.burst(width / 2 + x, 160 + y, 60);
+                    this.burst(width / 2 + x, 138 + grid.cardHeight / 2 + y, 60);
                 }
             });
-            const totalRows = Math.ceil(animations.length / columns);
-            this.drawingContainer = this.add.container(width / 2, totalRows > 1 ? 165 : 275, items).setDepth(12);
+            this.drawingContainer = this.add.container(width / 2, 138 + grid.cardHeight / 2, items).setDepth(12);
         }
 
         isNewResult(snapshot) {
@@ -524,6 +588,11 @@ window.quizizzoPresentation = (() => {
 
         createAvatar(player) {
             const container = this.add.container(width / 2, height + 100);
+            const cardShadow = this.add.rectangle(5, 9, 174, 178, 0x090516, .34)
+                .setOrigin(.5);
+            const card = this.add.rectangle(0, 3, 174, 178, 0x24123f, .94)
+                .setStrokeStyle(3, 0x67e8f9, .72)
+                .setOrigin(.5);
             const shadow = this.add.ellipse(0, 62, 112, 26, 0x090516, 0.32);
             const character = this.add.container(0, -58);
             const presence = this.add.text(0, -84, "", {
@@ -552,9 +621,10 @@ window.quizizzoPresentation = (() => {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
                 fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
             }).setOrigin(.5);
-            container.add([shadow, character, presence, name, score, activity]);
+            container.add([cardShadow, card, shadow, character, presence, name, score, activity]);
             container.setDepth(20);
-            return { container, character, shadow, presence, name, score, activity, signature: null, mode: null };
+            return { container, cardShadow, card, character, shadow, presence, name, score, activity,
+                signature: null, mode: null };
         }
 
         updateAvatar(avatar, player, mode) {
@@ -564,6 +634,8 @@ window.quizizzoPresentation = (() => {
                 avatar.signature = signature;
             }
             avatar.name.setText(player.displayName);
+            avatar.name.setFontSize(Math.max(14, Math.min(22,
+                Math.floor(250 / Math.max(10, player.displayName.length)))));
             avatar.score.setText(`${player.score.toLocaleString()} pts`);
             const disconnected = player.status === "Disconnected";
             avatar.presence.setText(disconnected ? "OFFLINE" : "");
@@ -625,6 +697,8 @@ window.quizizzoPresentation = (() => {
             avatar.character.setScale(mode === "full" ? .31 : .5);
             avatar.character.setPosition(0, mode === "full" ? -160 : -78);
             avatar.shadow.setVisible(mode === "full");
+            avatar.card.setVisible(mode === "portrait");
+            avatar.cardShadow.setVisible(mode === "portrait");
             avatar.shadow.setScale(variants.bodyWidth, 1);
             avatar.mode = mode;
         }
@@ -790,9 +864,11 @@ window.quizizzoPresentation = (() => {
             const horizontalSpacing = Math.min(190, 1080 / columns);
             // The lobby QR occupies the centre of the upper canvas. Keep the
             // portrait row below it so the HTML overlay cannot mask faces.
-            const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555) : 548;
+            const compactShowdown = snapshot.gameKey === "animates"
+                && ["ShowdownPlayback", "ShowdownVoting"].includes(snapshot.phase);
+            const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555) : compactShowdown ? 618 : 570;
             const rowSpacing = rows > 1 ? 165 : 0;
-            const scale = players.length > 8 ? 0.72 : players.length > 6 ? 0.8 : 0.92;
+            const scale = compactShowdown ? 0.58 : players.length > 8 ? 0.62 : players.length > 6 ? 0.68 : 0.76;
 
             const podiumResults = snapshot.gameKey === "animates" && snapshot.phase === "Results"
                 ? [...(snapshot.results || [])].sort((left, right) => left.rank - right.rank)

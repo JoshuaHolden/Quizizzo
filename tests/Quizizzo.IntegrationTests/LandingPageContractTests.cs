@@ -197,6 +197,20 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void AniMates_showdown_uses_an_adaptive_six_entry_gallery_and_compact_player_cards()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+
+        Assert.Contains("startShowdownGallery(drawing)", presentation, StringComparison.Ordinal);
+        Assert.Contains("Math.min(3, animations.length)", presentation, StringComparison.Ordinal);
+        Assert.Contains("cards.forEach(card =>", presentation, StringComparison.Ordinal);
+        Assert.Contains("const compactShowdown", presentation, StringComparison.Ordinal);
+        Assert.Contains("Math.floor(250 / Math.max(10, player.displayName.length))", presentation,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Player_controller_labels_are_bound_as_expressions_not_rendered_as_source_text()
     {
         var playerPage = ReadRepositoryFile(
