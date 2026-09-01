@@ -158,6 +158,11 @@ public sealed class LandingPageContractTests
         Assert.Contains("part.scaleX *= bodyWidth", designer, StringComparison.Ordinal);
         Assert.Contains("part.scaleX *= variants.bodyWidth", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("signature === this.podiumSignature", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("this.tweens.killTweensOf(this.podiumContainer.getAll())", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("if (!podiumChanged)", presentation, StringComparison.Ordinal);
         Assert.Contains("`tint${skin}_head.png`, .5, 0", designer,
             StringComparison.Ordinal);
     }

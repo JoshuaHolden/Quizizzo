@@ -43,6 +43,7 @@ window.quizizzoPresentation = (() => {
             this.drawingTimer = null;
             this.drawingSignature = null;
             this.podiumContainer = null;
+            this.podiumSignature = null;
             this.presenterContainer = null;
             this.presenterMessage = null;
             this.tutorialContainer = null;
@@ -189,10 +190,10 @@ window.quizizzoPresentation = (() => {
                 }
             }
 
-            this.renderPodium(snapshot);
+            const podiumChanged = this.renderPodium(snapshot);
             this.applyPresenter(snapshot.presenterMessage);
             this.applyTutorial(snapshot.tutorial);
-            this.layoutAvatars(snapshot, initial);
+            this.layoutAvatars(snapshot, initial, podiumChanged);
             if (!initial && this.isNewResult(snapshot)) {
                 this.animateResults(snapshot.results || [], snapshot);
             }
@@ -552,12 +553,25 @@ window.quizizzoPresentation = (() => {
         }
 
         renderPodium(snapshot) {
-            this.podiumContainer?.destroy(true);
-            this.podiumContainer = null;
-            if (snapshot.gameKey !== "animates" || snapshot.phase !== "Results" || !snapshot.results?.length) {
-                return;
-            }
+            const isPodium = snapshot.gameKey === "animates" && snapshot.phase === "Results"
+                && snapshot.results?.length;
             const players = playerMap(snapshot);
+            const signature = isPodium ? JSON.stringify({
+                results: snapshot.results,
+                scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0)
+            }) : null;
+            if (signature === this.podiumSignature) {
+                return false;
+            }
+            if (this.podiumContainer) {
+                this.tweens.killTweensOf(this.podiumContainer.getAll());
+                this.podiumContainer.destroy(true);
+                this.podiumContainer = null;
+            }
+            this.podiumSignature = signature;
+            if (!isPodium) {
+                return true;
+            }
             const ordered = [...snapshot.results].sort((left, right) => left.rank - right.rank);
             const maximum = Math.max(1, ...ordered.map(result => players.get(result.playerId)?.score || 0));
             const spacing = Math.min(180, 1080 / ordered.length);
@@ -584,6 +598,7 @@ window.quizizzoPresentation = (() => {
                 }
             });
             this.podiumContainer = this.add.container(0, 0, items).setDepth(15);
+            return true;
         }
 
         createAvatar(player) {
@@ -854,7 +869,7 @@ window.quizizzoPresentation = (() => {
             }
         }
 
-        layoutAvatars(snapshot, immediate) {
+        layoutAvatars(snapshot, immediate, podiumChanged = true) {
             const players = snapshot.players || [];
             if (players.length === 0) {
                 return;
@@ -881,12 +896,16 @@ window.quizizzoPresentation = (() => {
                     avatar.container.setVisible(!snapshot.presenterMessage);
                 }
                 if (podiumResults?.length) {
+                    if (!podiumChanged) {
+                        return;
+                    }
                     const podiumIndex = podiumResults.findIndex(result => result.playerId === player.playerId);
                     const spacing = Math.min(180, 1080 / podiumResults.length);
                     const x = width / 2 + (podiumIndex - (podiumResults.length - 1) / 2) * spacing;
                     const podiumHeight = 70 + (player.score / maximumScore) * 145;
                     const y = 565 - podiumHeight;
                     if (avatar) {
+                        this.tweens.killTweensOf(avatar.container);
                         avatar.container.setDepth(20);
                         if (immediate || this.controller.reducedMotion) {
                             avatar.container.setPosition(x, y).setScale(.62);
