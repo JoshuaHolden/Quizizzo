@@ -55,7 +55,7 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
         Assert.True(phaser.Length > 1_000_000);
         Assert.Contains("Phaser", phaser);
         Assert.Contains("window.quizizzoPresentation", bridge);
-        Assert.Contains("Phaser.Scale.FIT", bridge);
+        Assert.Contains("Phaser.Scale.ENVELOP", bridge);
         Assert.Contains("prefers-reduced-motion", bridge);
         Assert.DoesNotContain("signalR", bridge);
     }

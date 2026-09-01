@@ -3,16 +3,19 @@
 @using Quizizzo.Web.Presentation
 @inject IJSRuntime JavaScript
 
-<div id="@elementId" class="phaser-presentation" aria-hidden="true"></div>
+<div id="@elementId" class="phaser-presentation @(CanManagePlayers ? "host-interactive" : null)" aria-hidden="true"></div>
 
 @code {
     [Parameter, EditorRequired] public PhaserPresentationSnapshot Snapshot { get; set; } = default!;
     [Parameter] public EventCallback Started { get; set; }
+    [Parameter] public bool CanManagePlayers { get; set; }
+    [Parameter] public EventCallback<Guid> RemovePlayerRequested { get; set; }
 
     private readonly string presentationKey = Guid.NewGuid().ToString("N");
     private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
     private bool started;
     private bool updatePending = true;
+    private DotNetObjectReference<PhaserPresentation>? dotNetReference;
 
     protected override void OnParametersSet() => updatePending = true;
 
@@ -22,8 +25,10 @@
         {
             if (firstRender)
             {
+                dotNetReference = DotNetObjectReference.Create(this);
                 await JavaScript.InvokeVoidAsync(
-                    "quizizzoPresentation.start", presentationKey, elementId, Snapshot);
+                    "quizizzoPresentation.start", presentationKey, elementId, Snapshot,
+                    dotNetReference, CanManagePlayers);
                 started = true;
                 updatePending = false;
                 await Started.InvokeAsync();
@@ -45,17 +50,20 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (!started)
-        {
-            return;
-        }
-
         try
         {
-            await JavaScript.InvokeVoidAsync("quizizzoPresentation.stop", presentationKey);
+            if (started)
+            {
+                await JavaScript.InvokeVoidAsync("quizizzoPresentation.stop", presentationKey);
+            }
         }
         catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
         {
+        }
+        finally
+        {
+            dotNetReference?.Dispose();
+            dotNetReference = null;
         }
     }
 
@@ -67,4 +75,10 @@
                 "quizizzoPresentation.react", presentationKey, playerId.ToString("N"), reaction);
         }
     }
+
+    [JSInvokable]
+    public Task RequestPlayerRemoval(string playerId) =>
+        Guid.TryParse(playerId, out var parsed)
+            ? RemovePlayerRequested.InvokeAsync(parsed)
+            : Task.CompletedTask;
 }

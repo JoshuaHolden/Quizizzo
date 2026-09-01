@@ -52,6 +52,19 @@ public sealed class PlayerTests
         Assert.Equal(now.AddMinutes(2), player.LastSeenAt);
     }
 
+    [Fact]
+    public void Kicked_player_is_no_longer_a_party_member_or_allowed_to_reconnect()
+    {
+        var now = new DateTimeOffset(2026, 9, 1, 12, 0, 0, TimeSpan.Zero);
+        var player = Player.Create(PartyId.New(), PlayerName.Parse("Joshua"), Character, "HASH", now);
+
+        player.Kick(now.AddMinutes(1));
+
+        Assert.Equal(PlayerStatus.Kicked, player.Status);
+        Assert.False(player.IsPartyMember);
+        Assert.Throws<InvalidOperationException>(() => player.Reconnect(now.AddMinutes(2)));
+    }
+
     [Theory]
     [InlineData(CharacterShirtStyle.Style4)]
     [InlineData(CharacterShirtStyle.Style8)]

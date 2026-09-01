@@ -636,9 +636,29 @@ window.quizizzoPresentation = (() => {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
                 fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
             }).setOrigin(.5);
-            container.add([cardShadow, card, shadow, character, presence, name, score, activity]);
+            const remove = this.add.text(73, -73, "×", {
+                color: "#ffffff", backgroundColor: "#db2777",
+                fontFamily: bodyFont, fontSize: "25px", fontStyle: "bold",
+                padding: { x: 9, y: 3 }
+            }).setOrigin(.5).setDepth(5).setVisible(false);
+            if (this.controller.canManagePlayers) {
+                remove.setInteractive({ useHandCursor: true });
+                remove.on("pointerover", () => remove.setScale(1.12));
+                remove.on("pointerout", () => remove.setScale(1));
+                remove.on("pointerdown", () => {
+                    if (this.controller.snapshot?.mode !== "Lobby") return;
+                    remove.disableInteractive().setText("…");
+                    this.controller.dotNetReference?.invokeMethodAsync(
+                        "RequestPlayerRemoval", player.playerId)
+                        .catch(error => {
+                            console.error("Unable to remove player.", error);
+                            remove.setText("×").setInteractive({ useHandCursor: true });
+                        });
+                });
+            }
+            container.add([cardShadow, card, shadow, character, presence, name, score, activity, remove]);
             container.setDepth(20);
-            return { container, cardShadow, card, character, shadow, presence, name, score, activity,
+            return { container, cardShadow, card, character, shadow, presence, name, score, activity, remove,
                 signature: null, mode: null };
         }
 
@@ -657,6 +677,7 @@ window.quizizzoPresentation = (() => {
             const isThinking = player.activity === "Thinking";
             avatar.activity.setText(isThinking ? "…?" : "").setVisible(isThinking);
             avatar.container.setAlpha(disconnected ? 0.42 : 1);
+            avatar.remove.setVisible(this.controller.canManagePlayers && this.controller.snapshot?.mode === "Lobby");
             if (!this.controller.reducedMotion && isThinking && !avatar.thinkingTween) {
                 avatar.thinkingTween = this.tweens.add({ targets: avatar.activity, y: { from: -142, to: -154 },
                     duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
@@ -710,8 +731,8 @@ window.quizizzoPresentation = (() => {
             add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
             add(0, 132, "face", variants.mouth);
 
-            avatar.character.setScale(mode === "full" ? .31 : .7);
-            avatar.character.setPosition(0, mode === "full" ? -160 : -82);
+            avatar.character.setScale(mode === "full" ? .31 : .58);
+            avatar.character.setPosition(0, mode === "full" ? -160 : -74);
             avatar.shadow.setVisible(mode === "full");
             avatar.card.setVisible(mode === "portrait");
             avatar.cardShadow.setVisible(mode === "portrait");
@@ -1097,7 +1118,7 @@ window.quizizzoPresentation = (() => {
         }
     }
 
-    async function start(key, elementId, snapshot) {
+    async function start(key, elementId, snapshot, dotNetReference = null, canManagePlayers = false) {
         await stop(key);
         if (typeof Phaser === "undefined") {
             throw new Error("The locally hosted Phaser runtime is unavailable.");
@@ -1126,7 +1147,9 @@ window.quizizzoPresentation = (() => {
             renderResolution: resolution,
             resizeObserver: null,
             resizeHandler: null,
-            resizeTimer: null
+            resizeTimer: null,
+            dotNetReference,
+            canManagePlayers
         };
         const scene = new PartyPresentationScene(controller);
         controller.game = new Phaser.Game({
@@ -1142,7 +1165,7 @@ window.quizizzoPresentation = (() => {
                 roundPixels: true
             },
             scale: {
-                mode: Phaser.Scale.FIT,
+                mode: Phaser.Scale.ENVELOP,
                 autoCenter: Phaser.Scale.CENTER_BOTH,
                 width: width * resolution,
                 height: height * resolution
@@ -1161,7 +1184,8 @@ window.quizizzoPresentation = (() => {
                 if (presentations.get(key) !== controller) {
                     return;
                 }
-                start(key, elementId, controller.snapshot).catch(error =>
+                start(key, elementId, controller.snapshot,
+                    controller.dotNetReference, controller.canManagePlayers).catch(error =>
                     console.error("Unable to resize the Quizizzo presentation.", error));
             }, 150);
         };

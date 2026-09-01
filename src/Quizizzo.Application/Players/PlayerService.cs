@@ -129,6 +129,37 @@ public sealed class PlayerService(
         return await ListAsync(party, cancellationToken);
     }
 
+    public async Task KickAsync(
+        Guid partyId,
+        string hostUserId,
+        Guid playerId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(hostUserId);
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
+        var party = await parties.GetByIdAsync(new PartyId(partyId), cancellationToken)
+            ?? throw new PartyNotFoundException();
+        if (!party.IsOwnedBy(hostUserId))
+        {
+            throw new PartyAccessDeniedException();
+        }
+        if (party.Status != PartyStatus.Lobby)
+        {
+            throw new InvalidOperationException("Players can only be removed while the party is in the lobby.");
+        }
+
+        var player = await players.GetByIdAsync(new PlayerId(playerId), cancellationToken)
+            ?? throw new PlayerSessionNotFoundException();
+        if (player.PartyId != party.Id || !player.IsPartyMember)
+        {
+            throw new InvalidOperationException("That player is not in this party.");
+        }
+
+        player.Kick(timeProvider.GetUtcNow());
+        await players.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<PlayerView>> ListForDisplayAsync(
         Guid partyId,
         CancellationToken cancellationToken = default)

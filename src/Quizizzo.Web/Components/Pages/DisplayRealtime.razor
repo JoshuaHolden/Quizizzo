@@ -30,7 +30,10 @@
 }
 
 <main class="display-stage text-center @(phaserReady ? "phaser-enhanced" : null) @DisplayPhaseClass">
-    <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot" Started="HandlePhaserStartedAsync" />
+    <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot"
+                        CanManagePlayers="HasHostControls"
+                        RemovePlayerRequested="RemovePlayerAsync"
+                        Started="HandlePhaserStartedAsync" />
     <div class="display-overlay">
         <h1 class="display-2 fw-bold">QUIZIZZO</h1>
         <span class="badge display-connection-pill @ConnectionBadgeClass"
@@ -127,9 +130,12 @@
         else
         {
             <section class="display-lobby-panel">
+                <p class="display-lobby-kicker">GRAB A PHONE · MAKE A PLAYER</p>
                 <h2>JOIN THE PARTY</h2>
-                <p class="display-1 fw-bold">@session.RoomCode</p>
-                <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
+                <p class="display-lobby-code">@session.RoomCode</p>
+                <div class="display-lobby-qr-frame">
+                    <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
+                </div>
                 <p class="display-url"><a href="@JoinUrl">@JoinUrl</a></p>
                 @if (players.Count == 0)
                 {
@@ -367,6 +373,19 @@
         {
             await HostPartyState.CloseLobbyAsync(session.PartyId!.Value, hostUserId!);
             Navigation.NavigateTo("/host");
+        });
+    }
+
+    private async Task RemovePlayerAsync(Guid playerId)
+    {
+        if (!HasHostControls || hostParty!.Status != PartyStatus.Lobby)
+        {
+            return;
+        }
+
+        await RunHostActionAsync(async () =>
+        {
+            await HostPartyState.KickPlayerAsync(session.PartyId!.Value, hostUserId!, playerId);
         });
     }
 

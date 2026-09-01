@@ -16,6 +16,7 @@ public sealed class RealtimeOperationScopeTests
             StringComparison.Ordinal);
         Assert.Contains("HostPartyState.StartGameAsync", component, StringComparison.Ordinal);
         Assert.Contains("HostPartyState.AdvanceGameAsync", component, StringComparison.Ordinal);
+        Assert.Contains("HostPartyState.KickPlayerAsync", component, StringComparison.Ordinal);
         Assert.Contains("Choose a game", component, StringComparison.Ordinal);
         Assert.Contains("Close party", component, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject PartyGameService", component, StringComparison.Ordinal);

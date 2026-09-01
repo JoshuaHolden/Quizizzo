@@ -130,8 +130,10 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("new ResizeObserver(controller.resizeHandler)", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("start(key, elementId, controller.snapshot)", presentation,
+        Assert.Contains("controller.snapshot,", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("mode: Phaser.Scale.ENVELOP", presentation, StringComparison.Ordinal);
+        Assert.Contains("RequestPlayerRemoval", presentation, StringComparison.Ordinal);
         Assert.Contains("}, 150)", presentation, StringComparison.Ordinal);
         Assert.Contains(".setOrigin(0, 0)", presentation, StringComparison.Ordinal);
         Assert.Contains("controller.resizeObserver?.disconnect()", presentation,
@@ -214,7 +216,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("Math.floor(250 / Math.max(10, player.displayName.length))", presentation,
             StringComparison.Ordinal);
         Assert.Contains("setVisible(isThinking)", presentation, StringComparison.Ordinal);
-        Assert.Contains("mode === \"full\" ? .31 : .7", presentation, StringComparison.Ordinal);
+        Assert.Contains("mode === \"full\" ? .31 : .58", presentation, StringComparison.Ordinal);
     }
 
     [Fact]

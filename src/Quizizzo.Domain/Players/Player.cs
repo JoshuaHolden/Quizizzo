@@ -70,6 +70,17 @@ public sealed class Player
         }
     }
 
+    public void Kick(DateTimeOffset seenAt)
+    {
+        if (Status is PlayerStatus.Left or PlayerStatus.Kicked)
+        {
+            return;
+        }
+
+        Status = PlayerStatus.Kicked;
+        LastSeenAt = seenAt;
+    }
+
     public void SetScore(int score)
     {
         if (score < 0)

@@ -374,6 +374,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Preserve an uncluttered TV-only display for unauthenticated paired screens and retain server-authoritative host authorization and game mutations.
 - [x] Refresh both host and display snapshots after realtime hints so the combined screen remains reconstructable after refresh or reconnect.
 
+### Lobby display polish and player moderation (completed 2026-09-01)
+
+- [x] Let the authenticated owner remove a player directly from the top-right of that player's lobby card.
+- [x] Authorize and serialize removal on the server, restrict it to the lobby, retire the player's durable membership, and broadcast a reconstructable refresh hint.
+- [x] Refit atlas portraits inside their cards and retain names, scores, and presence without overlap.
+- [x] Recompose the join prompt, room code, QR treatment, and join URL with a playful party-game presentation.
+- [x] Fill non-16:9 browser windows without exposed stage bars while retaining responsive high-density rendering.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

@@ -109,6 +109,30 @@ public sealed class PlayerServiceTests
             fixture.PlayerRepository.Players.Count(player => player.IsPartyMember));
     }
 
+    [Fact]
+    public async Task Party_owner_can_kick_a_player_from_the_lobby()
+    {
+        var fixture = new Fixture();
+        var joined = await fixture.Service.JoinAsync("K7XM", "Goodbye");
+
+        await fixture.Service.KickAsync(fixture.Party.Id.Value, "host-1", joined.View.PlayerId);
+
+        Assert.Equal(PlayerStatus.Kicked, Assert.Single(fixture.PlayerRepository.Players).Status);
+        Assert.Empty(await fixture.Service.ListForHostAsync(fixture.Party.Id.Value, "host-1"));
+    }
+
+    [Fact]
+    public async Task Different_host_cannot_kick_a_player()
+    {
+        var fixture = new Fixture();
+        var joined = await fixture.Service.JoinAsync("K7XM", "Staying");
+
+        await Assert.ThrowsAsync<PartyAccessDeniedException>(() =>
+            fixture.Service.KickAsync(fixture.Party.Id.Value, "intruder", joined.View.PlayerId));
+
+        Assert.Equal(PlayerStatus.Connected, Assert.Single(fixture.PlayerRepository.Players).Status);
+    }
+
     private static async Task<bool> AttemptJoinAsync(PlayerService service, string name)
     {
         try

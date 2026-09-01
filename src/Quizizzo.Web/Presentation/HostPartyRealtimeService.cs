@@ -97,6 +97,21 @@ public sealed class HostPartyRealtimeService(
 
         await realtime.PartyChangedAsync(partyId, "LobbyClosed", cancellationToken);
     }
+
+    public async Task KickPlayerAsync(
+        Guid partyId,
+        string hostUserId,
+        Guid playerId,
+        CancellationToken cancellationToken = default)
+    {
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PlayerService>()
+                .KickAsync(partyId, hostUserId, playerId, cancellationToken);
+        }
+
+        await realtime.PartyChangedAsync(partyId, "PlayerRemoved", cancellationToken);
+    }
 }
 
 public sealed record HostPartyRealtimeState(
