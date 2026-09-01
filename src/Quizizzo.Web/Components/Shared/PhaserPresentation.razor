@@ -29,6 +29,11 @@
                 await JavaScript.InvokeVoidAsync(
                     "quizizzoPresentation.start", presentationKey, elementId, Snapshot,
                     dotNetReference, CanManagePlayers);
+                if (CanManagePlayers)
+                {
+                    await JavaScript.InvokeVoidAsync(
+                        "quizizzoPresentation.configureHost", presentationKey, dotNetReference);
+                }
                 started = true;
                 updatePending = false;
                 await Started.InvokeAsync();

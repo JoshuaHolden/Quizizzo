@@ -636,23 +636,36 @@ window.quizizzoPresentation = (() => {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
                 fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
             }).setOrigin(.5);
-            const remove = this.add.text(73, -73, "×", {
-                color: "#ffffff", backgroundColor: "#db2777",
-                fontFamily: bodyFont, fontSize: "25px", fontStyle: "bold",
-                padding: { x: 9, y: 3 }
-            }).setOrigin(.5).setDepth(5).setVisible(false);
+            const removeDisc = this.add.circle(0, 0, 20, 0x28133f, .98)
+                .setStrokeStyle(3, 0xff5aa5, 1);
+            const removeLabel = this.add.text(0, -1, "×", {
+                color: "#ffffff", fontFamily: bodyFont, fontSize: "25px", fontStyle: "bold"
+            }).setOrigin(.5);
+            const remove = this.add.container(103, -103, [removeDisc, removeLabel])
+                .setSize(44, 44).setDepth(5).setVisible(false);
             if (this.controller.canManagePlayers) {
                 remove.setInteractive({ useHandCursor: true });
                 remove.on("pointerover", () => remove.setScale(1.12));
                 remove.on("pointerout", () => remove.setScale(1));
                 remove.on("pointerdown", () => {
                     if (this.controller.snapshot?.mode !== "Lobby") return;
-                    remove.disableInteractive().setText("…");
-                    this.controller.dotNetReference?.invokeMethodAsync(
+                    remove.disableInteractive();
+                    removeLabel.setText("…");
+                    removeDisc.setFillStyle(0x4c1d5f, .98);
+                    if (!this.controller.dotNetReference) {
+                        removeLabel.setText("×");
+                        removeDisc.setFillStyle(0x28133f, .98);
+                        remove.setInteractive({ useHandCursor: true });
+                        console.error("Player removal callback is unavailable.");
+                        return;
+                    }
+                    this.controller.dotNetReference.invokeMethodAsync(
                         "RequestPlayerRemoval", player.playerId)
                         .catch(error => {
                             console.error("Unable to remove player.", error);
-                            remove.setText("×").setInteractive({ useHandCursor: true });
+                            removeLabel.setText("×");
+                            removeDisc.setFillStyle(0x28133f, .98);
+                            remove.setInteractive({ useHandCursor: true });
                         });
                 });
             }
@@ -731,8 +744,8 @@ window.quizizzoPresentation = (() => {
             add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
             add(0, 132, "face", variants.mouth);
 
-            avatar.character.setScale(mode === "full" ? .31 : .58);
-            avatar.character.setPosition(0, mode === "full" ? -160 : -74);
+            avatar.character.setScale(mode === "full" ? .31 : .48);
+            avatar.character.setPosition(0, mode === "full" ? -160 : -67);
             avatar.shadow.setVisible(mode === "full");
             avatar.card.setVisible(mode === "portrait");
             avatar.cardShadow.setVisible(mode === "portrait");
@@ -1208,6 +1221,13 @@ window.quizizzoPresentation = (() => {
         presentations.get(key)?.scene?.react(playerId, reaction);
     }
 
+    function configureHost(key, dotNetReference) {
+        const controller = presentations.get(key);
+        if (controller) {
+            controller.dotNetReference = dotNetReference;
+        }
+    }
+
     async function stop(key) {
         const controller = presentations.get(key);
         if (!controller) {
@@ -1222,5 +1242,5 @@ window.quizizzoPresentation = (() => {
         controller.game?.destroy(true);
     }
 
-    return { start, update, react, stop };
+    return { start, update, react, configureHost, stop };
 })();
