@@ -92,7 +92,7 @@ public sealed class PartyHub(
 
     public async Task SendReaction(string reaction)
     {
-        var allowed = new[] { "Kiss", "Angry", "Laugh", "Wow" };
+        var allowed = new[] { "Kiss", "Angry", "Laugh", "Wow", "Poop" };
         var selected = allowed.FirstOrDefault(value =>
             string.Equals(value, reaction, StringComparison.OrdinalIgnoreCase));
         if (selected is null)

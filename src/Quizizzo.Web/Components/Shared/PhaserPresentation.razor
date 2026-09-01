@@ -43,6 +43,9 @@
             if (started && updatePending)
             {
                 await JavaScript.InvokeVoidAsync(
+                    "quizizzoPresentation.configureHost", presentationKey,
+                    CanManagePlayers ? dotNetReference : null);
+                await JavaScript.InvokeVoidAsync(
                     "quizizzoPresentation.update", presentationKey, Snapshot);
                 updatePending = false;
             }

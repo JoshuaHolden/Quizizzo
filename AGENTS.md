@@ -389,6 +389,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Keep game selection, progression, player moderation, and party closure on the owner-authorized display controls.
 - [x] Return to the public home page after closure, retire the old room code, and create a new display session and room code on the next launch.
 
+### Player-card interaction polish (completed 2026-09-02)
+
+- [x] Anchor the owner-only remove action inside its Phaser player card and keep the callback live after display state updates.
+- [x] Keep score text within the card boundary and move reaction bursts clear of the HTML join card at a higher scene depth.
+- [x] Add a server-validated poop reaction to the phone controller and shared display.
+- [x] Replace persistent raw SignalR errors with concise controller notices that dismiss automatically.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

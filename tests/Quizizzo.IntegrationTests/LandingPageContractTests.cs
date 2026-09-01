@@ -326,6 +326,29 @@ public sealed class LandingPageContractTests
         Assert.DoesNotContain("15.625rem", shell, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Player_cards_and_reactions_stay_visible_and_controller_errors_are_transient()
+    {
+        var player = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+        var display = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var hub = ReadRepositoryFile("src/Quizizzo.Web/Realtime/PartyHub.cs");
+
+        Assert.Contains("SendReactionAsync(\"Poop\")", player, StringComparison.Ordinal);
+        Assert.Contains("TimeSpan.FromSeconds(4)", player, StringComparison.Ordinal);
+        Assert.Contains("controller-notice", player, StringComparison.Ordinal);
+        Assert.Contains("\"Poop\"", hub, StringComparison.Ordinal);
+        Assert.Contains("Poop: \"💩\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("setDepth(200)", presentation, StringComparison.Ordinal);
+        Assert.Contains("add.container(78, -78", presentation, StringComparison.Ordinal);
+        Assert.Contains("fontSize: \"16px\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("CanManagePlayers=\"HasHostControls\"", display, StringComparison.Ordinal);
+        Assert.DoesNotContain("display-player-removal-layer", display, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(string relativePath)
         => File.ReadAllText(RepositoryPath(relativePath));
 

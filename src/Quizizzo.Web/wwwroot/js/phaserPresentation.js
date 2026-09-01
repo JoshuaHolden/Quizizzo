@@ -624,10 +624,10 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 5
             }).setOrigin(0.5);
-            const score = this.add.text(0, 78, `${player.score.toLocaleString()} pts`, {
+            const score = this.add.text(0, 69, `${player.score.toLocaleString()} pts`, {
                 color: "#fde68a",
                 fontFamily: displayFont,
-                fontSize: "18px",
+                fontSize: "16px",
                 fontStyle: "bold",
                 stroke: "#130828",
                 strokeThickness: 4
@@ -641,7 +641,7 @@ window.quizizzoPresentation = (() => {
             const removeLabel = this.add.text(0, -1, "×", {
                 color: "#ffffff", fontFamily: bodyFont, fontSize: "25px", fontStyle: "bold"
             }).setOrigin(.5);
-            const remove = this.add.container(103, -103, [removeDisc, removeLabel])
+            const remove = this.add.container(78, -78, [removeDisc, removeLabel])
                 .setSize(44, 44).setDepth(5).setVisible(false);
             if (this.controller.canManagePlayers) {
                 remove.setInteractive({ useHandCursor: true });
@@ -1083,14 +1083,15 @@ window.quizizzoPresentation = (() => {
         react(playerId, reaction) {
             const avatar = this.avatars.get(playerId);
             if (!avatar || avatar.mode !== "portrait") return;
-            const symbols = { Kiss: "💋", Angry: "💢", Laugh: "😂", Wow: "❗" };
+            const symbols = { Kiss: "💋", Angry: "💢", Laugh: "😂", Wow: "❗", Poop: "💩" };
+            const direction = avatar.container.x > width / 2 ? -1 : 1;
             const symbol = this.add.text(
-                avatar.container.x + 42,
-                avatar.container.y - 150,
+                avatar.container.x + direction * 105,
+                avatar.container.y - 48,
                 symbols[reaction] || "✨",
                 { fontFamily: displayFont, fontSize: "46px" })
                 .setOrigin(.5)
-                .setDepth(80);
+                .setDepth(200);
             const amount = reaction === "Angry" ? 9 : 4;
             this.tweens.add({
                 targets: avatar.character,
@@ -1102,7 +1103,7 @@ window.quizizzoPresentation = (() => {
             });
             this.tweens.add({
                 targets: symbol,
-                y: symbol.y - 70,
+                y: symbol.y - 42,
                 alpha: 0,
                 scale: 1.4,
                 duration: 1050,
@@ -1225,6 +1226,7 @@ window.quizizzoPresentation = (() => {
         const controller = presentations.get(key);
         if (controller) {
             controller.dotNetReference = dotNetReference;
+            controller.canManagePlayers = Boolean(dotNetReference);
         }
     }
 

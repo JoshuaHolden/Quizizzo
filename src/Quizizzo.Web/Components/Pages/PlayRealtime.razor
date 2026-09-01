@@ -6,6 +6,7 @@
 @using Quizizzo.Web.Drawing
 @using Quizizzo.Web.Presentation
 @inject PlayerRealtimeStateLoader StateLoader
+@implements IDisposable
 
 <PartyRealtimeConnection @ref="partyConnection"
                          Role="Player"
@@ -25,11 +26,15 @@
         <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Angry")' aria-label="Show anger">😠</button>
         <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Laugh")' aria-label="Laugh">😂</button>
         <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Wow")' aria-label="Show surprise">😮</button>
+        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Poop")' aria-label="Send poop">💩</button>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(actionError))
     {
-        <div class="alert alert-danger" role="alert">@actionError</div>
+        <div class="controller-notice" role="status" aria-live="polite">
+            <span aria-hidden="true">✦</span>
+            <div><strong>Not quite!</strong><p>@actionError</p></div>
+        </div>
     }
 
     @if (gameView is null || game is null)
@@ -131,6 +136,7 @@
     private PlayerGameViewPayload? game;
     private string connectionStatus = "Connecting";
     private string? actionError;
+    private CancellationTokenSource? errorDismissal;
     private bool submitting;
     private bool focusHeadingAfterRender;
     private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
@@ -179,7 +185,7 @@
         }
         catch (Exception exception) when (exception is JSException or InvalidOperationException)
         {
-            actionError = exception.Message;
+            ShowTransientError(exception);
         }
         finally
         {
@@ -199,7 +205,7 @@
         }
         catch (Exception exception) when (exception is JSException or InvalidOperationException)
         {
-            actionError = exception.Message;
+            ShowTransientError(exception);
         }
     }
 
@@ -225,7 +231,7 @@
         }
         catch (Exception exception) when (exception is JSException or InvalidOperationException)
         {
-            actionError = exception.Message;
+            ShowTransientError(exception);
         }
         finally
         {
@@ -240,6 +246,7 @@
     private void BeginSubmission()
     {
         submitting = true;
+        errorDismissal?.Cancel();
         actionError = null;
         focusHeadingAfterRender = true;
     }
@@ -260,6 +267,53 @@
     {
         connectionStatus = status;
         return Task.CompletedTask;
+    }
+
+    private void ShowTransientError(Exception exception)
+    {
+        errorDismissal?.Cancel();
+        errorDismissal?.Dispose();
+        errorDismissal = new CancellationTokenSource();
+        actionError = FriendlyError(exception.Message);
+        _ = DismissErrorAsync(errorDismissal);
+    }
+
+    private async Task DismissErrorAsync(CancellationTokenSource dismissal)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(4), dismissal.Token);
+            if (ReferenceEquals(errorDismissal, dismissal))
+            {
+                actionError = null;
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static string FriendlyError(string message)
+    {
+        const string cooldown = "Wait a moment before reacting again.";
+        if (message.Contains(cooldown, StringComparison.OrdinalIgnoreCase))
+        {
+            return "Easy there — reactions need a two-second breather.";
+        }
+
+        const string hubMarker = "HubException:";
+        var markerIndex = message.IndexOf(hubMarker, StringComparison.OrdinalIgnoreCase);
+        var friendly = markerIndex >= 0
+            ? message[(markerIndex + hubMarker.Length)..]
+            : message;
+        return friendly.Split(['\r', '\n', '@'], StringSplitOptions.RemoveEmptyEntries)[0].Trim();
+    }
+
+    public void Dispose()
+    {
+        errorDismissal?.Cancel();
+        errorDismissal?.Dispose();
     }
 
     private DrawingControllerOptions CreateDrawingOptions(DrawingControllerConfiguration configuration) => new()

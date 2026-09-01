@@ -23,6 +23,51 @@
     width: 48px;
 }
 
+.player-reactions button:hover,
+.player-reactions button:focus-visible {
+    background: rgba(255, 255, 255, .24);
+    border-color: #67e8f9;
+    transform: translateY(-2px);
+}
+
+.controller-notice {
+    align-items: flex-start;
+    animation: controller-notice-in 180ms ease-out;
+    background: linear-gradient(135deg, #fff7ed, #fff 72%);
+    border: 1px solid #fdba74;
+    border-left: .35rem solid #f97316;
+    border-radius: 1rem;
+    box-shadow: 0 .75rem 2rem rgb(67 20 7 / 14%);
+    color: #7c2d12;
+    display: flex;
+    gap: .65rem;
+    margin: .8rem auto 1rem;
+    max-width: 32rem;
+    padding: .8rem 1rem;
+    text-align: left;
+}
+
+.controller-notice > span:first-child {
+    font-size: 1.2rem;
+    line-height: 1.3;
+}
+
+.controller-notice strong {
+    display: block;
+    font-family: "Quizizzo Sans", "Segoe UI", sans-serif;
+    font-size: .95rem;
+}
+
+.controller-notice p {
+    font-size: .9rem;
+    margin: .1rem 0 0;
+}
+
+@keyframes controller-notice-in {
+    from { opacity: 0; transform: translateY(-.35rem) scale(.98); }
+    to { opacity: 1; transform: none; }
+}
+
 html {
     overflow-x: hidden;
     text-size-adjust: 100%;
@@ -414,57 +459,6 @@ fieldset {
     position: fixed;
     right: max(1rem, env(safe-area-inset-right));
     z-index: 120;
-}
-
-.display-player-removal-layer {
-    bottom: 27.5%;
-    display: grid;
-    gap: 0;
-    grid-template-columns: repeat(var(--player-columns), minmax(0, 9.5rem));
-    grid-template-rows: repeat(var(--player-rows), 7.8rem);
-    justify-content: center;
-    left: 50%;
-    pointer-events: none;
-    position: absolute;
-    transform: translateX(-50%);
-    width: min(94vw, calc(var(--player-columns) * 9.5rem));
-    z-index: 110;
-}
-
-.display-player-removal-layer button {
-    align-items: center;
-    align-self: start;
-    backdrop-filter: blur(.6rem);
-    background: linear-gradient(145deg, rgb(42 20 67 / 96%), rgb(24 12 48 / 98%));
-    border: 2px solid #ff62ad;
-    border-radius: 999px;
-    box-shadow: 0 .4rem 1rem rgb(8 3 28 / 38%), inset 0 1px 0 rgb(255 255 255 / 18%);
-    color: white;
-    display: inline-flex;
-    font-family: "Quizizzo Sans", "Segoe UI", sans-serif;
-    font-size: 1.35rem;
-    font-weight: 900;
-    height: 2.55rem;
-    justify-content: center;
-    justify-self: end;
-    line-height: 1;
-    margin-right: -.25rem;
-    margin-top: -.25rem;
-    pointer-events: auto;
-    transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
-    width: 2.55rem;
-}
-
-.display-player-removal-layer button:hover,
-.display-player-removal-layer button:focus-visible {
-    background: linear-gradient(145deg, #d92d82, #7c245e);
-    border-color: white;
-    transform: translateY(-2px) scale(1.06);
-}
-
-.display-player-removal-layer button:disabled {
-    cursor: wait;
-    opacity: .55;
 }
 
 .display-host-controls-launch:hover,
