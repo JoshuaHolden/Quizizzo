@@ -31,9 +31,21 @@
 
 <main class="display-stage text-center @(phaserReady ? "phaser-enhanced" : null) @DisplayPhaseClass">
     <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot"
-                        CanManagePlayers="HasHostControls"
-                        RemovePlayerRequested="RemovePlayerAsync"
                         Started="HandlePhaserStartedAsync" />
+    @if (CanRemovePlayers)
+    {
+        <div class="display-player-removal-layer"
+             style="--player-columns: @Math.Min(players.Count, 6); --player-rows: @Math.Ceiling(players.Count / 6d);"
+             aria-label="Remove players">
+            @foreach (var removablePlayer in players)
+            {
+                <button type="button" title="Remove @removablePlayer.DisplayName"
+                        aria-label="Remove @removablePlayer.DisplayName from the party"
+                        disabled="@hostActionPending"
+                        @onclick="() => RemovePlayerAsync(removablePlayer.PlayerId)">×</button>
+            }
+        </div>
+    }
     <div class="display-overlay">
         <h1 class="display-2 fw-bold">QUIZIZZO</h1>
         <span class="badge display-connection-pill @ConnectionBadgeClass"
@@ -42,13 +54,9 @@
         @if (!session.IsPaired)
         {
             <section class="display-card display-pairing-card">
-                <h2>Pair this screen</h2>
-                <p>Open this address on the host's phone:</p>
-                <img class="qr-code" src="@QrCodes.CreatePngDataUri(PairingUrl)" alt="QR code to pair this display" width="280" height="280" />
-                <p class="fs-4 display-url"><a href="@PairingPath">@PairingUrl</a></p>
-                <p>Pairing code</p>
-                <p class="display-4 fw-bold">@session.PairingCode</p>
-                <p>Expires @session.PairingExpiresAt.ToLocalTime().ToString("t").</p>
+                <h2>Start your party</h2>
+                <p>Sign in as the host to create a fresh room and use this screen as the display.</p>
+                <a class="btn btn-primary btn-lg" href="/host">Open host display</a>
             </section>
         }
         else if (gameView is not null && game is not null)
@@ -263,8 +271,7 @@
     private PhaserPresentation? phaserPresentation;
     private bool phaserReady;
     private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
-    private string PairingPath => $"host/pair-display/{session.PairingCode}";
-    private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
+    private bool CanRemovePlayers => HasHostControls && hostParty!.Status == PartyStatus.Lobby && players.Count > 0;
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
     private PhaserPresentationSnapshot PresentationSnapshot =>
         PhaserPresentationMapper.Create(session, players, gameView, game);
@@ -372,7 +379,7 @@
         await RunHostActionAsync(async () =>
         {
             await HostPartyState.CloseLobbyAsync(session.PartyId!.Value, hostUserId!);
-            Navigation.NavigateTo("/host");
+            Navigation.NavigateTo("/");
         });
     }
 

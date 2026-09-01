@@ -744,8 +744,8 @@ window.quizizzoPresentation = (() => {
             add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
             add(0, 132, "face", variants.mouth);
 
-            avatar.character.setScale(mode === "full" ? .31 : .48);
-            avatar.character.setPosition(0, mode === "full" ? -160 : -67);
+            avatar.character.setScale(mode === "full" ? .31 : .4);
+            avatar.character.setPosition(0, mode === "full" ? -160 : -54);
             avatar.shadow.setVisible(mode === "full");
             avatar.card.setVisible(mode === "portrait");
             avatar.cardShadow.setVisible(mode === "portrait");

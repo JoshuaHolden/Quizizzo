@@ -382,6 +382,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Recompose the join prompt, room code, QR treatment, and join URL with a playful party-game presentation.
 - [x] Fill non-16:9 browser windows without exposed stage bars while retaining responsive high-density rendering.
 
+### Direct host-display session flow (completed 2026-09-01)
+
+- [x] Remove the host dashboard, recent-party history, separate host control page, and manual display-pairing page from the product flow.
+- [x] Make the authenticated `/host` entry point resume the host's sole active party or create one fresh party and open it directly on `/display`.
+- [x] Keep game selection, progression, player moderation, and party closure on the owner-authorized display controls.
+- [x] Return to the public home page after closure, retire the old room code, and create a new display session and room code on the next launch.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

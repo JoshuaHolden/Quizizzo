@@ -85,33 +85,13 @@ test("host, display, and two players can reach a live Estimate controller", asyn
         await host.getByRole("button", { name: "Log in", exact: true }).click();
 
         await gotoReliable(host, "/host");
-        await expect(host.getByRole("heading", { name: "Host your party" })).toBeVisible();
-        const createParty = host.getByRole("button", { name: "Start new party" });
-        await expect(createParty).toBeEnabled();
-        await host.waitForTimeout(1_500);
-        await createParty.click();
-        await expect(host).toHaveURL(/\/host\/party\/[0-9a-f-]+/i, { timeout: 15_000 });
-        const partyUrl = host.url();
-        const roomCode = (await host.locator("header h1").innerText()).trim();
+        await expect(host).toHaveURL(/\/display$/, { timeout: 15_000 });
+        await expect(host.getByRole("heading", { name: "JOIN THE PARTY" }))
+            .toBeVisible({ timeout: 20_000 });
+        const display = host;
+        const roomCode = (await display.locator(".display-lobby-code").innerText()).trim();
         expect(roomCode).toMatch(/^[A-HJ-KM-NP-Z2-9]{4}$/);
 
-        const display = await contexts.display.newPage();
-        await gotoReliable(display, "/display");
-        await expect(display.getByRole("heading", { name: "Pair this screen" })).toBeVisible();
-        const pairingHref = await display
-            .locator('a[href*="host/pair-display/"]')
-            .getAttribute("href");
-        expect(pairingHref).toBeTruthy();
-
-        await gotoReliable(host, pairingHref);
-        const pairDisplay = host.getByRole("button", { name: "Pair display" });
-        await expect(pairDisplay).toBeEnabled();
-        await host.waitForTimeout(1_500);
-        await pairDisplay.click();
-        await expect(host.getByText(`Display paired with room ${roomCode}.`))
-            .toBeVisible({ timeout: 15_000 });
-        await expect(display.getByRole("heading", { name: "JOIN THE PARTY" }))
-            .toBeVisible({ timeout: 20_000 });
         const displayCanvas = display.locator(".phaser-presentation canvas");
         await expect(displayCanvas).toBeVisible();
         const initialCanvasWidth = await displayCanvas.evaluate(canvas => canvas.width);
@@ -144,8 +124,8 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             await page.getByRole("button", { name: name === "Pixel" ? "Send a kiss" : "Show anger" }).click();
         }
 
-        await gotoReliable(host, partyUrl);
-        const startEstimate = host.getByRole("button", { name: "Start Estimate" });
+        await host.getByRole("button", { name: "Host controls" }).click();
+        const startEstimate = host.getByRole("button", { name: /Estimate/ });
         await expect(startEstimate).toBeEnabled({ timeout: 20_000 });
         await host.screenshot({
             path: testInfo.outputPath("host-lobby.png"),

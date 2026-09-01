@@ -17,7 +17,7 @@ public sealed class RoleRecoveryTests
         client.DefaultRequestHeaders.Add(
             RecoveryWebApplicationFactory.HostHeader,
             RecoveryWebApplicationFactory.HostUserId);
-        var partyPath = $"/host/party/{factory.State.Party.Id.Value}";
+        const string partyPath = "/host";
 
         var firstPage = await GetPageAsync(client, partyPath);
         var refreshedPage = await GetPageAsync(client, partyPath);

@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using Microsoft.AspNetCore.Antiforgery;
-using Microsoft.AspNetCore.Mvc;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Parties;
 using Quizizzo.Web.Realtime;
@@ -9,84 +7,92 @@ namespace Quizizzo.Web.Endpoints;
 
 public static class HostDisplayEndpoints
 {
-    private const long MaximumRequestBytes = 8 * 1024;
     public const string DisplayCookieName = "quizizzo.display";
 
     public static IEndpointRouteBuilder MapHostDisplayEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapPost("/host/party/{partyId:guid}/present", PresentAsync)
-            .WithMetadata(new RequestSizeLimitAttribute(MaximumRequestBytes))
+        endpoints.MapGet("/host", LaunchAsync)
             .RequireAuthorization();
         return endpoints;
     }
 
-    private static async Task<IResult> PresentAsync(
-        Guid partyId,
+    private static async Task<IResult> LaunchAsync(
         HttpContext context,
-        IAntiforgery antiforgery,
+        PartyService parties,
         DisplaySessionService displays,
         IPartyRealtimeNotifier notifier,
         IWebHostEnvironment environment)
     {
-        if (context.Request.ContentLength is > MaximumRequestBytes ||
-            !context.Request.HasFormContentType)
+        var hostUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? throw new PartyAccessDeniedException();
+        var party = await parties.GetActiveAsync(hostUserId, context.RequestAborted);
+        if (party is null)
         {
-            return Results.BadRequest("A bounded presentation form is required.");
+            try
+            {
+                party = await parties.CreateAsync(hostUserId, context.RequestAborted);
+            }
+            catch (InvalidOperationException)
+            {
+                party = await parties.GetActiveAsync(hostUserId, context.RequestAborted);
+                if (party is null)
+                {
+                    throw;
+                }
+            }
         }
 
-        try
+        return await PairCurrentBrowserAsync(
+            party.PartyId,
+            hostUserId,
+            context,
+            displays,
+            notifier,
+            environment);
+    }
+
+    private static async Task<IResult> PairCurrentBrowserAsync(
+        Guid partyId,
+        string hostUserId,
+        HttpContext context,
+        DisplaySessionService displays,
+        IPartyRealtimeNotifier notifier,
+        IWebHostEnvironment environment)
+    {
+        context.Request.Cookies.TryGetValue(DisplayCookieName, out var sessionToken);
+        var restored = await displays.RestoreOrCreateAsync(sessionToken, context.RequestAborted);
+        if (restored.View.PartyId == partyId)
         {
-            await antiforgery.ValidateRequestAsync(context);
-            var hostUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new PartyAccessDeniedException();
-
-            context.Request.Cookies.TryGetValue(DisplayCookieName, out var sessionToken);
-            var restored = await displays.RestoreOrCreateAsync(sessionToken, context.RequestAborted);
-            if (restored.View.PartyId == partyId)
-            {
-                return Results.Redirect("/display");
-            }
-            if (restored.View.PartyId is { } existingPartyId && existingPartyId != partyId)
-            {
-                restored = await displays.CreateAsync(context.RequestAborted);
-            }
-
-            var paired = await displays.PairAsync(
-                restored.View.PairingCode,
-                partyId,
-                hostUserId,
-                context.RequestAborted);
-
-            if (restored.IsNew)
-            {
-                context.Response.Cookies.Append(DisplayCookieName, restored.SessionToken, new CookieOptions
-                {
-                    HttpOnly = true,
-                    IsEssential = true,
-                    MaxAge = TimeSpan.FromDays(30),
-                    SameSite = SameSiteMode.Lax,
-                    Secure = !environment.IsDevelopment() || context.Request.IsHttps
-                });
-            }
-
-            await notifier.DisplaySessionChangedAsync(
-                paired.DisplaySessionId,
-                "DisplayPaired",
-                context.RequestAborted);
-            await notifier.PartyChangedAsync(partyId, "DisplayPaired", context.RequestAborted);
             return Results.Redirect("/display");
         }
-        catch (AntiforgeryValidationException)
+        if (restored.View.PartyId is { } existingPartyId && existingPartyId != partyId)
         {
-            return Results.BadRequest("The presentation request expired. Go back and try again.");
+            restored = await displays.CreateAsync(context.RequestAborted);
         }
-        catch (PartyAccessDeniedException)
+
+        var paired = await displays.PairAsync(
+            restored.View.PairingCode,
+            partyId,
+            hostUserId,
+            context.RequestAborted);
+
+        if (restored.IsNew)
         {
-            return Results.Forbid();
+            context.Response.Cookies.Append(DisplayCookieName, restored.SessionToken, new CookieOptions
+            {
+                HttpOnly = true,
+                IsEssential = true,
+                MaxAge = TimeSpan.FromDays(30),
+                SameSite = SameSiteMode.Lax,
+                Secure = !environment.IsDevelopment() || context.Request.IsHttps
+            });
         }
-        catch (PartyNotFoundException)
-        {
-            return Results.NotFound();
-        }
+
+        await notifier.DisplaySessionChangedAsync(
+            paired.DisplaySessionId,
+            "DisplayPaired",
+            context.RequestAborted);
+        await notifier.PartyChangedAsync(partyId, "DisplayPaired", context.RequestAborted);
+        return Results.Redirect("/display");
     }
 }

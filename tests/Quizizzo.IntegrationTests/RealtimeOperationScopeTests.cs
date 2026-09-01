@@ -27,16 +27,16 @@ public sealed class RealtimeOperationScopeTests
     }
 
     [Fact]
-    public void Realtime_host_and_player_do_not_capture_scoped_application_services()
+    public void Realtime_display_host_controls_and_player_do_not_capture_scoped_application_services()
     {
-        var host = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor");
+        var host = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
         var player = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
         var hostService = ReadRepositoryFile(
             "src/Quizizzo.Web/Presentation/HostPartyRealtimeService.cs");
         var playerLoader = ReadRepositoryFile(
             "src/Quizizzo.Web/Presentation/PlayerRealtimeStateLoader.cs");
 
-        Assert.Contains("@inject HostPartyRealtimeService PartyState", host,
+        Assert.Contains("@inject HostPartyRealtimeService HostPartyState", host,
             StringComparison.Ordinal);
         Assert.Contains("@inject PlayerRealtimeStateLoader StateLoader", player,
             StringComparison.Ordinal);

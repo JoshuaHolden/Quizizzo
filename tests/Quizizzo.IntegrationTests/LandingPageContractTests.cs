@@ -14,7 +14,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("Big-screen chaos.", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/join\"", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/host\"", home, StringComparison.Ordinal);
-        Assert.Contains("href=\"/display\"", home, StringComparison.Ordinal);
+        Assert.DoesNotContain("href=\"/display\"", home, StringComparison.Ordinal);
         Assert.Contains("href=\"#main-content\"", layout, StringComparison.Ordinal);
         Assert.DoesNotContain("<NavMenu", layout, StringComparison.Ordinal);
     }
@@ -170,15 +170,17 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void Host_dashboard_resumes_an_active_party_instead_of_offering_a_conflicting_create_action()
+    public void Host_entry_point_launches_the_single_active_party_directly_on_the_display()
     {
-        var dashboard = ReadRepositoryFile(
-            "src/Quizizzo.Web/Components/Pages/HostDashboard.razor");
+        var endpoint = ReadRepositoryFile(
+            "src/Quizizzo.Web/Endpoints/HostDisplayEndpoints.cs");
 
-        Assert.Contains("if (activeParty is not null)", dashboard, StringComparison.Ordinal);
-        Assert.Contains("Resume active party", dashboard, StringComparison.Ordinal);
-        Assert.Contains("else\n    {\n        <button", dashboard, StringComparison.Ordinal);
-        Assert.Contains("catch (InvalidOperationException)", dashboard, StringComparison.Ordinal);
+        Assert.Contains("MapGet(\"/host\", LaunchAsync)", endpoint, StringComparison.Ordinal);
+        Assert.Contains("parties.GetActiveAsync(hostUserId", endpoint, StringComparison.Ordinal);
+        Assert.Contains("parties.CreateAsync(hostUserId", endpoint, StringComparison.Ordinal);
+        Assert.Contains("Results.Redirect(\"/display\")", endpoint, StringComparison.Ordinal);
+        Assert.False(File.Exists(RepositoryPath(
+            "src/Quizizzo.Web/Components/Pages/HostDashboard.razor")));
     }
 
     [Fact]
@@ -216,7 +218,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("Math.floor(250 / Math.max(10, player.displayName.length))", presentation,
             StringComparison.Ordinal);
         Assert.Contains("setVisible(isThinking)", presentation, StringComparison.Ordinal);
-        Assert.Contains("mode === \"full\" ? .31 : .48", presentation, StringComparison.Ordinal);
+        Assert.Contains("mode === \"full\" ? .31 : .4", presentation, StringComparison.Ordinal);
         Assert.Contains("configureHost", presentation, StringComparison.Ordinal);
     }
 
@@ -293,7 +295,6 @@ public sealed class LandingPageContractTests
         var roleViews = string.Join(
             Environment.NewLine,
             ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor"),
-            ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor"),
             ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/PlayRealtime.razor"));
 
         Assert.DoesNotContain("Realtime:", roleViews, StringComparison.Ordinal);
@@ -302,15 +303,15 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void Host_lobby_uses_a_responsive_control_room_presentation()
+    public void Display_contains_the_responsive_host_control_room()
     {
-        var page = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor");
-        var styles = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/HostParty.razor.css");
+        var page = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var styles = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
 
-        Assert.Contains("host-room-hero", page, StringComparison.Ordinal);
-        Assert.Contains("host-lobby-grid", page, StringComparison.Ordinal);
-        Assert.Contains("host-game-tile", page, StringComparison.Ordinal);
-        Assert.Contains("host-danger-zone", page, StringComparison.Ordinal);
+        Assert.Contains("display-host-controls", page, StringComparison.Ordinal);
+        Assert.Contains("display-host-game-grid", page, StringComparison.Ordinal);
+        Assert.Contains("Host controls", page, StringComparison.Ordinal);
+        Assert.Contains("Close party", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
         Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);
