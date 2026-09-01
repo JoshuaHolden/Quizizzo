@@ -367,6 +367,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Give both presenter briefings a distinct animated stage and accessible frame/tool tutorial with a static reduced-motion fallback.
 - [x] Apply a cohesive locally served typography, phase palette, animation-card, title-stinger, and celebration system across both rounds.
 
+### Unified host display controls (completed 2026-09-01)
+
+- [x] Keep the authenticated party owner on the main display after presenting instead of requiring routine navigation back to the host lobby.
+- [x] Add owner-only display controls for choosing and launching games, advancing active phases, and closing the party with confirmation.
+- [x] Preserve an uncluttered TV-only display for unauthenticated paired screens and retain server-authoritative host authorization and game mutations.
+- [x] Refresh both host and display snapshots after realtime hints so the combined screen remains reconstructable after refresh or reconnect.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

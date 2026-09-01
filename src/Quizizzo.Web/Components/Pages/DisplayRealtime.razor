@@ -1,11 +1,18 @@
 @using System.Text.Json
+@using System.Security.Claims
+@using Microsoft.AspNetCore.Components.Authorization
 @using Quizizzo.Application.Displays
 @using Quizizzo.Application.Games
+@using Quizizzo.Application.Parties
 @using Quizizzo.Application.Players
+@using Quizizzo.Domain
+@using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
 @using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
 @inject DisplayRealtimeStateLoader StateLoader
+@inject HostPartyRealtimeService HostPartyState
+@inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject QrCodeService QrCodes
 
@@ -14,6 +21,13 @@
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus"
                          PlayerReacted="HandlePlayerReactionAsync" />
+
+@if (HasHostControls)
+{
+    <PartyRealtimeConnection Role="Host"
+                             PartyId="session.PartyId"
+                             StateChanged="RefreshFromServerAsync" />
+}
 
 <main class="display-stage text-center @(phaserReady ? "phaser-enhanced" : null) @DisplayPhaseClass">
     <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot" Started="HandlePhaserStartedAsync" />
@@ -130,7 +144,97 @@
             </section>
         }
     </div>
+
+    @if (HasHostControls)
+    {
+        <button type="button" class="display-host-controls-launch"
+                aria-haspopup="dialog" aria-expanded="@hostControlsOpen"
+                @onclick="OpenHostControls">
+            <span aria-hidden="true">⚙</span> Host controls
+        </button>
+    }
 </main>
+
+@if (HasHostControls && hostControlsOpen)
+{
+    <div class="display-host-controls-backdrop" role="presentation" @onclick="CloseHostControls">
+        <section class="display-host-controls" role="dialog" aria-modal="true"
+                 aria-labelledby="display-host-controls-title" @onclick:stopPropagation="true">
+            <header>
+                <div>
+                    <p>Room @hostParty!.RoomCode</p>
+                    <h2 id="display-host-controls-title">Host controls</h2>
+                </div>
+                <button type="button" class="display-host-controls-close"
+                        aria-label="Close host controls" @onclick="CloseHostControls">×</button>
+            </header>
+
+            @if (!string.IsNullOrWhiteSpace(hostActionError))
+            {
+                <div class="alert alert-danger" role="alert">@hostActionError</div>
+            }
+
+            <p class="display-host-player-count">@players.Count player@(players.Count == 1 ? string.Empty : "s") joined</p>
+
+            @if (hostGameView is not null && hostGame is not null)
+            {
+                <section class="display-host-current-game">
+                    <p>@hostGameView.Phase</p>
+                    <h3>@hostGame.Title</h3>
+                    <p>@hostGame.Prompt</p>
+                    <p>@hostGame.PhaseMessage</p>
+                    @if (hostGame.CanAdvance && hostGame.AdvanceActionKind is not null)
+                    {
+                        <button type="button" class="btn btn-primary btn-lg w-100"
+                                disabled="@hostActionPending" @onclick="AdvanceGameAsync">
+                            @(hostActionPending ? "Working…" : hostGame.AdvanceLabel)
+                        </button>
+                    }
+                </section>
+            }
+            else
+            {
+                <section aria-labelledby="display-host-games-title">
+                    <h3 id="display-host-games-title">Choose a game</h3>
+                    <div class="display-host-game-grid">
+                        @foreach (var availableGame in availableGames)
+                        {
+                            <button type="button"
+                                    disabled="@(players.Count < availableGame.MinimumPlayers ||
+                                        players.Count > availableGame.MaximumPlayers || hostActionPending ||
+                                        hostParty!.Status != PartyStatus.Lobby)"
+                                    @onclick="() => StartGameAsync(availableGame.Key)">
+                                <strong>@availableGame.DisplayName</strong>
+                                <span>@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
+                            </button>
+                        }
+                    </div>
+                </section>
+            }
+
+            <footer>
+                @if (!closeConfirmationRequested)
+                {
+                    <button type="button" class="btn btn-outline-danger"
+                            disabled="@hostActionPending"
+                            @onclick="() => closeConfirmationRequested = true">Close party</button>
+                }
+                else
+                {
+                    <div class="display-host-close-confirmation" role="alert">
+                        <strong>Close room @hostParty!.RoomCode permanently?</strong>
+                        <div>
+                            <button type="button" class="btn btn-danger" disabled="@hostActionPending"
+                                    @onclick="ClosePartyAsync">Yes, close party</button>
+                            <button type="button" class="btn btn-secondary" disabled="@hostActionPending"
+                                    @onclick="() => closeConfirmationRequested = false">Keep it open</button>
+                        </div>
+                    </div>
+                }
+            </footer>
+        </section>
+    </div>
+}
 
 @code {
     [Parameter, EditorRequired] public DisplaySessionView InitialSession { get; set; } = default!;
@@ -140,9 +244,19 @@
     private IReadOnlyList<PlayerView> players = [];
     private PartyGameView? gameView;
     private DisplayGameViewPayload? game;
+    private PartyView? hostParty;
+    private PartyGameView? hostGameView;
+    private HostGameViewPayload? hostGame;
+    private IReadOnlyList<GameDescriptor> availableGames = [];
+    private string? hostUserId;
+    private string? hostActionError;
+    private bool hostActionPending;
+    private bool hostControlsOpen;
+    private bool closeConfirmationRequested;
     private string connectionStatus = "Connecting";
     private PhaserPresentation? phaserPresentation;
     private bool phaserReady;
+    private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
     private string PairingPath => $"host/pair-display/{session.PairingCode}";
     private string PairingUrl => $"{Navigation.BaseUri}{PairingPath}";
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
@@ -178,9 +292,14 @@
         session = InitialSession;
         players = InitialPlayers;
         await LoadStateAsync();
+        await InitialiseHostControlsAsync();
     }
 
-    private Task RefreshFromServerAsync(string reason) => LoadStateAsync();
+    private async Task RefreshFromServerAsync(string reason)
+    {
+        await LoadStateAsync();
+        await LoadHostStateAsync();
+    }
 
     private async Task LoadStateAsync()
     {
@@ -189,6 +308,102 @@
         players = state.Players;
         gameView = state.Game;
         game = gameView?.Data.Deserialize<DisplayGameViewPayload>();
+    }
+
+    private async Task InitialiseHostControlsAsync()
+    {
+        var authenticationState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        hostUserId = authenticationState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (hostUserId is null || session.PartyId is null)
+        {
+            return;
+        }
+        availableGames = HostPartyState.ListGames();
+        await LoadHostStateAsync();
+    }
+
+    private async Task LoadHostStateAsync()
+    {
+        if (hostUserId is null || session.PartyId is not { } partyId)
+        {
+            return;
+        }
+        try
+        {
+            var state = await HostPartyState.LoadAsync(partyId, hostUserId);
+            hostParty = state.Party;
+            hostGameView = state.Game;
+            hostGame = hostGameView?.Data.Deserialize<HostGameViewPayload>();
+        }
+        catch (Exception exception) when (exception is PartyAccessDeniedException or PartyNotFoundException)
+        {
+            hostParty = null;
+            hostGameView = null;
+            hostGame = null;
+            hostControlsOpen = false;
+        }
+    }
+
+    private async Task StartGameAsync(string gameKey) => await RunHostActionAsync(async () =>
+    {
+        await HostPartyState.StartGameAsync(session.PartyId!.Value, hostUserId!, gameKey);
+    });
+
+    private async Task AdvanceGameAsync()
+    {
+        if (hostGame?.AdvanceActionKind is not { } actionKind)
+        {
+            return;
+        }
+        await RunHostActionAsync(async () =>
+        {
+            await HostPartyState.AdvanceGameAsync(session.PartyId!.Value, hostUserId!, actionKind);
+        });
+    }
+
+    private async Task ClosePartyAsync()
+    {
+        await RunHostActionAsync(async () =>
+        {
+            await HostPartyState.CloseLobbyAsync(session.PartyId!.Value, hostUserId!);
+            Navigation.NavigateTo("/host");
+        });
+    }
+
+    private async Task RunHostActionAsync(Func<Task> action)
+    {
+        hostActionPending = true;
+        hostActionError = null;
+        try
+        {
+            await action();
+            await LoadStateAsync();
+            await LoadHostStateAsync();
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or GameRuleViolationException)
+        {
+            hostActionError = exception.Message;
+        }
+        finally
+        {
+            hostActionPending = false;
+        }
+    }
+
+    private void OpenHostControls()
+    {
+        closeConfirmationRequested = false;
+        hostActionError = null;
+        hostControlsOpen = true;
+    }
+
+    private void CloseHostControls()
+    {
+        if (!hostActionPending)
+        {
+            closeConfirmationRequested = false;
+            hostControlsOpen = false;
+        }
     }
 
     private string PlayerName(Guid playerId) =>

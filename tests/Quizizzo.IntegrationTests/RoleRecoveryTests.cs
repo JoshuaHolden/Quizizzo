@@ -59,6 +59,7 @@ public sealed class RoleRecoveryTests
         Assert.Contains("K7XM", firstPage);
         Assert.Contains("Recovery Player", firstPage);
         Assert.Contains("phaser-presentation", firstPage);
+        Assert.DoesNotContain("Host controls", firstPage, StringComparison.Ordinal);
         Assert.Contains("K7XM", refreshedPage);
         Assert.Equal(displaySessionId, factory.State.Display.Id);
 
@@ -82,6 +83,24 @@ public sealed class RoleRecoveryTests
         await WaitUntilAsync(() => GetPresence(factory).Displays == 0);
         Assert.Equal(0, GetPresence(factory).Displays);
         Assert.Equal(displaySessionId, factory.State.Display.Id);
+    }
+
+    [Fact]
+    public async Task Authenticated_owner_gets_host_controls_on_the_paired_display()
+    {
+        await using var factory = new RecoveryWebApplicationFactory();
+        using var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Add(
+            RecoveryWebApplicationFactory.HostHeader,
+            RecoveryWebApplicationFactory.HostUserId);
+        client.DefaultRequestHeaders.Add(
+            "Cookie",
+            $"quizizzo.display={RecoveryWebApplicationFactory.DisplayToken}");
+
+        var page = await GetPageAsync(client, "/display");
+
+        Assert.Contains("Host controls", page, StringComparison.Ordinal);
+        Assert.Contains("aria-haspopup=\"dialog\"", page, StringComparison.Ordinal);
     }
 
     [Fact]

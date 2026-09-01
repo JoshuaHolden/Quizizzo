@@ -12,6 +12,12 @@ public sealed class RealtimeOperationScopeTests
 
         Assert.Contains("@inject DisplayRealtimeStateLoader StateLoader", component,
             StringComparison.Ordinal);
+        Assert.Contains("@inject HostPartyRealtimeService HostPartyState", component,
+            StringComparison.Ordinal);
+        Assert.Contains("HostPartyState.StartGameAsync", component, StringComparison.Ordinal);
+        Assert.Contains("HostPartyState.AdvanceGameAsync", component, StringComparison.Ordinal);
+        Assert.Contains("Choose a game", component, StringComparison.Ordinal);
+        Assert.Contains("Close party", component, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject PartyGameService", component, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject PlayerService", component, StringComparison.Ordinal);
         Assert.DoesNotContain("@inject DisplaySessionService", component, StringComparison.Ordinal);
