@@ -19,6 +19,7 @@ public sealed class PhaserPresentationMapperTests
 
         Assert.Equal("Pairing", snapshot.Mode);
         Assert.Equal("Pairing", snapshot.Phase);
+        Assert.Null(snapshot.JoinUrl);
         Assert.Empty(snapshot.Players);
         Assert.Empty(snapshot.Results);
     }
@@ -64,13 +65,22 @@ public sealed class PhaserPresentationMapperTests
             GameJson.From(payload),
             new Dictionary<Guid, int> { [playerId] = 1100 });
 
-        var snapshot = PhaserPresentationMapper.Create(session, [player], game, payload);
+        var snapshot = PhaserPresentationMapper.Create(
+            session, [player], game, payload,
+            "https://quizizzo.com/join/K7XM", "data:image/png;base64,abc");
         var mappedPlayer = Assert.Single(snapshot.Players);
         var result = Assert.Single(snapshot.Results);
 
         Assert.Equal("Game", snapshot.Mode);
         Assert.Equal("estimate", snapshot.GameKey);
         Assert.Equal("Results", snapshot.Phase);
+        Assert.Equal("K7XM", snapshot.RoomCode);
+        Assert.Equal("https://quizizzo.com/join/K7XM", snapshot.JoinUrl);
+        Assert.Equal("data:image/png;base64,abc", snapshot.JoinQrDataUri);
+        Assert.Equal(payload.Title, snapshot.Title);
+        Assert.Equal(payload.Prompt, snapshot.Prompt);
+        Assert.Equal(payload.PhaseMessage, snapshot.PhaseMessage);
+        Assert.Equal(payload.Entries[0].Label, Assert.Single(snapshot.Entries).Label);
         Assert.Equal(7, snapshot.Revision);
         Assert.Equal(1100, mappedPlayer.Score);
         Assert.Equal("Disconnected", mappedPlayer.Status);

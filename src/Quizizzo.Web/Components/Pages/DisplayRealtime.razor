@@ -30,123 +30,19 @@
                              StateChanged="RefreshFromServerAsync" />
 }
 
-<main class="display-stage text-center @(phaserReady ? "phaser-enhanced" : null) @DisplayPhaseClass">
+<main class="display-stage text-center">
     <PhaserPresentation @ref="phaserPresentation" Snapshot="PresentationSnapshot"
                         CanManagePlayers="HasHostControls"
                         RemovePlayerRequested="RemovePlayerAsync"
-                        Started="HandlePhaserStartedAsync" />
-    <div class="display-overlay">
-        <h1 class="display-2 fw-bold">QUIZIZZO</h1>
-        <span class="badge display-connection-pill @ConnectionBadgeClass"
-              aria-live="polite">@ConnectionLabel</span>
-
-        @if (!session.IsPaired)
-        {
-            <section class="display-card display-pairing-card">
-                <h2>Start your party</h2>
-                <p>Sign in as the host to create a fresh room and use this screen as the display.</p>
-                <a class="btn btn-primary btn-lg" href="/host">Open host display</a>
-            </section>
-        }
-        else if (gameView is not null && game is not null)
-        {
-            <section class="display-game-panel">
-                <header class="display-game-header">
-                    <p class="text-uppercase mb-1">@game.Title</p>
-                    <h2 class="display-4 fw-bold">@game.Prompt</h2>
-                    <p class="fs-3">@game.PhaseMessage</p>
-                </header>
-                @if (gameView.PhaseEndsAtUtc is not null)
-                {
-                    <p class="display-deadline" aria-label="Time remaining"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
-                }
-
-                <div class="display-results display-game-entries @(ShowEntriesOverCanvas ? "canvas-side-cards" : "canvas-duplicate")">
-                    @foreach (var entry in game.Entries)
-                    {
-                        <article class="display-result-card @(gameView.GameKey == "animates" && gameView.Phase == "Choosing" ? "animates-answer-card" : null)">
-                            <h3>@entry.Label</h3>
-                            <p>@entry.Value</p>
-                            @if (entry.Rank is not null)
-                            {
-                                <strong>#@entry.Rank - +@entry.PointsAwarded.ToString("N0") points</strong>
-                            }
-                        </article>
-                    }
-                </div>
-
-                @if (game.Drawing is { Animations.Count: > 0 } drawing)
-                {
-                    <div class="drawing-display-fallback" aria-live="polite">
-                        @foreach (var animation in drawing.Animations)
-                        {
-                            <article>
-                                <FrameAnimation FrameAssetIds="animation.FrameAssetIds"
-                                                FrameDurationMilliseconds="drawing.FrameDurationMilliseconds"
-                                                AlternativeText="@animation.Prompt" />
-                                <p>@animation.Prompt</p>
-                                @if (!string.IsNullOrWhiteSpace(animation.CreatorName))
-                                {
-                                    <strong>@animation.CreatorName — @animation.Votes vote(s)</strong>
-                                }
-                            </article>
-                        }
-                    </div>
-                }
-
-                @if (game.Tutorial is { } tutorial)
-                {
-                    <section class="drawing-tutorial-fallback" aria-labelledby="drawing-tutorial-title">
-                        <h3 id="drawing-tutorial-title">@tutorial.Title</h3>
-                        <div class="tutorial-frame-strip" aria-label="@tutorial.FrameCount animation frames">
-                            @for (var frame = 1; frame <= tutorial.FrameCount; frame++)
-                            {
-                                <span>Frame @frame</span>
-                            }
-                        </div>
-                        <ol>
-                            @foreach (var step in tutorial.Steps)
-                            {
-                                <li>@step</li>
-                            }
-                        </ol>
-                    </section>
-                }
-
-                <div class="display-score-panel">
-                    <h3>Scores</h3>
-                    <ol class="scoreboard display-scoreboard">
-                        @foreach (var score in gameView.Scores.OrderByDescending(pair => pair.Value))
-                        {
-                            <li><span>@PlayerName(score.Key)</span><strong>@score.Value.ToString("N0")</strong></li>
-                        }
-                    </ol>
-                </div>
-            </section>
-        }
-        else
-        {
-            <section class="display-lobby-panel">
-                <p class="display-lobby-kicker">GRAB A PHONE · MAKE A PLAYER</p>
-                <h2>JOIN THE PARTY</h2>
-                <p class="display-lobby-code">@session.RoomCode</p>
-                <div class="display-lobby-qr-frame">
-                    <img class="qr-code" src="@QrCodes.CreatePngDataUri(JoinUrl)" alt="QR code to join room @session.RoomCode" width="280" height="280" />
-                </div>
-                <p class="display-url"><a href="@JoinUrl">@JoinUrl</a></p>
-                @if (players.Count == 0)
-                {
-                    <p>Waiting for players...</p>
-                }
-                else
-                {
-                    <p class="visually-hidden" aria-live="polite">
-                        @players.Count players joined: @string.Join(", ", players.Select(player => player.DisplayName))
-                    </p>
-                }
-            </section>
-        }
-    </div>
+                        Started="HandlePhaserStartedAsync"
+                        Failed="HandlePhaserFailedAsync" />
+    @if (phaserFailed)
+    {
+        <section class="display-unsupported" role="alert">
+            <h1>Unsupported browser</h1>
+            <p>Quizizzo cannot run its display in this browser.</p>
+        </section>
+    }
 
     @if (HasHostControls)
     {
@@ -283,38 +179,27 @@
     private bool hostControlsOpen;
     private bool closeConfirmationRequested;
     private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
-    private string connectionStatus = "Connecting";
     private PhaserPresentation? phaserPresentation;
-    private bool phaserReady;
+    private bool phaserFailed;
     private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
     private PhaserPresentationSnapshot PresentationSnapshot =>
-        PhaserPresentationMapper.Create(session, players, gameView, game);
-    private string ConnectionBadgeClass => connectionStatus == "Connected"
-        ? "text-bg-success"
-        : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
-    private bool ShowEntriesOverCanvas => gameView?.GameKey == "animates"
-        && (gameView.Phase is "Choosing" or "Results")
-        && game?.ShowRoundRanking != true
-        && game?.Entries.Count > 0;
-    private string DisplayPhaseClass => gameView?.Phase switch
-    {
-        "Briefing" or "ShowdownBriefing" => "display-phase-briefing",
-        "Choosing" or "Results" => "display-phase-with-cards",
-        _ => string.Empty
-    };
+        PhaserPresentationMapper.Create(
+            session, players, gameView, game,
+            session.IsPaired ? JoinUrl : null,
+            session.IsPaired ? QrCodes.CreatePngDataUri(JoinUrl) : null);
 
     private Task HandlePhaserStartedAsync()
     {
-        phaserReady = true;
+        phaserFailed = false;
         return InvokeAsync(StateHasChanged);
     }
-    private string ConnectionLabel => connectionStatus switch
+
+    private Task HandlePhaserFailedAsync()
     {
-        "Connected" => "Live",
-        "Reconnecting" => "Reconnecting…",
-        _ => "Offline"
-    };
+        phaserFailed = true;
+        return InvokeAsync(StateHasChanged);
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -460,14 +345,7 @@
         }
     }
 
-    private string PlayerName(Guid playerId) =>
-        players.FirstOrDefault(player => player.PlayerId == playerId)?.DisplayName ?? "Player";
-
-    private Task SetConnectionStatus(string status)
-    {
-        connectionStatus = status;
-        return Task.CompletedTask;
-    }
+    private static Task SetConnectionStatus(string status) => Task.CompletedTask;
 
     private async Task HandlePlayerReactionAsync(PlayerReactionMessage message)
     {

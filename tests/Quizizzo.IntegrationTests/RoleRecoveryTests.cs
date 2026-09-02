@@ -22,8 +22,9 @@ public sealed class RoleRecoveryTests
         var firstPage = await GetPageAsync(client, partyPath);
         var refreshedPage = await GetPageAsync(client, partyPath);
 
-        Assert.Contains("K7XM", firstPage);
-        Assert.Contains("K7XM", refreshedPage);
+        Assert.Contains("phaser-presentation", firstPage);
+        Assert.Contains("phaser-presentation", refreshedPage);
+        Assert.DoesNotContain("display-overlay", firstPage);
         Assert.Equal(RecoveryWebApplicationFactory.HostUserId, factory.State.Party.HostUserId);
 
         await using var original = CreateConnection(factory, hostUserId: RecoveryWebApplicationFactory.HostUserId);
@@ -56,11 +57,11 @@ public sealed class RoleRecoveryTests
         var firstPage = await GetPageAsync(client, "/display");
         var refreshedPage = await GetPageAsync(client, "/display");
 
-        Assert.Contains("K7XM", firstPage);
-        Assert.Contains("Recovery Player", firstPage);
         Assert.Contains("phaser-presentation", firstPage);
+        Assert.DoesNotContain("display-overlay", firstPage);
+        Assert.DoesNotContain("Recovery Player", firstPage);
         Assert.DoesNotContain("Host controls", firstPage, StringComparison.Ordinal);
-        Assert.Contains("K7XM", refreshedPage);
+        Assert.Contains("phaser-presentation", refreshedPage);
         Assert.Equal(displaySessionId, factory.State.Display.Id);
 
         await using var original = CreateConnection(

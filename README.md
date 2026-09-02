@@ -114,7 +114,7 @@ Large rendered assets are stored through `IDrawingAssetStore`. The initial bound
 
 ## Display presentation
 
-The shared display uses one [long-lived Phaser presentation](docs/architecture/phaser-presentation.md) across pairing, lobby, game, results, and return-to-lobby states. Blazor sends reconstructable semantic snapshots while Phaser owns generated character art, responsive 1280×720 scene scaling, tweens, camera effects, and particles. The accessible HTML overlay remains usable without canvas rendering, and reduced-motion preferences disable presentation animation. Phaser 3.90.0 and SignalR are pinned npm dependencies copied to local static assets by `npm run build:client`; no runtime CDN is required.
+The shared display uses one [long-lived Phaser presentation](docs/architecture/phaser-presentation.md) across pairing, lobby, game, results, and return-to-lobby states. Blazor sends reconstructable semantic snapshots while Phaser owns the room QR, game copy, timers, entries, generated character art, responsive 1280×720 scene scaling, tweens, camera effects, and particles. The audience display is canvas-only and reports an unsupported browser if Phaser cannot initialize; reduced-motion preferences disable presentation animation. Phaser 3.90.0 and SignalR are pinned npm dependencies copied to local static assets by `npm run build:client`; no runtime CDN is required.
 
 ## Responsive UI
 

@@ -150,7 +150,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("Quizizzo Display", presentation, StringComparison.Ordinal);
         Assert.Contains("animatePhaseTransition", presentation, StringComparison.Ordinal);
         Assert.Contains("startsWith(\"Showdown\")", presentation, StringComparison.Ordinal);
-        Assert.Contains("classList.add(\"phaser-enhanced\")", presentation,
+        Assert.Contains("The Phaser display did not initialise.", presentation,
             StringComparison.Ordinal);
 
         var designer = ReadRepositoryFile(
@@ -259,11 +259,39 @@ public sealed class LandingPageContractTests
         Assert.Contains("Math.round(counter.value).toLocaleString()", presentation,
             StringComparison.Ordinal);
         Assert.Contains("delay += duration + 240", presentation, StringComparison.Ordinal);
-        Assert.Contains("? \"laugh\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("? \"celebrate\"", presentation, StringComparison.Ordinal);
         Assert.Contains("? \"cry\" : \"idle\"", presentation, StringComparison.Ordinal);
-        Assert.Contains("action === \"laugh\"", rig, StringComparison.Ordinal);
+        Assert.Contains("action === \"celebrate\"", rig, StringComparison.Ordinal);
         Assert.Contains("action === \"cry\"", rig, StringComparison.Ordinal);
         Assert.Contains("action === \"fart\"", rig, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "if (difference > 0) this.burst(avatar.container.x, avatar.container.y + 25, 18)",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("parts.armLeft?.setAngle(-18)", rig, StringComparison.Ordinal);
+        Assert.Contains("duration: 2200", rig, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Display_is_canvas_only_and_reports_an_unsupported_browser()
+    {
+        var display = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var component = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/PhaserPresentation.razor");
+
+        Assert.DoesNotContain("display-overlay", display, StringComparison.Ordinal);
+        Assert.DoesNotContain("drawing-display-fallback", display, StringComparison.Ordinal);
+        Assert.DoesNotContain("FrameAnimation", display, StringComparison.Ordinal);
+        Assert.Contains("Unsupported browser", display, StringComparison.Ordinal);
+        Assert.Contains("Failed=\"HandlePhaserFailedAsync\"", display, StringComparison.Ordinal);
+        Assert.Contains("public EventCallback Failed", component, StringComparison.Ordinal);
+        Assert.Contains("PresentationFailed", component, StringComparison.Ordinal);
+        Assert.Contains("applyScreenChrome(snapshot)", presentation, StringComparison.Ordinal);
+        Assert.Contains("snapshot.joinQrDataUri", presentation, StringComparison.Ordinal);
+        Assert.Contains("addEntryCards(snapshot, items)", presentation, StringComparison.Ordinal);
+        Assert.Contains("this.clearPhaseChrome();", presentation, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -359,16 +387,13 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void Role_views_present_connection_state_without_transport_jargon()
+    public void Player_view_presents_connection_state_without_transport_jargon()
     {
-        var roleViews = string.Join(
-            Environment.NewLine,
-            ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor"),
-            ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/PlayRealtime.razor"));
+        var roleView = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
 
-        Assert.DoesNotContain("Realtime:", roleViews, StringComparison.Ordinal);
-        Assert.Contains("\"Connected\" => \"Live\"", roleViews, StringComparison.Ordinal);
-        Assert.Contains("\"Connected\" => \"You're live\"", roleViews, StringComparison.Ordinal);
+        Assert.DoesNotContain("Realtime:", roleView, StringComparison.Ordinal);
+        Assert.Contains("\"Connected\" => \"You're live\"", roleView, StringComparison.Ordinal);
     }
 
     [Fact]

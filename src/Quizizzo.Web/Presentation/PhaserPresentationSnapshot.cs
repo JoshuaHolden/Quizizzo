@@ -7,16 +7,29 @@ namespace Quizizzo.Web.Presentation;
 
 public sealed record PhaserPresentationSnapshot(
     string Mode,
+    string? RoomCode,
+    string? JoinUrl,
+    string? JoinQrDataUri,
     string? GameKey,
     string Phase,
     DateTimeOffset? PhaseEndsAtUtc,
     long Revision,
     bool ShowRoundRanking,
+    string? Title,
+    string? Prompt,
+    string? PhaseMessage,
+    IReadOnlyList<PhaserEntrySnapshot> Entries,
     IReadOnlyList<PhaserPlayerSnapshot> Players,
     IReadOnlyList<PhaserResultSnapshot> Results,
     PhaserDrawingPresentationSnapshot? Drawing,
     string? PresenterMessage,
     PhaserTutorialPresentationSnapshot? Tutorial);
+
+public sealed record PhaserEntrySnapshot(
+    string Label,
+    string Value,
+    int? Rank,
+    int PointsAwarded);
 
 public sealed record PhaserTutorialPresentationSnapshot(
     string Title,
@@ -81,7 +94,9 @@ public static class PhaserPresentationMapper
         DisplaySessionView session,
         IReadOnlyList<PlayerView> players,
         PartyGameView? gameView,
-        DisplayGameViewPayload? game)
+        DisplayGameViewPayload? game,
+        string? joinUrl = null,
+        string? joinQrDataUri = null)
     {
         ArgumentNullException.ThrowIfNull(session);
         ArgumentNullException.ThrowIfNull(players);
@@ -145,11 +160,19 @@ public static class PhaserPresentationMapper
 
         return new PhaserPresentationSnapshot(
             mode,
+            session.RoomCode,
+            joinUrl,
+            joinQrDataUri,
             gameView?.GameKey,
             gameView?.Phase ?? mode,
             gameView?.PhaseEndsAtUtc,
             gameView?.Revision ?? 0,
             game?.ShowRoundRanking == true,
+            game?.Title,
+            game?.Prompt,
+            game?.PhaseMessage,
+            game?.Entries.Select(entry => new PhaserEntrySnapshot(
+                entry.Label, entry.Value, entry.Rank, entry.PointsAwarded)).ToArray() ?? [],
             presentationPlayers,
             results,
             drawing,

@@ -190,8 +190,22 @@ window.quizizzoCharacterRig = (() => {
                 if (resumeIdle) play("idle");
             };
             if (action === "idle") {
+                // Keep the hands relaxed at waist height while the whole rig
+                // rises and falls almost imperceptibly like gentle breathing.
+                parts.armLeft?.setAngle(-18);
+                parts.armRight?.setAngle(18);
+                if (parts.armLeft && parts.armRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armLeft, angle: { from: -19.5, to: -16.5 },
+                        duration: 2200, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armRight, angle: { from: 16.5, to: 19.5 },
+                        duration: 2200, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
                 rememberTween(scene.tweens.add({
-                    targets: target, y: origin.y - 5, duration: 1650,
+                    targets: target, y: origin.y - 2.5, duration: 2200,
                     yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                 }));
                 return;
@@ -251,6 +265,30 @@ window.quizizzoCharacterRig = (() => {
                 rememberTween(scene.tweens.add({
                     targets: target, angle: { from: -1.2, to: 1.2 },
                     duration: 520, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                }));
+                return;
+            }
+            if (action === "celebrate") {
+                parts.mouth.setTexture(`${atlasPrefix}face`, "mouth_glad.png");
+                parts.eyeLeft.setScale(1, .65);
+                parts.eyeRight.setScale(1, .65);
+                parts.armLeft?.setAngle(98);
+                parts.armRight?.setAngle(-98);
+                if (parts.armLeft && parts.armRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armLeft, angle: { from: 94, to: 103 },
+                        duration: 340, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armRight, angle: { from: -94, to: -103 },
+                        duration: 340, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
+                rememberTween(scene.tweens.add({
+                    targets: target,
+                    y: { from: origin.y, to: origin.y - 22 },
+                    angle: { from: -1.2, to: 1.2 },
+                    duration: 430, yoyo: true, repeat: -1, ease: "Sine.easeOut"
                 }));
                 return;
             }

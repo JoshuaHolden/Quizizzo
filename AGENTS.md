@@ -465,6 +465,17 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Cover soundtrack selection, countdown timing, mute restoration, static delivery, cache headers, script ordering, and deadline snapshot mapping.
 - [x] Pass analyzer formatting, JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 199 .NET tests.
 
+### Canvas-only display and character-motion polish (completed 2026-09-02)
+
+- [x] Remove the duplicate audience-facing HTML lobby/game/drawing/score fallback from the shared display.
+- [x] Carry room code, join URL/QR data, game copy, deadlines, and revealed entries in the reconstructable Phaser snapshot.
+- [x] Render pairing, lobby, QR, game headings, countdowns, answers, drawings, and rankings within the long-lived Phaser scene.
+- [x] Await Phaser scene creation and show only a concise unsupported-browser state when startup or resize reconstruction fails.
+- [x] Replace the round winner's particle burst with the shared character-rig celebration and retain static reduced-motion standings.
+- [x] Make idle motion a slow, subtle breathing loop with the hands relaxed at waist height.
+- [x] Clear previous phase chrome before the dedicated standings interstitial so prior reveal copy cannot remain visible.
+- [x] Validate JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 200 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
@@ -489,3 +500,4 @@ Before deviating, record the change, reason, benefit, and trade-off here. Preser
 | 2026-08-26 | Replace SQL Server with containerized PostgreSQL | The target Hetzner VPS already hosts another website and PostgreSQL is the selected datastore | Lighter isolated database container and a consistent local/production provider | Existing SQL Server migrations and provider-specific configuration are replaced before production data exists |
 | 2026-08-30 | Add a private Redis container and SignalR backplane before multi-replica actor coordination | Cross-process SignalR hint delivery was requested ahead of Milestone 13 | Establishes the supported SignalR scale-out transport and readiness boundary without moving authoritative state | Adds an ephemeral service and password; multiple Web replicas remain unsupported because actor and presence ownership are still process-local and sticky sessions are not yet configured |
 | 2026-08-30 | Replace generated polygon player characters with semantic Kenney atlas selections | Players need to design persistent avatars that work as both full actors and face-only reaction portraits | One reconstructable character definition can drive join previews, the bottom portrait rail, emotes, podiums, and winner animations | Requires a player migration and a controlled compatibility mapping for characters created before the designer ships |
+| 2026-09-02 | Replace the shared display's complete HTML fallback with a canvas-only Phaser presentation | The product direction requires one consistent TV composition and an explicit unsupported-browser failure state | Eliminates duplicate/stale presentation layers and keeps every audience state in the same renderer | Browsers that cannot initialize Phaser no longer receive a functional display fallback |

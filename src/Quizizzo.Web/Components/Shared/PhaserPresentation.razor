@@ -4,25 +4,30 @@
 @inject IJSRuntime JavaScript
 
 <div id="@elementId" class="phaser-presentation @(CanManagePlayers ? "host-interactive" : null)" aria-hidden="true"></div>
-<button type="button"
-        class="display-audio-toggle @(audioBlocked ? "needs-permission" : null)"
-        aria-label="@AudioButtonLabel"
-        aria-pressed="@(!audioMuted && !audioBlocked)"
-        title="@AudioButtonLabel"
-        @onclick="ToggleAudioAsync">
-    <span aria-hidden="true">@(audioMuted || audioBlocked ? "🔇" : "🔊")</span>
-    <span>@AudioButtonLabel</span>
-</button>
+@if (!failed)
+{
+    <button type="button"
+            class="display-audio-toggle @(audioBlocked ? "needs-permission" : null)"
+            aria-label="@AudioButtonLabel"
+            aria-pressed="@(!audioMuted && !audioBlocked)"
+            title="@AudioButtonLabel"
+            @onclick="ToggleAudioAsync">
+        <span aria-hidden="true">@(audioMuted || audioBlocked ? "🔇" : "🔊")</span>
+        <span>@AudioButtonLabel</span>
+    </button>
+}
 
 @code {
     [Parameter, EditorRequired] public PhaserPresentationSnapshot Snapshot { get; set; } = default!;
     [Parameter] public EventCallback Started { get; set; }
+    [Parameter] public EventCallback Failed { get; set; }
     [Parameter] public bool CanManagePlayers { get; set; }
     [Parameter] public EventCallback<Guid> RemovePlayerRequested { get; set; }
 
     private readonly string presentationKey = Guid.NewGuid().ToString("N");
     private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
     private bool started;
+    private bool failed;
     private bool updatePending = true;
     private bool audioMuted;
     private bool audioBlocked;
@@ -35,6 +40,11 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (failed)
+        {
+            return;
+        }
+
         try
         {
             if (firstRender)
@@ -66,7 +76,10 @@
         }
         catch (JSException)
         {
-            // Accessible HTML remains usable if canvas rendering is unavailable.
+            failed = true;
+            updatePending = false;
+            await Failed.InvokeAsync();
+            await InvokeAsync(StateHasChanged);
         }
     }
 
@@ -113,6 +126,14 @@
         audioMuted = muted;
         audioBlocked = blocked;
         return InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task PresentationFailed()
+    {
+        failed = true;
+        await Failed.InvokeAsync();
+        await InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]

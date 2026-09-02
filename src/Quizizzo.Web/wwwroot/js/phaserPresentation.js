@@ -47,6 +47,10 @@ window.quizizzoPresentation = (() => {
             this.tutorialContainer = null;
             this.tutorialSignature = null;
             this.phaseChrome = null;
+            this.screenChromeContainer = null;
+            this.screenChromeSignature = null;
+            this.deadlineTimer = null;
+            this.qrLoadPending = null;
         }
 
         preload() {
@@ -62,6 +66,8 @@ window.quizizzoPresentation = (() => {
             this.createParticleTexture();
             this.controller.scene = this;
             this.applySnapshot(this.controller.snapshot, true);
+            this.controller.readyResolve?.();
+            this.controller.readyResolve = null;
         }
 
         createBackground() {
@@ -154,6 +160,7 @@ window.quizizzoPresentation = (() => {
             const showRoundRanking = Boolean(snapshot.showRoundRanking && snapshot.results?.length);
             const characterMode = showRoundRanking ? "full" : "portrait";
             this.drawBackground(snapshot.gameKey, snapshot.phase);
+            this.applyScreenChrome(snapshot);
             if (!initial && this.previous?.phase !== snapshot.phase && !showRoundRanking) {
                 this.animatePhaseTransition(snapshot.phase);
             }
@@ -490,7 +497,7 @@ window.quizizzoPresentation = (() => {
 
         animatePhaseTransition(phase) {
             if (this.controller.reducedMotion) return;
-            this.phaseChrome?.destroy(true);
+            this.clearPhaseChrome();
             const labels = {
                 Drawing: "DRAW!", Guessing: "WHAT IS IT?", Choosing: "PICK AN ANSWER",
                 Results: "REVEAL!", ShowdownPlayback: "SHOWDOWN", ShowdownVoting: "VOTE NOW",
@@ -511,6 +518,185 @@ window.quizizzoPresentation = (() => {
                     this.phaseChrome = null;
                 } });
             this.cameras.main.shake(120, .004);
+        }
+
+        clearPhaseChrome() {
+            this.phaseChrome?.destroy(true);
+            this.phaseChrome = null;
+        }
+
+        applyScreenChrome(snapshot) {
+            const signature = JSON.stringify({
+                mode: snapshot.mode,
+                roomCode: snapshot.roomCode,
+                joinUrl: snapshot.joinUrl,
+                joinQrDataUri: snapshot.joinQrDataUri,
+                gameKey: snapshot.gameKey,
+                phase: snapshot.phase,
+                phaseEndsAtUtc: snapshot.phaseEndsAtUtc,
+                revision: snapshot.revision,
+                showRoundRanking: snapshot.showRoundRanking,
+                title: snapshot.title,
+                prompt: snapshot.prompt,
+                phaseMessage: snapshot.phaseMessage,
+                entries: snapshot.entries,
+                presenterMessage: snapshot.presenterMessage,
+                hasDrawing: Boolean(snapshot.drawing?.animations?.length)
+            });
+            if (signature === this.screenChromeSignature) return;
+            this.screenChromeSignature = signature;
+            this.deadlineTimer?.remove(false);
+            this.deadlineTimer = null;
+            this.screenChromeContainer?.destroy(true);
+            this.screenChromeContainer = null;
+
+            if (snapshot.showRoundRanking || snapshot.presenterMessage) return;
+            const items = [];
+            if (snapshot.mode === "Pairing") {
+                items.push(
+                    this.add.text(width / 2, 125, "QUIZIZZO", {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "84px", fontStyle: "bold",
+                        stroke: "#130828", strokeThickness: 10
+                    }).setOrigin(.5),
+                    this.add.text(width / 2, 305, "START YOUR PARTY", {
+                        color: "#fde68a", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold"
+                    }).setOrigin(.5),
+                    this.add.text(width / 2, 375,
+                        "Sign in at quizizzo.com and open Host display", {
+                            color: "#ffffff", fontFamily: bodyFont, fontSize: "27px", fontStyle: "bold"
+                        }).setOrigin(.5)
+                );
+                this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
+                return;
+            }
+
+            if (snapshot.mode === "Lobby") {
+                items.push(
+                    this.add.text(width / 2, 42, "GRAB A PHONE · MAKE A PLAYER", {
+                        color: "#ffffff", backgroundColor: "#db2777", padding: { x: 18, y: 8 },
+                        fontFamily: displayFont, fontSize: "18px", fontStyle: "bold", letterSpacing: 3
+                    }).setOrigin(.5),
+                    this.add.text(width / 2, 93, "JOIN THE PARTY", {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "52px", fontStyle: "bold",
+                        stroke: "#130828", strokeThickness: 8
+                    }).setOrigin(.5),
+                    this.add.text(width / 2, 160, snapshot.roomCode || "", {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "72px", fontStyle: "bold",
+                        letterSpacing: 10, stroke: "#130828", strokeThickness: 9
+                    }).setOrigin(.5)
+                );
+                const qrPanel = this.add.rectangle(width / 2, 335, 224, 224, 0xffffff, 1)
+                    .setStrokeStyle(9, 0xf8f7ff, 1);
+                items.push(qrPanel);
+                const qrKey = `join-qr-${snapshot.roomCode || "none"}`;
+                if (snapshot.joinQrDataUri && this.textures.exists(qrKey)) {
+                    items.push(this.add.image(width / 2, 335, qrKey).setDisplaySize(198, 198));
+                } else if (snapshot.joinQrDataUri) {
+                    items.push(this.add.text(width / 2, 335, "Loading…", {
+                        color: "#24123f", fontFamily: bodyFont, fontSize: "20px", fontStyle: "bold"
+                    }).setOrigin(.5));
+                    this.loadQrTexture(qrKey, snapshot.joinQrDataUri, signature);
+                }
+                items.push(this.add.text(width / 2, 475, snapshot.joinUrl || "", {
+                    color: "#bae6fd", fontFamily: bodyFont, fontSize: "18px",
+                    backgroundColor: "#17123d", padding: { x: 14, y: 7 }
+                }).setOrigin(.5));
+                this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
+                return;
+            }
+
+            const briefing = ["Briefing", "ShowdownBriefing"].includes(snapshot.phase);
+            if (!briefing) {
+                if (snapshot.title) {
+                    items.push(this.add.text(width / 2, 22, snapshot.title.toUpperCase(), {
+                        color: "#fde68a", fontFamily: displayFont, fontSize: "18px",
+                        fontStyle: "bold", letterSpacing: 3
+                    }).setOrigin(.5));
+                }
+                if (snapshot.prompt) {
+                    items.push(this.add.text(width / 2, 53, snapshot.prompt, {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "31px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: 870 }, stroke: "#24123f", strokeThickness: 6
+                    }).setOrigin(.5));
+                }
+                if (snapshot.phaseMessage) {
+                    items.push(this.add.text(width / 2, 87, snapshot.phaseMessage, {
+                        color: "#ffffff", fontFamily: bodyFont, fontSize: "17px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: 800 }
+                    }).setOrigin(.5));
+                }
+                this.addDeadline(snapshot.phaseEndsAtUtc, items);
+                this.addEntryCards(snapshot, items);
+            }
+            this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
+        }
+
+        loadQrTexture(key, dataUri, expectedSignature) {
+            if (this.qrLoadPending === key) return;
+            this.qrLoadPending = key;
+            const image = new Image();
+            image.onload = () => {
+                this.qrLoadPending = null;
+                if (!this.textures.exists(key)) this.textures.addImage(key, image);
+                if (this.screenChromeSignature === expectedSignature && this.scene?.isActive()) {
+                    this.screenChromeSignature = null;
+                    this.applyScreenChrome(this.controller.snapshot);
+                }
+            };
+            image.onerror = () => { this.qrLoadPending = null; };
+            image.src = dataUri;
+        }
+
+        addDeadline(endsAtUtc, items) {
+            if (!endsAtUtc) return;
+            const deadline = this.add.text(1205, 48, "", {
+                color: "#fff4a8", backgroundColor: "#17123d", padding: { x: 14, y: 9 },
+                fontFamily: displayFont, fontSize: "25px", fontStyle: "bold"
+            }).setOrigin(1, .5).setStroke("#ffffff", 1);
+            const update = () => {
+                const remaining = Math.max(0, Math.ceil((Date.parse(endsAtUtc) - Date.now()) / 1000));
+                deadline.setText(`${remaining}s`);
+            };
+            update();
+            this.deadlineTimer = this.time.addEvent({ delay: 250, loop: true, callback: update });
+            items.push(deadline);
+        }
+
+        addEntryCards(snapshot, items) {
+            const phasesWithEntries = ["Choosing", "Results", "Voting", "ShowdownVoting", "ShowdownResults"];
+            const entries = snapshot.entries || [];
+            if (!phasesWithEntries.includes(snapshot.phase) || entries.length === 0) return;
+            const besideDrawing = Boolean(snapshot.drawing?.animations?.length)
+                && ["Choosing", "Results"].includes(snapshot.phase);
+            const columns = Math.min(besideDrawing ? 2 : 3, entries.length);
+            const cardWidth = besideDrawing ? 235 : Math.min(340, 1040 / columns - 18);
+            const cardHeight = entries.length > columns ? 112 : 140;
+            const centreX = besideDrawing ? 990 : width / 2;
+            const startY = besideDrawing ? 180 : 185;
+            entries.slice(0, 6).forEach((entry, index) => {
+                const row = Math.floor(index / columns);
+                const itemsInRow = Math.min(columns, entries.length - row * columns);
+                const column = index % columns;
+                const x = centreX + (column - (itemsInRow - 1) / 2) * (cardWidth + 15);
+                const y = startY + row * (cardHeight + 15);
+                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, .98)
+                    .setStrokeStyle(4, 0x24123f, 1);
+                const label = this.add.text(x, y - cardHeight / 2 + 14, entry.label || "", {
+                    color: "#24123f", fontFamily: displayFont, fontSize: "22px", fontStyle: "bold",
+                    align: "center", wordWrap: { width: cardWidth - 22 }
+                }).setOrigin(.5, 0);
+                const value = this.add.text(x, y + 10, entry.value || "", {
+                    color: "#17131f", fontFamily: bodyFont, fontSize: "16px", fontStyle: "bold",
+                    align: "center", wordWrap: { width: cardWidth - 22 }
+                }).setOrigin(.5);
+                items.push(panel, label, value);
+                if (entry.rank != null) {
+                    items.push(this.add.text(x, y + cardHeight / 2 - 13,
+                        `#${entry.rank} · +${Number(entry.pointsAwarded || 0).toLocaleString()} pts`, {
+                            color: "#7c2d92", fontFamily: displayFont, fontSize: "15px", fontStyle: "bold"
+                        }).setOrigin(.5, 1));
+                }
+            });
         }
 
         startShowdownReveal(drawing) {
@@ -562,6 +748,7 @@ window.quizizzoPresentation = (() => {
             if (signature === this.roundRankingSignature) return;
 
             this.stopRoundRanking();
+            this.clearPhaseChrome();
             this.roundRankingSignature = signature;
             const previousPlayers = playerMap(this.previous);
             this.roundRankingStartScores = new Map(snapshot.players.map(player => [
@@ -628,7 +815,6 @@ window.quizizzoPresentation = (() => {
                             avatar.score.setText(`${player.score.toLocaleString()} pts`);
                             this.tweens.add({ targets: avatar.score, scale: 1.45,
                                 duration: 150, yoyo: true, ease: "Back.easeOut" });
-                            if (difference > 0) this.burst(avatar.container.x, avatar.container.y + 25, 18);
                         }
                     });
                     this.roundRankingScoreTweens.push(tween);
@@ -867,7 +1053,14 @@ window.quizizzoPresentation = (() => {
                         if (immediate || this.controller.reducedMotion) {
                             avatar.container.setVisible(true).setAlpha(player.status === "Disconnected" ? .42 : 1)
                                 .setPosition(x, y).setScale(.62);
-                            avatar.rig?.stop();
+                            if (this.controller.reducedMotion) {
+                                avatar.rig?.stop();
+                            } else {
+                                avatar.rig?.play(
+                                    podiumResult.rank === 1 ? "celebrate"
+                                        : podiumResult.rank === lastRank && lastRank !== 1
+                                            ? "cry" : "idle");
+                            }
                         } else {
                             avatar.container.setVisible(true).setAlpha(0)
                                 .setPosition(width / 2, 345).setScale(1.08);
@@ -877,7 +1070,7 @@ window.quizizzoPresentation = (() => {
                                 delay: Math.max(0, podiumIndex) * 85,
                                 duration: 850, ease: "Cubic.easeOut",
                                 onComplete: () => avatar.rig?.play(
-                                    podiumResult.rank === 1 ? "laugh"
+                                    podiumResult.rank === 1 ? "celebrate"
                                         : podiumResult.rank === lastRank && lastRank !== 1
                                             ? "cry" : "idle")
                             });
@@ -1060,6 +1253,7 @@ window.quizizzoPresentation = (() => {
             canManagePlayers,
             audio: null
         };
+        controller.ready = new Promise(resolve => { controller.readyResolve = resolve; });
         controller.audio = window.quizizzoPresentationAudio?.create((muted, blocked) => {
             controller.dotNetReference?.invokeMethodAsync("AudioStateChanged", muted, blocked)
                 .catch(() => { });
@@ -1086,7 +1280,22 @@ window.quizizzoPresentation = (() => {
             },
             scene
         });
-        parent.closest(".display-stage")?.classList.add("phaser-enhanced");
+        let readyTimeout;
+        try {
+            await Promise.race([
+                controller.ready,
+                new Promise((_, reject) => {
+                    readyTimeout = window.setTimeout(
+                        () => reject(new Error("The Phaser display did not initialise.")), 8000);
+                })
+            ]);
+        } catch (error) {
+            controller.audio?.destroy();
+            controller.game?.destroy(true);
+            throw error;
+        } finally {
+            window.clearTimeout(readyTimeout);
+        }
         controller.resizeHandler = () => {
             const resolution = renderResolution(parent);
             if (Math.abs(controller.renderResolution - resolution) < .01) {
@@ -1100,7 +1309,10 @@ window.quizizzoPresentation = (() => {
                 }
                 start(key, elementId, controller.snapshot,
                     controller.dotNetReference, controller.canManagePlayers).catch(error =>
-                    console.error("Unable to resize the Quizizzo presentation.", error));
+                {
+                    console.error("Unable to resize the Quizizzo presentation.", error);
+                    controller.dotNetReference?.invokeMethodAsync("PresentationFailed").catch(() => { });
+                });
             }, 150);
         };
         controller.resizeObserver = new ResizeObserver(controller.resizeHandler);
