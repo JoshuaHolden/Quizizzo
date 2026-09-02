@@ -95,6 +95,12 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Contains(player.GetIndexes(), index =>
             index.Properties.Select(property => property.Name)
                 .SequenceEqual([nameof(Player.PartyId), nameof(Player.Status)]));
+        var gameWin = dbContext.Model.FindEntityType(typeof(PlayerGameWin))!;
+        Assert.Equal("PlayerGameWins", gameWin.GetTableName());
+        Assert.Equal(
+            ["PlayerId", nameof(PlayerGameWin.GameInstanceId)],
+            gameWin.FindPrimaryKey()!.Properties.Select(property => property.Name));
+        Assert.Equal(64, gameWin.FindProperty(nameof(PlayerGameWin.GameKey))!.GetMaxLength());
         Assert.Equal(64, currentGameKey.GetMaxLength());
         Assert.True(currentGameKey.IsNullable);
         Assert.True(currentGameInstanceId.IsNullable);

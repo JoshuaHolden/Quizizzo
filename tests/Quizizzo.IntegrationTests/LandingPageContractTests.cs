@@ -299,6 +299,10 @@ public sealed class LandingPageContractTests
         Assert.Contains("PresentationFailed", component, StringComparison.Ordinal);
         Assert.Contains("applyScreenChrome(snapshot)", presentation, StringComparison.Ordinal);
         Assert.Contains("snapshot.joinQrDataUri", presentation, StringComparison.Ordinal);
+        Assert.Contains("joinLink.setInteractive({ useHandCursor: true })", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("window.open(snapshot.joinUrl, \"_blank\", \"noopener,noreferrer\")",
+            presentation, StringComparison.Ordinal);
         Assert.Contains("addEntryCards(snapshot, items)", presentation, StringComparison.Ordinal);
         Assert.Contains("this.clearPhaseChrome();", presentation, StringComparison.Ordinal);
     }
@@ -361,7 +365,10 @@ public sealed class LandingPageContractTests
         var optionController = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Shared/OptionController.razor");
 
-        Assert.Contains("ReviewBeforeSubmit=\"true\"", voteController, StringComparison.Ordinal);
+        Assert.Contains("ReviewBeforeSubmit=\"HasFrameAnimations\"", voteController,
+            StringComparison.Ordinal);
+        Assert.Contains("option.FrameAssetIds is { Count: > 0 }", voteController,
+            StringComparison.Ordinal);
         Assert.Contains("role=\"dialog\"", optionController, StringComparison.Ordinal);
         Assert.Contains("Lock in Animation @review.Label", optionController, StringComparison.Ordinal);
         Assert.Contains("<FrameAnimation FrameAssetIds=\"review.FrameAssetIds\"", optionController,
@@ -398,6 +405,23 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void Party_lobby_surfaces_cumulative_scores_and_durable_game_wins()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var display = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var player = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+
+        Assert.Contains("player.totalWins", presentation, StringComparison.Ordinal);
+        Assert.Contains("Party standings", display, StringComparison.Ordinal);
+        Assert.Contains("FormatWinBreakdown", display, StringComparison.Ordinal);
+        Assert.Contains("Party score", player, StringComparison.Ordinal);
+        Assert.Contains("player.TotalWins", player, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Number_controller_enables_its_action_while_the_player_types()
     {
         var numberController = ReadRepositoryFile(
@@ -418,6 +442,20 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("pageHeading.FocusAsync(preventScroll: true)", playerPage,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Player_controllers_are_isolated_by_game_phase_and_action()
+    {
+        var playerPage = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+
+        Assert.Equal(4, CountOccurrences(playerPage, "@key=\"ControllerRenderKey\""));
+        Assert.Contains("gameView.GameInstanceId.ToString(\"N\")", playerPage,
+            StringComparison.Ordinal);
+        Assert.Contains("gameView.Phase", playerPage, StringComparison.Ordinal);
+        Assert.Contains("game.Controller.Kind", playerPage, StringComparison.Ordinal);
+        Assert.Contains("game.Controller.ActionKind", playerPage, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -498,12 +536,17 @@ public sealed class LandingPageContractTests
         Assert.Contains("controller-game-media", player, StringComparison.Ordinal);
         Assert.Contains("item.AlternativeText", player, StringComparison.Ordinal);
         Assert.Contains("controller-option-image", options, StringComparison.Ordinal);
-        Assert.Contains("height: min(25dvh, 13rem)", styles, StringComparison.Ordinal);
+        Assert.Contains("max-height: min(32dvh, 22rem)", styles, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .player-game-panel", styles, StringComparison.Ordinal);
         Assert.Contains("overflow: hidden", styles, StringComparison.Ordinal);
         Assert.Contains("snapshot.gameKey === \"slop-machine\"", presentation, StringComparison.Ordinal);
         Assert.Contains("addSlopSideEntries", presentation, StringComparison.Ordinal);
         Assert.Contains("loadMediaTexture", presentation, StringComparison.Ordinal);
+        Assert.Contains("fitImageWithin(image, cardWidth - 24, imageHeight)", presentation,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("setDisplaySize(cardWidth - 24, imageHeight)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("object-fit: contain", styles, StringComparison.Ordinal);
     }
 
     [Fact]

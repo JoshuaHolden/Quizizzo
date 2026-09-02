@@ -228,5 +228,6 @@ public sealed class PlayerService(
             player.Character.TrouserStyle,
             player.Character.BodySize),
         player.JoinedAt,
-        player.LastSeenAt);
+        player.LastSeenAt,
+        player.GameWinCounts());
 }

@@ -601,6 +601,64 @@ fieldset {
     padding: .45rem .8rem;
 }
 
+.display-host-party-record {
+    background: linear-gradient(145deg, #21113d, #3a1b66);
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 1rem;
+    color: #fff;
+    margin: .75rem 0 1rem;
+    overflow: hidden;
+}
+
+.display-host-party-record > header {
+    align-items: end;
+    background: rgb(255 255 255 / 6%);
+    display: flex;
+    justify-content: space-between;
+    padding: .75rem .9rem;
+}
+
+.display-host-party-record > header p,
+.display-host-party-record > header h3 { margin: 0; }
+
+.display-host-party-record > header p,
+.display-host-party-record > header span {
+    color: #c4b5fd;
+    font-size: .72rem;
+    font-weight: 800;
+}
+
+.display-host-party-record ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.display-host-party-record li {
+    align-items: center;
+    border-top: 1px solid rgb(255 255 255 / 9%);
+    display: grid;
+    gap: .7rem;
+    grid-template-columns: 2rem minmax(0, 1fr) auto;
+    padding: .65rem .9rem;
+}
+
+.display-host-standing-rank {
+    color: #f9a8d4;
+    font-family: "Quizizzo Display", "Arial Rounded MT Bold", sans-serif;
+}
+
+.display-host-party-record li > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.display-host-party-record li small {
+    color: #cfc4e6;
+    overflow-wrap: anywhere;
+}
+
 .display-host-game-grid {
     display: grid;
     gap: .75rem;
@@ -1365,17 +1423,21 @@ fieldset {
 }
 
 .controller-option-image {
-    aspect-ratio: 16 / 9;
     border-radius: .65rem;
     display: block;
-    object-fit: cover;
+    height: auto;
+    margin-inline: auto;
+    max-height: min(24dvh, 14rem);
+    max-width: 100%;
+    object-fit: contain;
     order: -1;
-    width: 100%;
+    width: auto;
 }
 
 .controller-game-media {
     display: grid;
     gap: .4rem;
+    justify-items: center;
     min-height: 0;
 }
 
@@ -1391,14 +1453,17 @@ fieldset {
     padding: .4rem;
     position: relative;
     text-align: center;
+    width: min(100%, 48rem);
 }
 
 .controller-game-media-card img {
-    aspect-ratio: 16 / 9;
     border-radius: .55rem;
-    height: min(25dvh, 13rem);
-    object-fit: cover;
-    width: 100%;
+    display: block;
+    height: auto;
+    margin-inline: auto;
+    max-height: min(32dvh, 22rem);
+    max-width: 100%;
+    object-fit: contain;
 }
 
 .controller-game-media-card > strong,

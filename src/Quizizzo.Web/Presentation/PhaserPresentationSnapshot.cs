@@ -50,7 +50,9 @@ public sealed record PhaserPlayerSnapshot(
     int Score,
     string Status,
     string Activity,
-    PhaserCharacterSnapshot Character);
+    PhaserCharacterSnapshot Character,
+    int TotalWins = 0,
+    IReadOnlyDictionary<string, int>? GameWins = null);
 
 public sealed record PhaserCharacterSnapshot(
     string BodyType,
@@ -159,7 +161,9 @@ public static class PhaserPresentationMapper
                 (int)player.Character.ShoeStyle,
                 (int)player.Character.ShirtStyle,
                 (int)player.Character.TrouserStyle,
-                player.Character.BodySize.ToString()))).ToArray();
+                player.Character.BodySize.ToString()),
+            player.TotalWins,
+            player.GameWins)).ToArray();
         var results = game?.ShowRoundRanking == true
             ? RankedScores(presentationPlayers, game.Entries)
             : game?.Entries

@@ -72,9 +72,28 @@ public sealed class PartyGameServiceTests
         Assert.True(completed.IsComplete);
         Assert.Equal(2600, fixture.First.Score);
         Assert.Equal(2200, fixture.Second.Score);
+        Assert.Equal(1, fixture.First.TotalWins);
+        Assert.Equal(1, fixture.First.GameWinCounts()["estimate"]);
+        Assert.Equal(0, fixture.Second.TotalWins);
         Assert.NotEqual(firstGame.GameInstanceId, secondGame.GameInstanceId);
         Assert.Equal(2, fixture.Runtime.Starts.Count);
         Assert.Equal(PartyStatus.Playing, fixture.Party.Status);
+    }
+
+    [Fact]
+    public async Task Completed_games_record_each_title_win_and_count_positive_ties()
+    {
+        var fixture = new Fixture();
+
+        await fixture.CompleteGameAsync("estimate", 500, 300);
+        await fixture.CompleteGameAsync("animates", 650, 600);
+        await fixture.CompleteGameAsync("estimate", 750, 700);
+
+        Assert.Equal(2, fixture.First.TotalWins);
+        Assert.Equal(2, fixture.First.GameWinCounts()["estimate"]);
+        Assert.Equal(2, fixture.Second.TotalWins);
+        Assert.Equal(1, fixture.Second.GameWinCounts()["animates"]);
+        Assert.Equal(1, fixture.Second.GameWinCounts()["estimate"]);
     }
 
     [Fact]
@@ -163,6 +182,20 @@ public sealed class PartyGameServiceTests
                 CharacterAccessory.None),
             token,
             Now);
+
+        public async Task CompleteGameAsync(string gameKey, int firstScore, int secondScore)
+        {
+            await Service.StartAsync(Party.Id.Value, HostId, gameKey);
+            Runtime.NextResult = new RuntimeGameCommandResult(
+                true, false, "Completed", null, true, null, null,
+                new Dictionary<Guid, int>
+                {
+                    [First.Id.Value] = firstScore,
+                    [Second.Id.Value] = secondScore
+                });
+            await Service.ExecuteHostActionAsync(
+                Party.Id.Value, HostId, Guid.NewGuid(), "complete", GameJson.Empty);
+        }
     }
 
     private sealed class FixedTimeProvider : TimeProvider

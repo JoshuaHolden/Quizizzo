@@ -24,7 +24,10 @@
             </span>
             @if (game is not null)
             {
-                <span class="player-score-chip" aria-label="@($"Total score {PlayerScore:N0}")">@PlayerScore.ToString("N0") @(game?.ScoreUnit ?? "pts")</span>
+                <span class="player-score-chip"
+                      aria-label="@($"Party score {PlayerScore:N0}; {player.TotalWins} game wins")">
+                    @PlayerScore.ToString("N0") @(game?.ScoreUnit ?? "pts") · 🏆 @player.TotalWins
+                </span>
             }
             <button type="button"
                     class="player-reaction-trigger"
@@ -73,7 +76,7 @@
     {
         <p>Your character is ready. Keep this page open.</p>
         <p class="badge text-bg-success">@player.Status</p>
-        <p>Score: <strong>@player.Score.ToString("N0")</strong></p>
+        <p>Party score: <strong>@player.Score.ToString("N0")</strong> · Game wins: <strong>@player.TotalWins</strong></p>
     }
     else
     {
@@ -120,7 +123,8 @@
                     var configuration = game.Controller.Configuration.Deserialize<NumberControllerConfiguration>();
                     if (configuration is not null)
                     {
-                        <NumberController Configuration="configuration"
+                        <NumberController @key="ControllerRenderKey"
+                                          Configuration="configuration"
                                           SubmitLabel="@game.Controller.SubmitLabel"
                                           Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           Submitted="SubmitNumberAsync" />
@@ -144,7 +148,8 @@
                     var textConfiguration = game.Controller.Configuration.Deserialize<TextControllerConfiguration>();
                     if (textConfiguration is not null)
                     {
-                        <TextController Configuration="textConfiguration"
+                        <TextController @key="ControllerRenderKey"
+                                        Configuration="textConfiguration"
                                         SubmitLabel="@game.Controller.SubmitLabel"
                                         Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                         Submitted="value => SubmitPlayerActionAsync(game.Controller.ActionKind, new { value })" />
@@ -156,7 +161,8 @@
                     {
                         var voteActionKind = game.Controller.ActionKind;
                         var voteSelectionProperty = voteConfiguration.SelectionProperty;
-                        <VoteController Configuration="voteConfiguration"
+                        <VoteController @key="ControllerRenderKey"
+                                        Configuration="voteConfiguration"
                                         SubmitLabel="@game.Controller.SubmitLabel"
                                         Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                         Submitted="optionId => SubmitSelectionAsync(voteActionKind, voteSelectionProperty, optionId)" />
@@ -168,7 +174,8 @@
                     {
                         var choiceActionKind = game.Controller.ActionKind;
                         var choiceSelectionProperty = choiceConfiguration.SelectionProperty;
-                        <ChoiceController Configuration="choiceConfiguration"
+                        <ChoiceController @key="ControllerRenderKey"
+                                          Configuration="choiceConfiguration"
                                           SubmitLabel="@game.Controller.SubmitLabel"
                                           Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           Submitted="optionId => SubmitSelectionAsync(choiceActionKind, choiceSelectionProperty, optionId)" />
@@ -215,6 +222,15 @@
         "Reconnecting" => "Reconnecting…",
         _ => "Connection lost"
     };
+    private string ControllerRenderKey => gameView is null || game is null
+        ? "lobby"
+        : string.Join(':',
+            gameView.GameInstanceId.ToString("N"),
+            gameView.Phase,
+            game.Controller.Kind,
+            game.Controller.ActionKind,
+            game.Heading,
+            game.Instructions);
 
     protected override async Task OnInitializedAsync()
     {

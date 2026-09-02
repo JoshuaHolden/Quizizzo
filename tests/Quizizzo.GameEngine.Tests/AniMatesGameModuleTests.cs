@@ -124,6 +124,8 @@ public sealed class AniMatesGameModuleTests
         game.SubmitAnimation(game.PlayerIds[2]);
 
         Assert.Equal(AniMatesGameModule.GuessingPhase, game.State.Phase);
+        Assert.Equal(AniMatesGameModule.PlaybackFrameDurationMilliseconds,
+            game.DisplayView().Drawing!.FrameDurationMilliseconds);
         Assert.Equal([frame, frame, frame], game.DisplayView().Drawing!.Animations.Single().FrameAssetIds);
     }
 

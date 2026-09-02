@@ -40,6 +40,7 @@ public sealed class AniMatesGameModule(
     public const int AnimatorCorrectChoicePoints = 100;
     public const int ShowdownVotePoints = 100;
     public const int ShowdownWinnerBonus = 200;
+    public const int PlaybackFrameDurationMilliseconds = 300;
     public const int DefaultDrawingSecondsPerFrame = 45;
     public const int MinimumDrawingSecondsPerFrame = 10;
     public const int MaximumDrawingSecondsPerFrame = 180;
@@ -574,7 +575,8 @@ public sealed class AniMatesGameModule(
         if (current.Phase is GuessingPhase or ChoosingPhase or ResultsPhase && CurrentSubmission(state) is { } submission)
         {
             drawing = new DrawingPresentationView(
-                current.Phase == ResultsPhase ? "Reveal" : "Playback", 150,
+                current.Phase == ResultsPhase ? "Reveal" : "Playback",
+                PlaybackFrameDurationMilliseconds,
                 [new DrawingAnimationView(
                     Animator(state).PlayerId,
                     current.Phase == ResultsPhase ? Animator(state).DisplayName : null,
@@ -585,7 +587,8 @@ public sealed class AniMatesGameModule(
         else if (current.Phase is ShowdownPlaybackPhase or ShowdownVotingPhase or ShowdownResultsPhase)
         {
             drawing = new DrawingPresentationView(
-                current.Phase == ShowdownResultsPhase ? "ShowdownReveal" : "ShowdownPlayback", 150,
+                current.Phase == ShowdownResultsPhase ? "ShowdownReveal" : "ShowdownPlayback",
+                PlaybackFrameDurationMilliseconds,
                 ShowdownAnimations(current, state), 1);
         }
         return new DisplayGameViewPayload(

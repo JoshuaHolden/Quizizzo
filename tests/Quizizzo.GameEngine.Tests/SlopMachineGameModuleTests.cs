@@ -43,12 +43,38 @@ public sealed class SlopMachineGameModuleTests
 
         game.Deadline();
         Assert.Equal(SlopMachineGameModule.FreshWritingPhase, game.State.Phase);
+        var playerView = game.PlayerView(game.PlayerIds[0]);
+        Assert.Equal(PlayerControllerKind.Text, playerView.Controller.Kind);
+        Assert.Equal(SubmitSlopTextAction.ActionKind, playerView.Controller.ActionKind);
         game.SubmitAllText();
         Assert.Equal(SlopMachineGameModule.FreshRevealPhase, game.State.Phase);
         Assert.NotNull(game.State.PhaseEndsAtUtc);
 
         game.Deadline();
         Assert.Equal(SlopMachineGameModule.FreshVotingPhase, game.State.Phase);
+    }
+
+    [Theory]
+    [InlineData(SlopMachineGameModule.FreshVotingPhase)]
+    [InlineData(SlopMachineGameModule.RouletteVotingPhase)]
+    [InlineData(SlopMachineGameModule.TelephoneVotingPhase)]
+    [InlineData(SlopMachineGameModule.CommentsVotingPhase)]
+    [InlineData(SlopMachineGameModule.FinalVotingPhase)]
+    public void Every_slop_voting_round_supplies_static_thumbnail_choices_not_animations(string phase)
+    {
+        var game = ReachVotingPhase(phase);
+
+        Assert.Equal(phase, game.State.Phase);
+        var voteView = game.PlayerView(game.PlayerIds[0]);
+        Assert.Equal(PlayerControllerKind.Vote, voteView.Controller.Kind);
+        var voteConfiguration = voteView.Controller.Configuration.Deserialize<VoteControllerConfiguration>();
+        Assert.NotNull(voteConfiguration);
+        Assert.NotEmpty(voteConfiguration.Options);
+        Assert.All(voteConfiguration.Options, option =>
+        {
+            Assert.Null(option.FrameAssetIds);
+            Assert.False(string.IsNullOrWhiteSpace(option.ImageUrl));
+        });
     }
 
     [Fact]
@@ -356,6 +382,43 @@ public sealed class SlopMachineGameModuleTests
         Assert.Throws<InvalidOperationException>(() => SlopMachineGameModule.ValidateCatalogue(missingTitles));
     }
 
+    private static Fixture ReachVotingPhase(string phase)
+    {
+        var game = new Fixture(3);
+        switch (phase)
+        {
+            case SlopMachineGameModule.FreshVotingPhase:
+                game.Advance();
+                game.Advance();
+                game.SubmitAllText();
+                game.Advance();
+                break;
+            case SlopMachineGameModule.RouletteVotingPhase:
+                game.ReachRouletteSpinning();
+                game.Advance();
+                game.SubmitAllText();
+                game.Advance();
+                break;
+            case SlopMachineGameModule.TelephoneVotingPhase:
+                game.ReachTelephoneWriting();
+                game.SubmitAllText();
+                game.SubmitAllTelephoneMatches();
+                game.Advance();
+                break;
+            case SlopMachineGameModule.CommentsVotingPhase:
+                game.ReachCommentsWriting();
+                game.SubmitAllText();
+                game.Advance();
+                break;
+            case SlopMachineGameModule.FinalVotingPhase:
+                game.ReachFinalVoting();
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(phase), phase, null);
+        }
+        return game;
+    }
+
     private sealed class Fixture
     {
         private readonly SlopMachineGameModule module;
@@ -437,6 +500,15 @@ public sealed class SlopMachineGameModuleTests
             }
         }
 
+        public void SubmitAllTelephoneMatches()
+        {
+            foreach (var playerId in StateData.TelephoneMatches.Keys.ToArray())
+            {
+                var match = StateData.TelephoneMatches[playerId];
+                Apply(GameActor.Player(playerId), new MatchTelephoneThumbnailAction(match.IntendedThumbnailId));
+            }
+        }
+
         public void ReachRouletteSpinning()
         {
             PlayFresh();
@@ -487,6 +559,10 @@ public sealed class SlopMachineGameModuleTests
         public DisplayGameViewPayload DisplayView() => module.CreateView(
                 State, new GameViewContext(GameAudienceRole.Display, "display", null))
             .Data.Deserialize<DisplayGameViewPayload>()!;
+
+        public PlayerGameViewPayload PlayerView(Guid playerId) => module.CreateView(
+                State, new GameViewContext(GameAudienceRole.Player, playerId.ToString(), playerId))
+            .Data.Deserialize<PlayerGameViewPayload>()!;
 
         public void PlayCompleteGame()
         {

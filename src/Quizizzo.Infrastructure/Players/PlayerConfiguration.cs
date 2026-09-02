@@ -51,6 +51,18 @@ internal sealed class PlayerConfiguration : IEntityTypeConfiguration<Player>
             character.Property(value => value.TrouserLength).HasColumnName("CharacterTrouserLength").HasConversion<int>();
             character.Property(value => value.ShoeColour).HasColumnName("CharacterShoeColour").HasConversion<int>();
         });
+        builder.OwnsMany<PlayerGameWin>(nameof(Player.GameWins), wins =>
+        {
+            wins.ToTable("PlayerGameWins");
+            wins.WithOwner().HasForeignKey("PlayerId");
+            wins.HasKey("PlayerId", nameof(PlayerGameWin.GameInstanceId));
+            wins.Property(win => win.GameInstanceId).ValueGeneratedNever();
+            wins.Property(win => win.GameKey).HasMaxLength(64).IsRequired();
+            wins.HasIndex(win => win.GameKey);
+            wins.HasIndex(win => win.WonAt);
+        });
+        builder.Navigation(nameof(Player.GameWins))
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
         builder.HasOne<Party>()
             .WithMany()
             .HasForeignKey(player => player.PartyId)

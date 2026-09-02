@@ -562,6 +562,35 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Give the finale its own presenter introduction, headings, player waiting state, host skip action, and 15-second server-owned deadline before completion.
 - [x] Preserve reduced-motion behavior and automatic return to the lobby; validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 240 .NET tests.
 
+### Display join-link interaction (completed 2026-09-02)
+
+- [x] Turn the Phaser lobby join URL into a clearly marked interactive link with hover, pressed, and hand-cursor feedback.
+- [x] Open the exact active-room join URL in a separate, opener-isolated browser tab/window without disturbing the host display.
+- [x] Validate JavaScript and cover the interaction with the canvas-presentation contract tests.
+
+### AniMates playback pacing (completed 2026-09-02)
+
+- [x] Slow submitted drawing animations from 150 ms to 300 ms per frame across shared-display playback, showdown galleries, reveals, and phone previews.
+- [x] Keep the playback rate server-described and align defensive client defaults without slowing character rigs or interface transitions.
+- [x] Cover the canonical playback duration in the AniMates game-module tests and pass the client and .NET verification gates.
+
+### Party-long scores and game wins (completed 2026-09-02)
+
+- [x] Preserve the existing cumulative player score across every game played during the active lobby and label it clearly as the party score.
+- [x] Persist each positive-points game victory by player, game key, and game instance so retries cannot count the same win twice.
+- [x] Determine each game's winner from points earned in that game rather than inherited party score, and award a win to every tied leader.
+- [x] Show total wins on lobby player cards and phone controllers, with an overall-score and per-game win breakdown in host controls.
+- [x] Add the PostgreSQL game-win migration plus domain, application, persistence-model, snapshot, and presentation contract coverage.
+
+### Slop Machine phone-controller and thumbnail hotfix (completed 2026-09-02)
+
+- [x] Prove Fresh Slop title-writing produces the reusable text controller and title submission action.
+- [x] Key every stateful phone controller to its game instance, phase, action, and visible task so an AniMates review card cannot survive into Slop Machine writing.
+- [x] Preserve controller-local input during ordinary refreshes while replacing it at real game/task boundaries.
+- [x] Make animation review data-driven so ordinary Slop Machine and Majority Rules votes render image/text choices instead of fake animation controls.
+- [x] Prove Fresh Slop, Roulette, Telephone, Comments, and final voting all expose static thumbnail choices with no animation-frame payload.
+- [x] Preserve generated thumbnail aspect ratios on both phone controllers and the Phaser display instead of stretching or aggressively cropping them.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

@@ -4,6 +4,8 @@ namespace Quizizzo.Domain.Players;
 
 public sealed class Player
 {
+    private readonly List<PlayerGameWin> gameWins = [];
+
     private Player()
     {
     }
@@ -35,6 +37,8 @@ public sealed class Player
     public DateTimeOffset JoinedAt { get; private set; }
     public DateTimeOffset LastSeenAt { get; private set; }
     public string SessionTokenHash { get; private set; } = string.Empty;
+    public IReadOnlyCollection<PlayerGameWin> GameWins => gameWins;
+    public int TotalWins => gameWins.Count;
 
     public bool IsPartyMember => Status is PlayerStatus.Connected or PlayerStatus.Disconnected;
 
@@ -89,4 +93,18 @@ public sealed class Player
         }
         Score = score;
     }
+
+    public void RecordGameWin(Guid gameInstanceId, string gameKey, DateTimeOffset wonAt)
+    {
+        if (gameWins.Any(win => win.GameInstanceId == gameInstanceId))
+        {
+            return;
+        }
+
+        gameWins.Add(new PlayerGameWin(gameInstanceId, gameKey, wonAt));
+    }
+
+    public IReadOnlyDictionary<string, int> GameWinCounts() => gameWins
+        .GroupBy(win => win.GameKey, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
 }

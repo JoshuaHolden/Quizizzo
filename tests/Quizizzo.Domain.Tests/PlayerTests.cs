@@ -37,6 +37,23 @@ public sealed class PlayerTests
     }
 
     [Fact]
+    public void Game_wins_are_idempotent_and_grouped_by_game()
+    {
+        var player = Player.Create(
+            PartyId.New(), PlayerName.Parse("Joshua"), Character, "HASH", DateTimeOffset.UtcNow);
+        var firstGame = Guid.NewGuid();
+
+        player.RecordGameWin(firstGame, "AniMates", DateTimeOffset.UtcNow);
+        player.RecordGameWin(firstGame, "AniMates", DateTimeOffset.UtcNow.AddSeconds(1));
+        player.RecordGameWin(Guid.NewGuid(), "animates", DateTimeOffset.UtcNow.AddMinutes(1));
+        player.RecordGameWin(Guid.NewGuid(), "estimate", DateTimeOffset.UtcNow.AddMinutes(2));
+
+        Assert.Equal(3, player.TotalWins);
+        Assert.Equal(2, player.GameWinCounts()["animates"]);
+        Assert.Equal(1, player.GameWinCounts()["estimate"]);
+    }
+
+    [Fact]
     public void Player_can_reconnect_with_the_same_identity_and_character()
     {
         var now = new DateTimeOffset(2026, 8, 26, 12, 0, 0, TimeSpan.Zero);

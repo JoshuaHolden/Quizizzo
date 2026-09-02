@@ -231,12 +231,25 @@ public sealed class PartyGameService(
             return;
         }
 
+        var gameKey = party.CurrentGameKey
+            ?? throw new InvalidOperationException("The active game key is required to finalize a game.");
         var members = await players.ListMembersAsync(party.Id, cancellationToken);
+        var pointsEarned = members.ToDictionary(
+            player => player.Id.Value,
+            player => scores.TryGetValue(player.Id.Value, out var finalScore)
+                ? Math.Max(0, finalScore - player.Score)
+                : 0);
+        var winningPoints = pointsEarned.Values.DefaultIfEmpty().Max();
+        var completedAt = timeProvider.GetUtcNow();
         foreach (var player in members)
         {
             if (scores.TryGetValue(player.Id.Value, out var score))
             {
                 player.SetScore(score);
+            }
+            if (winningPoints > 0 && pointsEarned[player.Id.Value] == winningPoints)
+            {
+                player.RecordGameWin(instanceId, gameKey, completedAt);
             }
         }
         party.ReturnToLobby(instanceId);

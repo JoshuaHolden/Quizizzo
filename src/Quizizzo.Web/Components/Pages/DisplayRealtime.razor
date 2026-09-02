@@ -75,6 +75,39 @@
 
             <p class="display-host-player-count">@players.Count player@(players.Count == 1 ? string.Empty : "s") joined</p>
 
+            @if (players.Count > 0)
+            {
+                <section class="display-host-party-record" aria-labelledby="display-host-party-record-title">
+                    <header>
+                        <div>
+                            <p>Since this lobby started</p>
+                            <h3 id="display-host-party-record-title">Party standings</h3>
+                        </div>
+                        <span>Overall score · game wins</span>
+                    </header>
+                    <ol>
+                        @foreach (var standing in players
+                            .OrderByDescending(candidate => candidate.Score)
+                            .ThenByDescending(candidate => candidate.TotalWins)
+                            .ThenBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase))
+                        {
+                            <li>
+                                <span class="display-host-standing-rank">#@(players
+                                    .OrderByDescending(candidate => candidate.Score)
+                                    .ThenByDescending(candidate => candidate.TotalWins)
+                                    .ThenBy(candidate => candidate.DisplayName, StringComparer.OrdinalIgnoreCase)
+                                    .ToList().IndexOf(standing) + 1)</span>
+                                <div>
+                                    <strong>@standing.DisplayName</strong>
+                                    <small>@FormatWinBreakdown(standing)</small>
+                                </div>
+                                <span><strong>@standing.Score.ToString("N0")</strong> pts · 🏆 @standing.TotalWins</span>
+                            </li>
+                        }
+                    </ol>
+                </section>
+            }
+
             @if (hostGameView is not null && hostGame is not null)
             {
                 <section class="display-host-current-game">
@@ -278,6 +311,24 @@
             ? $"{(int)duration.TotalMinutes}m {duration.Seconds:D2}s"
             : $"{duration.Seconds}s";
     }
+
+    private string FormatWinBreakdown(PlayerView standing)
+    {
+        if (standing.GameWins is not { Count: > 0 } wins)
+        {
+            return "No game wins yet";
+        }
+
+        return string.Join(" · ", wins
+            .OrderByDescending(win => win.Value)
+            .ThenBy(win => win.Key, StringComparer.OrdinalIgnoreCase)
+            .Select(win => $"{GameDisplayName(win.Key)} ×{win.Value}"));
+    }
+
+    private string GameDisplayName(string gameKey) =>
+        availableGames.FirstOrDefault(game =>
+            string.Equals(game.Key, gameKey, StringComparison.OrdinalIgnoreCase))?.DisplayName
+        ?? gameKey.Replace('-', ' ');
 
     private async Task AdvanceGameAsync()
     {

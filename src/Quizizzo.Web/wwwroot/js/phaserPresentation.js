@@ -462,7 +462,7 @@ window.quizizzoPresentation = (() => {
             show();
             if (!this.controller.reducedMotion) {
                 this.drawingTimer = this.time.addEvent({
-                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 300),
                     loop: true,
                     callback: show
                 });
@@ -521,7 +521,7 @@ window.quizizzoPresentation = (() => {
             show();
             if (!this.controller.reducedMotion) {
                 this.drawingTimer = this.time.addEvent({
-                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 300),
                     loop: true,
                     callback: show
                 });
@@ -631,10 +631,22 @@ window.quizizzoPresentation = (() => {
                     }).setOrigin(.5));
                     this.loadQrTexture(qrKey, snapshot.joinQrDataUri, signature);
                 }
-                items.push(this.add.text(width / 2, 475, snapshot.joinUrl || "", {
+                const joinLink = this.add.text(width / 2, 475,
+                    snapshot.joinUrl ? `${snapshot.joinUrl} ↗` : "", {
                     color: "#bae6fd", fontFamily: bodyFont, fontSize: "18px",
                     backgroundColor: "#17123d", padding: { x: 14, y: 7 }
-                }).setOrigin(.5));
+                }).setOrigin(.5);
+                if (snapshot.joinUrl) {
+                    joinLink.setInteractive({ useHandCursor: true });
+                    joinLink.on("pointerover", () => joinLink.setColor("#ffffff"));
+                    joinLink.on("pointerdown", () => joinLink.setScale(.97));
+                    joinLink.on("pointerout", () => joinLink.setColor("#bae6fd").setScale(1));
+                    joinLink.on("pointerup", () => {
+                        joinLink.setScale(1);
+                        window.open(snapshot.joinUrl, "_blank", "noopener,noreferrer");
+                    });
+                }
+                items.push(joinLink);
                 this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
                 return;
             }
@@ -729,8 +741,8 @@ window.quizizzoPresentation = (() => {
             const rows = Math.ceil(shown.length / columns);
             const heroHasEntries = !gallery && (snapshot.entries?.length || 0) > 0;
             const cardWidth = gallery ? 330 : heroHasEntries ? 520 : 620;
-            const cardHeight = gallery ? (rows > 1 ? 185 : 285) : heroHasEntries ? 350 : 405;
-            const imageHeight = gallery ? (rows > 1 ? 120 : 210) : heroHasEntries ? 270 : 325;
+            const cardHeight = gallery ? (rows > 1 ? 210 : 285) : heroHasEntries ? 410 : 460;
+            const imageHeight = gallery ? (rows > 1 ? 145 : 210) : heroHasEntries ? 325 : 390;
             const centreY = gallery ? (rows > 1 ? 335 : 350) : 350;
             const gap = gallery ? 18 : 0;
             shown.forEach((media, index) => {
@@ -748,7 +760,9 @@ window.quizizzoPresentation = (() => {
                     const key = `game-media-${media.id}`;
                     if (this.textures.exists(key)) {
                         const imageY = y - cardHeight / 2 + imageHeight / 2 + 12;
-                        items.push(this.add.image(x, imageY, key).setDisplaySize(cardWidth - 24, imageHeight));
+                        const image = this.add.image(x, imageY, key);
+                        this.fitImageWithin(image, cardWidth - 24, imageHeight);
+                        items.push(image);
                     } else {
                         items.push(this.add.text(x, y - 20, "PROCESSING THUMBNAIL…", {
                             color: "#24123f", fontFamily: displayFont, fontSize: "18px", fontStyle: "bold"
@@ -777,6 +791,13 @@ window.quizizzoPresentation = (() => {
                         }).setOrigin(1, 0));
                 }
             });
+        }
+
+        fitImageWithin(image, maximumWidth, maximumHeight) {
+            const sourceWidth = Math.max(1, image.width);
+            const sourceHeight = Math.max(1, image.height);
+            image.setScale(Math.min(maximumWidth / sourceWidth, maximumHeight / sourceHeight));
+            return image;
         }
 
         loadMediaTexture(key, imageUrl, expectedSignature) {
@@ -1037,7 +1058,7 @@ window.quizizzoPresentation = (() => {
             show();
             if (!this.controller.reducedMotion) {
                 this.drawingTimer = this.time.addEvent({
-                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 300),
                     loop: true,
                     callback: show
                 });
@@ -1315,6 +1336,14 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 3
             }).setOrigin(0.5);
+            const wins = this.add.text(0, 82, "", {
+                color: "#f9a8d4",
+                fontFamily: displayFont,
+                fontSize: "11px",
+                fontStyle: "bold",
+                stroke: "#130828",
+                strokeThickness: 2
+            }).setOrigin(0.5);
             const activity = this.add.text(48, -142, "", {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
                 fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
@@ -1352,9 +1381,9 @@ window.quizizzoPresentation = (() => {
                         });
                 });
             }
-            container.add([cardShadow, card, shadow, character, presence, name, score, activity, remove]);
+            container.add([cardShadow, card, shadow, character, presence, name, score, wins, activity, remove]);
             container.setDepth(20);
-            return { container, cardShadow, card, character, shadow, presence, name, score, activity, remove,
+            return { container, cardShadow, card, character, shadow, presence, name, score, wins, activity, remove,
                 signature: null, mode: null, rig: null };
         }
 
@@ -1367,7 +1396,12 @@ window.quizizzoPresentation = (() => {
             avatar.name.setText(player.displayName);
             avatar.name.setFontSize(Math.max(14, Math.min(22,
                 Math.floor(250 / Math.max(10, player.displayName.length)))));
-            avatar.score.setText(this.scoreLabel(player.score));
+            const lobbyMode = this.controller.snapshot?.mode === "Lobby";
+            avatar.name.setY(lobbyMode ? 39 : 47);
+            avatar.score.setY(lobbyMode ? 62 : 75).setText(this.scoreLabel(player.score));
+            avatar.wins
+                .setText(`${Number(player.totalWins || 0).toLocaleString()} ${player.totalWins === 1 ? "WIN" : "WINS"}`)
+                .setVisible(lobbyMode);
             const disconnected = player.status === "Disconnected";
             avatar.presence.setText(disconnected ? "OFFLINE" : "");
             const isThinking = player.activity === "Thinking";

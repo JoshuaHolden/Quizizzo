@@ -62,7 +62,11 @@ public sealed record PlayerView(
     PlayerStatus Status,
     CharacterView Character,
     DateTimeOffset JoinedAt,
-    DateTimeOffset LastSeenAt);
+    DateTimeOffset LastSeenAt,
+    IReadOnlyDictionary<string, int>? GameWins = null)
+{
+    public int TotalWins => GameWins?.Values.Sum() ?? 0;
+}
 
 public sealed record JoinedPlayer(string SessionToken, bool IsNew, PlayerView View);
 

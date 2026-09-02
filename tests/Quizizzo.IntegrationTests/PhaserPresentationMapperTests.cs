@@ -46,7 +46,8 @@ public sealed class PhaserPresentationMapperTests
                 CharacterMouth.Grin,
                 CharacterAccessory.PartyHat),
             DateTimeOffset.UtcNow,
-            DateTimeOffset.UtcNow);
+            DateTimeOffset.UtcNow,
+            new Dictionary<string, int> { ["estimate"] = 2, ["animates"] = 1 });
         var payload = new DisplayGameViewPayload(
             "ESTIMATE",
             "A question",
@@ -91,6 +92,8 @@ public sealed class PhaserPresentationMapperTests
         Assert.Equal("PartyHat", mappedPlayer.Character.Accessory);
         Assert.Equal("Man", mappedPlayer.Character.Presentation);
         Assert.Equal(1, mappedPlayer.Character.SkinTone);
+        Assert.Equal(3, mappedPlayer.TotalWins);
+        Assert.Equal(2, mappedPlayer.GameWins!["estimate"]);
         Assert.Equal(1, result.Rank);
         Assert.Equal(1000, result.PointsAwarded);
     }
