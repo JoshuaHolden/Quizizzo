@@ -217,17 +217,21 @@ public sealed class SlopMachineGameModuleTests
     [Fact]
     public void Comments_assign_returning_uploads_away_from_their_creators_when_possible()
     {
-        var game = new Fixture(4);
-
-        game.ReachCommentsWriting();
-
-        Assert.Equal(SlopMachineGameModule.CommentsWritingPhase, game.State.Phase);
-        Assert.All(game.StateData.Assignments, assignment =>
+        for (var attempt = 0; attempt < 100; attempt++)
         {
-            var upload = game.StateData.Uploads.First(item =>
-                item.ThumbnailId == assignment.Value.ThumbnailId && item.Text == assignment.Value.Format);
-            Assert.NotEqual(assignment.Key, upload.AuthorId);
-        });
+            var game = new Fixture(4);
+
+            game.ReachCommentsWriting();
+
+            Assert.Equal(SlopMachineGameModule.CommentsWritingPhase, game.State.Phase);
+            Assert.All(game.StateData.Assignments, assignment =>
+            {
+                var sourceSubmissionId = Assert.IsType<Guid>(assignment.Value.SourceSubmissionId);
+                var upload = Assert.Single(game.StateData.Uploads,
+                    item => item.SubmissionId == sourceSubmissionId);
+                Assert.NotEqual(assignment.Key, upload.AuthorId);
+            });
+        }
     }
 
     [Fact]

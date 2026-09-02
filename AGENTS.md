@@ -597,6 +597,12 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Prune idle connections after at most 60 seconds while retaining normal request and SignalR recovery capacity.
 - [x] Keep database capacity available for the mandatory pre-deployment backup, explicit migration, and readiness probes.
 
+### Slop Machine comments-assignment hotfix (completed 2026-09-02)
+
+- [x] Select each player's highest-ranked returning uploads from the complete eligible pool so a creator never receives their own upload while another player's upload exists.
+- [x] Persist the exact source submission on comment assignments so duplicate thumbnail/title combinations retain unambiguous ownership across refresh and recovery.
+- [x] Stress the assignment rule across 100 independently seeded four-player games.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

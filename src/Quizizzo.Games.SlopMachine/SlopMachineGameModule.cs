@@ -801,15 +801,15 @@ public sealed partial class SlopMachineGameModule : IGameModule
 
     private GameTransition BeginCommentsWriting(SlopMachineState state, DateTimeOffset now)
     {
-        var candidates = state.Uploads.OrderByDescending(upload => upload.Votes)
+        var rankedCandidates = state.Uploads.OrderByDescending(upload => upload.Votes)
             .ThenByDescending(upload => upload.PointsAwarded).ThenBy(upload => upload.SubmissionId)
-            .Take(3).ToArray();
-        if (candidates.Length == 0)
+            .ToArray();
+        if (rankedCandidates.Length == 0)
         {
             var fallbackThumbnailId = state.UsedThumbnailIds.Count > 0
                 ? state.UsedThumbnailIds[0]
                 : PickUnusedThumbnail(state, RandomFor(state, "comments-fallback")).Id;
-            candidates =
+            rankedCandidates =
             [
                 new SlopSubmission(Guid.NewGuid(), Guid.Empty, fallbackThumbnailId,
                     "The algorithm uploaded this by itself", "system")
@@ -820,13 +820,16 @@ public sealed partial class SlopMachineGameModule : IGameModule
         for (var index = 0; index < state.Participants.Count; index++)
         {
             var participant = state.Participants[index];
-            var available = candidates.Where(upload => upload.AuthorId != participant.PlayerId).ToArray();
-            var selected = (available.Length > 0 ? available : candidates)[index % Math.Max(1, available.Length > 0 ? available.Length : candidates.Length)];
+            var available = rankedCandidates.Where(upload => upload.AuthorId != participant.PlayerId)
+                .Take(3).ToArray();
+            var eligible = available.Length > 0 ? available : rankedCandidates.Take(3).ToArray();
+            var selected = eligible[index % eligible.Length];
             assignments[participant.PlayerId] = new SlopAssignment(
                 selected.ThumbnailId,
                 selected.Text,
                 new SlopConstraint(CommentTypes[random.Next(CommentTypes.Length)],
-                    SlopValidationKind.Informational));
+                    SlopValidationKind.Informational),
+                SourceSubmissionId: selected.SubmissionId);
         }
         return Transition(CommentsWritingPhase, ClearRoundInput(state) with
         {

@@ -31,7 +31,8 @@ public sealed record SlopAssignment(
     string Format,
     SlopConstraint Curveball,
     bool RespinUsed = false,
-    string? RespinnedReel = null);
+    string? RespinnedReel = null,
+    Guid? SourceSubmissionId = null);
 
 public sealed record SlopSubmission(
     Guid SubmissionId,
