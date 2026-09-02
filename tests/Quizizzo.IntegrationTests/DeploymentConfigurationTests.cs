@@ -115,6 +115,20 @@ public sealed class DeploymentConfigurationTests
         Assert.Equal(4, CountOccurrences(compose, "max-file: \"3\""));
     }
 
+    [Fact]
+    public void Production_database_pool_leaves_capacity_for_backup_and_migration_operations()
+    {
+        var compose = ReadRepositoryFile("compose.yaml");
+        var infrastructure = ReadRepositoryFile(
+            "src/Quizizzo.Infrastructure/DependencyInjection.cs");
+
+        Assert.Equal(2, CountOccurrences(compose, "Maximum Pool Size=32"));
+        Assert.Equal(2, CountOccurrences(compose, "Connection Idle Lifetime=60"));
+        Assert.Contains("MaximumDatabasePoolSize = 32", infrastructure, StringComparison.Ordinal);
+        Assert.Contains("MaximumIdleConnectionLifetimeSeconds = 60", infrastructure,
+            StringComparison.Ordinal);
+    }
+
     private static int CountOccurrences(string value, string search) =>
         value.Split(search, StringSplitOptions.None).Length - 1;
 

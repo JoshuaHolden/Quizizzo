@@ -9,7 +9,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
       AllowedHosts: ${QUIZIZZO_ALLOWED_HOSTS:-localhost}
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env};Maximum Pool Size=32;Connection Idle Lifetime=60"
       ConnectionStrings__Redis: "redis:6379,password=${QUIZIZZO_REDIS_PASSWORD:?Set QUIZIZZO_REDIS_PASSWORD in .env},abortConnect=false"
       DrawingAssets__RootPath: /app/assets/drawings
       DataProtection__KeyPath: /app/data-protection
@@ -40,7 +40,7 @@ services:
     command: ["--migrate=true"]
     environment:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
-      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env}"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env};Maximum Pool Size=32;Connection Idle Lifetime=60"
       Logging__LogLevel__Default: Error
       Logging__LogLevel__Microsoft.AspNetCore: Error
     depends_on:

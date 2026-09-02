@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 using Quizizzo.Application.Abstractions;
 using Quizizzo.Infrastructure.Displays;
 using Quizizzo.Infrastructure.Drawings;
@@ -13,12 +14,21 @@ namespace Quizizzo.Infrastructure;
 
 public static class DependencyInjection
 {
+    internal const int MaximumDatabasePoolSize = 32;
+    internal const int MaximumIdleConnectionLifetimeSeconds = 60;
+
     public static IServiceCollection AddQuizizzoInfrastructure(
         this IServiceCollection services,
         string connectionString)
     {
+        var connectionSettings = new NpgsqlConnectionStringBuilder(connectionString);
+        connectionSettings.MaxPoolSize = Math.Min(
+            connectionSettings.MaxPoolSize, MaximumDatabasePoolSize);
+        connectionSettings.ConnectionIdleLifetime = Math.Min(
+            connectionSettings.ConnectionIdleLifetime, MaximumIdleConnectionLifetimeSeconds);
+        var boundedConnectionString = connectionSettings.ConnectionString;
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(connectionString, postgres =>
+            options.UseNpgsql(boundedConnectionString, postgres =>
                 postgres.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
         services.AddScoped<IPartyRepository, PartyRepository>();
         services.AddScoped<IDisplaySessionRepository, DisplaySessionRepository>();

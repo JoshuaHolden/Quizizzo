@@ -10,6 +10,7 @@ using Quizizzo.Domain.Parties;
 using Quizizzo.Domain.Players;
 using Quizizzo.Web.Presentation;
 using Microsoft.Extensions.Hosting;
+using Npgsql;
 using Quizizzo.Infrastructure.Drawings;
 using Quizizzo.Domain.Drawings;
 using Quizizzo.Infrastructure.Games;
@@ -59,8 +60,12 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     {
         using var scope = factory.Services.CreateScope();
         var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var connectionSettings = new NpgsqlConnectionStringBuilder(
+            dbContext.Database.GetConnectionString());
 
         Assert.Equal("Npgsql.EntityFrameworkCore.PostgreSQL", dbContext.Database.ProviderName);
+        Assert.Equal(32, connectionSettings.MaxPoolSize);
+        Assert.Equal(60, connectionSettings.ConnectionIdleLifetime);
     }
 
     [Fact]

@@ -591,6 +591,12 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Prove Fresh Slop, Roulette, Telephone, Comments, and final voting all expose static thumbnail choices with no animation-frame payload.
 - [x] Preserve generated thumbnail aspect ratios on both phone controllers and the Phaser display instead of stretching or aggressively cropping them.
 
+### Production database-pool containment hotfix (completed 2026-09-02)
+
+- [x] Bound the Web and migration Npgsql pools to 32 connections so the application cannot consume every PostgreSQL client slot.
+- [x] Prune idle connections after at most 60 seconds while retaining normal request and SignalR recovery capacity.
+- [x] Keep database capacity available for the mandatory pre-deployment backup, explicit migration, and readiness probes.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
