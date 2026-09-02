@@ -3,7 +3,9 @@ using Quizizzo.GameContracts;
 
 namespace Quizizzo.Games.Estimate;
 
-public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameModule
+public sealed class EstimateGameModule(
+    TimeSpan? answerDuration = null,
+    TimeSpan? resultsDuration = null) : IGameModule
 {
     public const string GameKey = "estimate";
     public const string AnsweringPhase = "Answering";
@@ -11,6 +13,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
     public const string CompletedPhase = "Completed";
 
     private readonly TimeSpan answerDuration = answerDuration ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "Estimate", 2, 12);
 
@@ -39,7 +42,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         return action switch
         {
             SubmitEstimateAction submission => Submit(state, estimate, context, submission),
-            DeadlineElapsedAction => Reveal(state, estimate),
+            DeadlineElapsedAction => Deadline(state, estimate, context),
             AdvanceEstimateAction => Advance(state, estimate, context),
             _ => throw new GameRuleViolationException(
                 "unsupported-action", $"Action '{action.Kind}' is not supported by Estimate.")
@@ -67,7 +70,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
             "unsupported-action", $"Action '{actionKind}' is not supported by Estimate.")
     };
 
-    private static GameTransition Submit(
+    private GameTransition Submit(
         GameModuleState current,
         EstimateState state,
         GameActionContext context,
@@ -100,7 +103,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         var updated = state with { Submissions = submissions };
         if (submissions.Count == state.Participants.Count)
         {
-            return Reveal(current, updated);
+            return Reveal(current, updated, context.ReceivedAtUtc);
         }
 
         return new GameTransition(
@@ -109,7 +112,20 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
             [new GameEvent("EstimateSubmitted", GameJson.From(new { playerId }))]);
     }
 
-    private static GameTransition Reveal(GameModuleState current, EstimateState state)
+    private GameTransition Deadline(
+        GameModuleState current,
+        EstimateState state,
+        GameActionContext context) => current.Phase switch
+        {
+            AnsweringPhase => Reveal(current, state, context.ReceivedAtUtc),
+            ResultsPhase => Progress(state, context.ReceivedAtUtc),
+            _ => throw new GameRuleViolationException("wrong-phase", "This Estimate phase has no deadline.")
+        };
+
+    private GameTransition Reveal(
+        GameModuleState current,
+        EstimateState state,
+        DateTimeOffset now)
     {
         if (current.Phase != AnsweringPhase)
         {
@@ -174,7 +190,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         }
 
         return new GameTransition(
-            CreateModuleState(ResultsPhase, null, false, revealed),
+            CreateModuleState(ResultsPhase, now.Add(resultsDuration), false, revealed),
             awards,
             events);
     }
@@ -193,6 +209,11 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
             throw new GameRuleViolationException("wrong-phase", "Estimate can advance only after results.");
         }
 
+        return Progress(state, context.ReceivedAtUtc);
+    }
+
+    private GameTransition Progress(EstimateState state, DateTimeOffset now)
+    {
         if (state.RoundIndex >= state.Questions.Count - 1)
         {
             return new GameTransition(
@@ -210,7 +231,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         return new GameTransition(
             CreateModuleState(
                 AnsweringPhase,
-                context.ReceivedAtUtc.Add(answerDuration),
+                now.Add(answerDuration),
                 false,
                 next),
             [],
@@ -283,9 +304,7 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         state.Participants.Count,
         current.Phase == ResultsPhase,
         current.Phase == ResultsPhase ? AdvanceEstimateAction.ActionKind : null,
-        current.Phase == ResultsPhase
-            ? state.RoundIndex == state.Questions.Count - 1 ? "Finish Estimate" : "Next round"
-            : null,
+        current.Phase == ResultsPhase ? "Continue now" : null,
         CreateEntries(current, state, question));
 
     private static DisplayGameViewPayload CreateDisplayView(

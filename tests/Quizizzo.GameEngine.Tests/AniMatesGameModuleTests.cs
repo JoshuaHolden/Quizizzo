@@ -33,7 +33,7 @@ public sealed class AniMatesGameModuleTests
     }
 
     [Fact]
-    public void Start_waits_in_a_presenter_briefing_until_the_host_starts_round_one()
+    public void Presenter_briefing_has_a_deadline_and_starts_round_one_automatically()
     {
         var module = new AniMatesGameModule();
         var playerId = Guid.NewGuid();
@@ -47,7 +47,16 @@ public sealed class AniMatesGameModuleTests
         Assert.Contains("different secret prompt", display.Prompt, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(3, display.Tutorial!.FrameCount);
         Assert.Contains(display.Tutorial.Steps, step => step.Contains("onion skin", StringComparison.OrdinalIgnoreCase));
-        Assert.Null(state.PhaseEndsAtUtc);
+        var briefingDeadline = state.PhaseEndsAtUtc ??
+            throw new InvalidOperationException("The briefing must have an automatic deadline.");
+        Assert.Equal(Now.AddSeconds(12), briefingDeadline);
+
+        var drawing = module.Apply(state, new GameActionContext(
+            GameInstanceId.New(), Guid.NewGuid(), GameActor.SystemActor, briefingDeadline),
+            new DeadlineElapsedAction(briefingDeadline));
+
+        Assert.Equal(AniMatesGameModule.DrawingPhase, drawing.State.Phase);
+        Assert.NotNull(drawing.State.PhaseEndsAtUtc);
     }
 
     [Fact]

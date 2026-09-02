@@ -87,6 +87,15 @@ public sealed class EstimateGameModuleTests
         Assert.Equal(EstimateGameModule.ResultsPhase, result.Phase);
         Assert.Contains(payload.Entries, entry =>
             entry.PlayerId == game.SecondPlayerId && entry.Value == "No answer" && entry.PointsAwarded == 0);
+
+        var resultsDeadline = (await game.Manager.GetStatusAsync(game.InstanceId)).PhaseEndsAtUtc!.Value;
+        clock.Advance(TimeSpan.FromSeconds(11));
+        var progressed = await game.Manager.ExecuteAsync(game.Command(
+            GameActor.SystemActor,
+            new DeadlineElapsedAction(resultsDeadline)));
+
+        Assert.Equal(GameCommandOutcome.Applied, progressed.Outcome);
+        Assert.Equal(EstimateGameModule.AnsweringPhase, progressed.Phase);
     }
 
     [Fact]

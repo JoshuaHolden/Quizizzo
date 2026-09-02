@@ -106,6 +106,11 @@ public sealed class MajorityRulesGameModuleTests
 
         Assert.Equal(MajorityRulesGameModule.ResultsPhase, game.State.Phase);
         Assert.Empty(game.LastTransition.ScoreAwards);
+        var resultsDeadline = game.State.PhaseEndsAtUtc!.Value;
+
+        game.Apply(GameActor.SystemActor, new DeadlineElapsedAction(resultsDeadline), resultsDeadline);
+
+        Assert.Equal(MajorityRulesGameModule.AnsweringPhase, game.State.Phase);
     }
 
     [Fact]

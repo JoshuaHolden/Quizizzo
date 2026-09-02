@@ -546,6 +546,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Cap every Quizizzo container at three 10 MB Docker JSON log files so repeated faults cannot consume the host drive.
 - [x] Add exact mapper and deployment regressions, validate Compose, pass analyzer formatting, pass a zero-warning strict Release build, and pass all 238 .NET tests.
 
+### Automatic game progression (completed 2026-09-02)
+
+- [x] Put server-owned UTC deadlines on every Estimate, Majority Rules, Bullshit, AniMates, and Slop Machine phase that previously required routine host advancement.
+- [x] Progress briefings, reveals, results, score reviews, celebrations, and game completion through the existing serialized system-deadline command path.
+- [x] Preserve early progression when every eligible player submits and retain host controls only as clearly labelled “Continue now” skip controls.
+- [x] Show the authoritative countdown on AniMates briefing displays and inside the host-controls panel as well as on existing display and phone phases.
+- [x] Cover automatic results, briefing, intro, reveal, and next-round transitions; validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 239 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

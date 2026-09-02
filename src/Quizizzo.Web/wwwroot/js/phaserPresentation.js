@@ -682,6 +682,9 @@ window.quizizzoPresentation = (() => {
                 this.addGameMedia(snapshot, items, signature);
                 this.addEntryCards(snapshot, items);
             }
+            if (briefing) {
+                this.addDeadline(snapshot.phaseEndsAtUtc, items);
+            }
             this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
         }
 

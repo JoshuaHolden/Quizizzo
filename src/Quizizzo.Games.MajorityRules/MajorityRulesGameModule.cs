@@ -6,7 +6,8 @@ namespace Quizizzo.Games.MajorityRules;
 
 public sealed class MajorityRulesGameModule(
     TimeSpan? answeringDuration = null,
-    TimeSpan? votingDuration = null) : IGameModule
+    TimeSpan? votingDuration = null,
+    TimeSpan? resultsDuration = null) : IGameModule
 {
     public const string GameKey = "majority-rules";
     public const string AnsweringPhase = "Answering";
@@ -17,6 +18,7 @@ public sealed class MajorityRulesGameModule(
 
     private readonly TimeSpan answeringDuration = answeringDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan votingDuration = votingDuration ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "Majority Rules", 3, 12);
 
@@ -101,7 +103,7 @@ public sealed class MajorityRulesGameModule(
             [new GameEvent("MajorityAnswerSubmitted", GameJson.From(new { playerId }))]);
     }
 
-    private static GameTransition Vote(
+    private GameTransition Vote(
         GameModuleState current,
         MajorityState state,
         GameActionContext context,
@@ -132,7 +134,7 @@ public sealed class MajorityRulesGameModule(
         var updated = state with { Votes = votes };
         if (EligibleVoters(updated).All(votes.ContainsKey))
         {
-            return Reveal(updated);
+            return Reveal(updated, context.ReceivedAtUtc);
         }
         return new GameTransition(
             current with { Data = GameJson.From(updated) },
@@ -146,7 +148,8 @@ public sealed class MajorityRulesGameModule(
         GameActionContext context) => current.Phase switch
         {
             AnsweringPhase => BeginVoting(state, context.ReceivedAtUtc),
-            VotingPhase => Reveal(state),
+            VotingPhase => Reveal(state, context.ReceivedAtUtc),
+            ResultsPhase => Progress(state, context.ReceivedAtUtc),
             _ => throw new GameRuleViolationException("wrong-phase", "This phase has no deadline.")
         };
 
@@ -154,7 +157,7 @@ public sealed class MajorityRulesGameModule(
     {
         if (state.Answers.Count == 0 || EligibleVoters(state).Length == 0)
         {
-            return Reveal(state);
+            return Reveal(state, now);
         }
         return new GameTransition(
             ModuleState(VotingPhase, now.Add(votingDuration), false, state),
@@ -162,7 +165,7 @@ public sealed class MajorityRulesGameModule(
             [new GameEvent("MajorityVotingStarted", GameJson.From(new { answers = state.Answers.Count }))]);
     }
 
-    private static GameTransition Reveal(MajorityState state)
+    private GameTransition Reveal(MajorityState state, DateTimeOffset now)
     {
         var counts = state.Votes.Values.GroupBy(value => value)
             .ToDictionary(group => group.Key, group => group.Count());
@@ -191,7 +194,7 @@ public sealed class MajorityRulesGameModule(
         }
         var revealed = state with { Results = results };
         return new GameTransition(
-            ModuleState(ResultsPhase, null, false, revealed),
+            ModuleState(ResultsPhase, now.Add(resultsDuration), false, revealed),
             results.Where(result => result.PointsAwarded > 0)
                 .Select(result => new ScoreAward(
                     result.PlayerId,
@@ -214,6 +217,11 @@ public sealed class MajorityRulesGameModule(
         {
             throw new GameRuleViolationException("wrong-phase", "Results must be revealed first.");
         }
+        return Progress(state, context.ReceivedAtUtc);
+    }
+
+    private GameTransition Progress(MajorityState state, DateTimeOffset now)
+    {
         if (state.RoundIndex >= state.Questions.Count - 1)
         {
             return new GameTransition(
@@ -229,7 +237,7 @@ public sealed class MajorityRulesGameModule(
             Results = []
         };
         return new GameTransition(
-            ModuleState(AnsweringPhase, context.ReceivedAtUtc.Add(answeringDuration), false, next),
+            ModuleState(AnsweringPhase, now.Add(answeringDuration), false, next),
             [],
             [new GameEvent("RoundStarted", GameJson.From(new { round = next.RoundIndex + 1 }))]);
     }
@@ -308,9 +316,7 @@ public sealed class MajorityRulesGameModule(
         current.Phase == AnsweringPhase ? state.Participants.Count : EligibleVoters(state).Length,
         current.Phase == ResultsPhase,
         current.Phase == ResultsPhase ? AdvanceMajorityRulesAction.ActionKind : null,
-        current.Phase == ResultsPhase
-            ? state.RoundIndex == state.Questions.Count - 1 ? "Finish Majority Rules" : "Next round"
-            : null,
+        current.Phase == ResultsPhase ? "Continue now" : null,
         Entries(current, state));
 
     private static DisplayGameViewPayload DisplayView(GameModuleState current, MajorityState state) => new(

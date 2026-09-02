@@ -149,6 +149,11 @@ public sealed class BullshitGameModuleTests
         Assert.Equal(BullshitGameModule.ResultsPhase, game.State.Phase);
         Assert.Empty(game.LastTransition.ScoreAwards);
         Assert.Contains(game.DisplayView().Entries, entry => entry.Label == "TRUTH");
+        var resultsDeadline = game.State.PhaseEndsAtUtc!.Value;
+
+        game.Apply(GameActor.SystemActor, new DeadlineElapsedAction(resultsDeadline), resultsDeadline);
+
+        Assert.Equal(BullshitGameModule.BluffingPhase, game.State.Phase);
     }
 
     [Fact]

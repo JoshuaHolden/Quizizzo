@@ -7,7 +7,8 @@ namespace Quizizzo.Games.Bullshit;
 
 public sealed class BullshitGameModule(
     TimeSpan? bluffingDuration = null,
-    TimeSpan? choosingDuration = null) : IGameModule
+    TimeSpan? choosingDuration = null,
+    TimeSpan? resultsDuration = null) : IGameModule
 {
     public const string GameKey = "bullshit";
     public const string BluffingPhase = "Bluffing";
@@ -20,6 +21,7 @@ public sealed class BullshitGameModule(
 
     private readonly TimeSpan bluffingDuration = bluffingDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
+    private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "Bullshit", 3, 12);
 
@@ -111,7 +113,7 @@ public sealed class BullshitGameModule(
             [new GameEvent("BluffSubmitted", GameJson.From(new { playerId }))]);
     }
 
-    private static GameTransition Choose(
+    private GameTransition Choose(
         GameModuleState current,
         BullshitState state,
         GameActionContext context,
@@ -147,7 +149,7 @@ public sealed class BullshitGameModule(
         var updated = state with { Votes = votes };
         if (EligibleVoters(updated).All(votes.ContainsKey))
         {
-            return Reveal(updated);
+            return Reveal(updated, context.ReceivedAtUtc);
         }
 
         return new GameTransition(
@@ -162,7 +164,8 @@ public sealed class BullshitGameModule(
         GameActionContext context) => current.Phase switch
         {
             BluffingPhase => BeginChoosing(state, context.ReceivedAtUtc),
-            ChoosingPhase => Reveal(state),
+            ChoosingPhase => Reveal(state, context.ReceivedAtUtc),
+            ResultsPhase => Progress(state, context.ReceivedAtUtc),
             _ => throw new GameRuleViolationException("wrong-phase", "This phase has no active deadline.")
         };
 
@@ -186,7 +189,7 @@ public sealed class BullshitGameModule(
         var choosing = state with { Choices = choices };
         if (choices.Count < 2 || EligibleVoters(choosing).Length == 0)
         {
-            return Reveal(choosing);
+            return Reveal(choosing, now);
         }
         return new GameTransition(
             ModuleState(ChoosingPhase, now.Add(choosingDuration), false, choosing),
@@ -194,7 +197,7 @@ public sealed class BullshitGameModule(
             [new GameEvent("BullshitChoicesOpened", GameJson.From(new { choices = choices.Count }))]);
     }
 
-    private static GameTransition Reveal(BullshitState state)
+    private GameTransition Reveal(BullshitState state, DateTimeOffset now)
     {
         var awards = state.Participants.ToDictionary(
             participant => participant.PlayerId,
@@ -233,7 +236,7 @@ public sealed class BullshitGameModule(
             .ToArray();
         var revealed = state with { Awards = roundAwards };
         return new GameTransition(
-            ModuleState(ResultsPhase, null, false, revealed),
+            ModuleState(ResultsPhase, now.Add(resultsDuration), false, revealed),
             roundAwards.Select(award => new ScoreAward(
                 award.PlayerId,
                 award.Total,
@@ -256,6 +259,11 @@ public sealed class BullshitGameModule(
         {
             throw new GameRuleViolationException("wrong-phase", "Results must be revealed first.");
         }
+        return Progress(state, context.ReceivedAtUtc);
+    }
+
+    private GameTransition Progress(BullshitState state, DateTimeOffset now)
+    {
         if (state.RoundIndex >= state.Questions.Count - 1)
         {
             return new GameTransition(
@@ -273,7 +281,7 @@ public sealed class BullshitGameModule(
             Awards = []
         };
         return new GameTransition(
-            ModuleState(BluffingPhase, context.ReceivedAtUtc.Add(bluffingDuration), false, next),
+            ModuleState(BluffingPhase, now.Add(bluffingDuration), false, next),
             [],
             [new GameEvent("RoundStarted", GameJson.From(new { round = next.RoundIndex + 1 }))]);
     }
@@ -359,9 +367,7 @@ public sealed class BullshitGameModule(
         current.Phase == BluffingPhase ? state.Participants.Count : EligibleVoters(state).Length,
         current.Phase == ResultsPhase,
         current.Phase == ResultsPhase ? AdvanceBullshitAction.ActionKind : null,
-        current.Phase == ResultsPhase
-            ? state.RoundIndex == state.Questions.Count - 1 ? "Finish Bullshit" : "Next round"
-            : null,
+        current.Phase == ResultsPhase ? "Continue now" : null,
         Entries(current, state));
 
     private static DisplayGameViewPayload DisplayView(GameModuleState current, BullshitState state) => new(

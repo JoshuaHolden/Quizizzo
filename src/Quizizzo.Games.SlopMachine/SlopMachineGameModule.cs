@@ -91,6 +91,11 @@ public sealed partial class SlopMachineGameModule : IGameModule
     private readonly TimeSpan commentDuration;
     private readonly TimeSpan votingDuration;
     private readonly TimeSpan machineGuessDuration;
+    private readonly TimeSpan introDuration;
+    private readonly TimeSpan revealDuration;
+    private readonly TimeSpan resultsDuration;
+    private readonly TimeSpan scoreReviewDuration;
+    private readonly TimeSpan winnerDuration;
 
     public SlopMachineGameModule(
         IReadOnlyList<SlopThumbnail>? thumbnails = null,
@@ -100,7 +105,12 @@ public sealed partial class SlopMachineGameModule : IGameModule
         TimeSpan? telephoneMatchingDuration = null,
         TimeSpan? commentDuration = null,
         TimeSpan? votingDuration = null,
-        TimeSpan? machineGuessDuration = null)
+        TimeSpan? machineGuessDuration = null,
+        TimeSpan? introDuration = null,
+        TimeSpan? revealDuration = null,
+        TimeSpan? resultsDuration = null,
+        TimeSpan? scoreReviewDuration = null,
+        TimeSpan? winnerDuration = null)
     {
         catalogue = thumbnails ?? LoadCatalogue();
         ValidateCatalogue(catalogue);
@@ -111,6 +121,11 @@ public sealed partial class SlopMachineGameModule : IGameModule
         this.commentDuration = commentDuration ?? TimeSpan.FromSeconds(45);
         this.votingDuration = votingDuration ?? TimeSpan.FromSeconds(20);
         this.machineGuessDuration = machineGuessDuration ?? TimeSpan.FromSeconds(15);
+        this.introDuration = introDuration ?? TimeSpan.FromSeconds(10);
+        this.revealDuration = revealDuration ?? TimeSpan.FromSeconds(6);
+        this.resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(8);
+        this.scoreReviewDuration = scoreReviewDuration ?? TimeSpan.FromSeconds(10);
+        this.winnerDuration = winnerDuration ?? TimeSpan.FromSeconds(12);
     }
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "Slop Machine", 2, 12);
@@ -126,13 +141,13 @@ public sealed partial class SlopMachineGameModule : IGameModule
             participants.ToDictionary(item => item.PlayerId, _ => 0),
             participants.ToDictionary(item => item.PlayerId, item => item.StartingScore),
             0, [], false, "Feed the algorithm. Harvest the views.");
-        return ModuleState(GameIntroPhase, null, false, state);
+        return ModuleState(GameIntroPhase, context.StartedAtUtc.Add(this.introDuration), false, state);
     }
 
     public GameTransition Apply(GameModuleState state, GameActionContext context, IGameAction action)
     {
         var slop = ReadState(state);
-        return action switch
+        var transition = action switch
         {
             SubmitSlopTextAction submission => SubmitText(state, slop, context, submission),
             VoteForSlopAction vote => Vote(state, slop, context, vote),
@@ -144,6 +159,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             _ => throw new GameRuleViolationException(
                 "unsupported-action", $"Action '{action.Kind}' is not supported by Slop Machine.")
         };
+        return EnsureAutomaticDeadline(transition, context.ReceivedAtUtc);
     }
 
     public GameViewPayload CreateView(GameModuleState state, GameViewContext context)
@@ -198,23 +214,31 @@ public sealed partial class SlopMachineGameModule : IGameModule
         GameActionContext context)
     {
         RequireHost(context);
+        return Progress(current, state, context.ReceivedAtUtc);
+    }
+
+    private GameTransition Progress(
+        GameModuleState current,
+        SlopMachineState state,
+        DateTimeOffset now)
+    {
         return current.Phase switch
         {
             GameIntroPhase => Transition(FreshIntroPhase, state with
             {
                 Message = "The machine is hungry. First: make fresh slop."
             }),
-            FreshIntroPhase => BeginFreshWriting(state, context.ReceivedAtUtc, 0),
-            FreshRevealPhase => BeginVoting(state, context.ReceivedAtUtc, FreshVotingPhase),
+            FreshIntroPhase => BeginFreshWriting(state, now, 0),
+            FreshRevealPhase => BeginVoting(state, now, FreshVotingPhase),
             FreshResultsPhase when state.FreshHeat == 0 =>
-                BeginFreshWriting(ClearRoundInput(state), context.ReceivedAtUtc, 1),
+                BeginFreshWriting(ClearRoundInput(state), now, 1),
             FreshResultsPhase => ScoreReview(state, ScoreReview1Phase,
                 "The algorithm has chosen its favourites."),
             ScoreReview1Phase => Transition(RouletteIntroPhase, ResetReview(state,
                 "Pull the reels. Regret the upload.")),
-            RouletteIntroPhase => BeginRoulette(state, context.ReceivedAtUtc),
-            RouletteSpinningPhase => BeginRouletteWriting(state, context.ReceivedAtUtc),
-            RouletteRevealPhase => BeginVoting(state, context.ReceivedAtUtc, RouletteVotingPhase),
+            RouletteIntroPhase => BeginRoulette(state, now),
+            RouletteSpinningPhase => BeginRouletteWriting(state, now),
+            RouletteRevealPhase => BeginVoting(state, now, RouletteVotingPhase),
             RouletteResultsPhase when state.RouletteHeat + 1 < state.RouletteHeats.Count =>
                 Transition(RouletteRevealPhase, ClearVotes(state) with
                 {
@@ -226,20 +250,20 @@ public sealed partial class SlopMachineGameModule : IGameModule
                 "Quality is down. Engagement is up."),
             ScoreReview2Phase => Transition(TelephoneIntroPhase, ResetReview(state,
                 "The algorithm is about to misunderstand everybody.")),
-            TelephoneIntroPhase => BeginTelephoneWriting(state, context.ReceivedAtUtc),
-            TelephoneRevealPhase => BeginTelephoneVoteOrResults(state, context.ReceivedAtUtc),
+            TelephoneIntroPhase => BeginTelephoneWriting(state, now),
+            TelephoneRevealPhase => BeginTelephoneVoteOrResults(state, now),
             TelephoneResultsPhase => ScoreReview(state, ScoreReview3Phase,
                 "Several viewers have already complained."),
             ScoreReview3Phase => Transition(CommentsIntroPhase, ResetReview(state,
                 "Never read the comments. Write them instead.")),
-            CommentsIntroPhase => BeginCommentsWriting(state, context.ReceivedAtUtc),
-            CommentsRevealPhase => BeginVoting(state, context.ReceivedAtUtc, CommentsVotingPhase),
+            CommentsIntroPhase => BeginCommentsWriting(state, now),
+            CommentsRevealPhase => BeginVoting(state, now, CommentsVotingPhase),
             CommentsResultsPhase => ScoreReview(state, ScoreReview4Phase,
                 "Your content has been consumed."),
             ScoreReview4Phase => Transition(FinalIntroPhase, ResetReview(state,
                 "Human creativity remains barely detectable.")),
-            FinalIntroPhase => BeginFinalWriting(state, context.ReceivedAtUtc),
-            FinalRevealPhase => BeginVoting(state, context.ReceivedAtUtc, FinalVotingPhase),
+            FinalIntroPhase => BeginFinalWriting(state, now),
+            FinalRevealPhase => BeginVoting(state, now, FinalVotingPhase),
             FinalResultsPhase => Transition(FinalScoreReviewPhase, state with
             {
                 Message = state.MachineWonFinal
@@ -279,9 +303,40 @@ public sealed partial class SlopMachineGameModule : IGameModule
             FinalWritingPhase => BeginFinalReveal(state),
             FinalVotingPhase => CompleteFinalVote(state, context.ReceivedAtUtc),
             FinalMachineGuessPhase => CompleteMachineGuess(state),
+            _ when HostCanAdvance(current.Phase) => Progress(current, state, context.ReceivedAtUtc),
             _ => throw new GameRuleViolationException(
                 "wrong-phase", "This Slop Machine phase has no active deadline.")
         };
+
+    private GameTransition EnsureAutomaticDeadline(GameTransition transition, DateTimeOffset now)
+    {
+        if (transition.State.IsComplete || transition.State.PhaseEndsAtUtc is not null)
+        {
+            return transition;
+        }
+
+        var duration = AutomaticDuration(transition.State.Phase);
+        return duration is null
+            ? transition
+            : transition with
+            {
+                State = transition.State with { PhaseEndsAtUtc = now.Add(duration.Value) }
+            };
+    }
+
+    private TimeSpan? AutomaticDuration(string phase) => phase switch
+    {
+        GameIntroPhase or FreshIntroPhase or RouletteIntroPhase or TelephoneIntroPhase or
+            CommentsIntroPhase or FinalIntroPhase => introDuration,
+        FreshRevealPhase or RouletteRevealPhase or TelephoneRevealPhase or CommentsRevealPhase or
+            FinalRevealPhase => revealDuration,
+        FreshResultsPhase or RouletteResultsPhase or TelephoneResultsPhase or CommentsResultsPhase or
+            FinalResultsPhase => resultsDuration,
+        ScoreReview1Phase or ScoreReview2Phase or ScoreReview3Phase or ScoreReview4Phase or
+            FinalScoreReviewPhase => scoreReviewDuration,
+        WinnerCelebrationPhase => winnerDuration,
+        _ => null
+    };
 
     private GameTransition SubmitText(
         GameModuleState current,
@@ -1336,18 +1391,13 @@ public sealed partial class SlopMachineGameModule : IGameModule
 
     private static string? AdvanceLabel(string phase) => phase switch
     {
-        GameIntroPhase => "Start Fresh Slop",
-        FreshIntroPhase or RouletteIntroPhase or TelephoneIntroPhase or CommentsIntroPhase or FinalIntroPhase =>
-            "Start round",
-        FreshRevealPhase or RouletteRevealPhase or CommentsRevealPhase or FinalRevealPhase => "Open voting",
-        FreshResultsPhase or RouletteResultsPhase or TelephoneResultsPhase or CommentsResultsPhase =>
-            "Show standings",
-        ScoreReview1Phase or ScoreReview2Phase or ScoreReview3Phase or ScoreReview4Phase => "Next round",
-        RouletteSpinningPhase => "Stop the reels",
-        TelephoneRevealPhase => "Continue",
-        FinalResultsPhase => "Show final standings",
-        FinalScoreReviewPhase => "Celebrate winners",
-        WinnerCelebrationPhase => "Return to lobby",
+        RouletteSpinningPhase => "Stop reels now",
+        GameIntroPhase or FreshIntroPhase or FreshRevealPhase or FreshResultsPhase or ScoreReview1Phase or
+            RouletteIntroPhase or RouletteRevealPhase or RouletteResultsPhase or ScoreReview2Phase or
+            TelephoneIntroPhase or TelephoneRevealPhase or TelephoneResultsPhase or ScoreReview3Phase or
+            CommentsIntroPhase or CommentsRevealPhase or CommentsResultsPhase or ScoreReview4Phase or
+            FinalIntroPhase or FinalRevealPhase or FinalResultsPhase or FinalScoreReviewPhase or
+            WinnerCelebrationPhase => "Continue now",
         _ => null
     };
 

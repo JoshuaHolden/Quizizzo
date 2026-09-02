@@ -32,6 +32,26 @@ public sealed class SlopMachineGameModuleTests
     }
 
     [Fact]
+    public void Intro_and_reveal_screens_advance_on_server_owned_deadlines()
+    {
+        var game = new Fixture(3);
+
+        Assert.NotNull(game.State.PhaseEndsAtUtc);
+        game.Deadline();
+        Assert.Equal(SlopMachineGameModule.FreshIntroPhase, game.State.Phase);
+        Assert.NotNull(game.State.PhaseEndsAtUtc);
+
+        game.Deadline();
+        Assert.Equal(SlopMachineGameModule.FreshWritingPhase, game.State.Phase);
+        game.SubmitAllText();
+        Assert.Equal(SlopMachineGameModule.FreshRevealPhase, game.State.Phase);
+        Assert.NotNull(game.State.PhaseEndsAtUtc);
+
+        game.Deadline();
+        Assert.Equal(SlopMachineGameModule.FreshVotingPhase, game.State.Phase);
+    }
+
+    [Fact]
     public void Fresh_slop_rejects_self_votes_and_awards_votes_plus_joint_viral_bonuses()
     {
         var game = new Fixture(3);
