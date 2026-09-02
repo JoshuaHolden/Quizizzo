@@ -3,90 +3,130 @@
 @inject IJSRuntime JavaScript
 
 <section class="drawing-controller" aria-label="Drawing controller">
-    @if (!string.IsNullOrWhiteSpace(Prompt))
-    {
-        <p class="drawing-prompt">@Prompt</p>
-    }
-    @if (EndsAtUtc is not null)
-    {
-        <DeadlineCountdown EndsAtUtc="EndsAtUtc" />
-    }
+    <div class="drawing-context-bar">
+        @if (!string.IsNullOrWhiteSpace(Prompt))
+        {
+            <strong class="drawing-prompt">@Prompt</strong>
+        }
+        @if (EndsAtUtc is not null)
+        {
+            <span class="drawing-time-pill"><DeadlineCountdown EndsAtUtc="EndsAtUtc" /></span>
+        }
+    </div>
 
     <div class="drawing-canvas-stack" style="aspect-ratio: @Options.LogicalWidth / @Options.LogicalHeight">
         <canvas @ref="onionCanvas" class="drawing-canvas drawing-onion-canvas" aria-hidden="true"></canvas>
         <canvas @ref="drawingCanvas"
                 class="drawing-canvas drawing-input-canvas"
                 aria-label="Draw here using touch, a stylus, or a mouse"></canvas>
+        @if (Options.FrameCount > 1)
+        {
+            <span class="drawing-frame-badge" aria-live="polite">@state.CurrentFrame / @state.FrameCount</span>
+        }
     </div>
 
-    <div class="drawing-toolbar" aria-label="Drawing tools">
-        <button type="button" class="drawing-tool-button" @onclick="TogglePalette" aria-expanded="@paletteOpen" aria-controls="drawing-colour-picker">
+    <div class="drawing-command-dock" aria-label="Drawing tools and frames">
+        <button type="button"
+                class="drawing-dock-button"
+                @onclick="ToggleBrushPanel"
+                aria-label="Choose pen colour and size"
+                aria-expanded="@brushPanelOpen"
+                aria-controls="drawing-brush-panel">
             <span class="drawing-colour-swatch" style="background-color: @state.SelectedColour"></span>
-            <span>Colour</span>
-        </button>
-        <button type="button" class="drawing-tool-button" @onclick="ToggleSizes" aria-expanded="@sizesOpen" aria-controls="drawing-size-picker">
             <span class="drawing-size-dot" style="width: @SizePreview; height: @SizePreview"></span>
-            <span>Size</span>
         </button>
         <button type="button"
-                class="drawing-tool-button @(state.Tool == "eraser" ? "active" : null)"
+                class="drawing-dock-button @(state.Tool == "eraser" ? "active" : null)"
                 aria-pressed="@(state.Tool == "eraser")"
+                aria-label="Toggle eraser"
+                title="Eraser"
                 @onclick="ToggleEraserAsync">
-            Eraser
+            <span aria-hidden="true">⌫</span>
         </button>
-        <button type="button" class="drawing-tool-button" disabled="@(!state.CanUndo)" @onclick="UndoAsync">Undo</button>
         <button type="button"
-                class="drawing-tool-button @(clearArmed ? "drawing-clear-armed" : null)"
+                class="drawing-dock-button"
                 disabled="@(!state.CanUndo)"
-                @onclick="ClearAsync">
-            @(clearArmed ? "Tap to clear" : "Clear")
+                aria-label="Undo last stroke"
+                title="Undo"
+                @onclick="UndoAsync">
+            <span aria-hidden="true">↶</span>
         </button>
+        @if (Options.FrameCount > 1)
+        {
+            <span class="drawing-dock-divider" aria-hidden="true"></span>
+            <button type="button"
+                    class="drawing-dock-button"
+                    disabled="@(state.CurrentFrame <= 1)"
+                    aria-label="Previous frame"
+                    @onclick="PreviousFrameAsync">
+                <span aria-hidden="true">‹</span>
+            </button>
+            <span class="drawing-frame-position" aria-label="Frame @state.CurrentFrame of @state.FrameCount">@state.CurrentFrame/@state.FrameCount</span>
+            <button type="button"
+                    class="drawing-dock-button"
+                    disabled="@(state.CurrentFrame >= state.FrameCount)"
+                    aria-label="Next frame"
+                    @onclick="NextFrameAsync">
+                <span aria-hidden="true">›</span>
+            </button>
+        }
     </div>
 
-    @if (paletteOpen)
+    @if (brushPanelOpen)
     {
-        <div id="drawing-colour-picker" class="drawing-picker" aria-label="Pen colours">
-            @foreach (var colour in Options.Colours)
-            {
+        <aside id="drawing-brush-panel" class="drawing-brush-popover" role="dialog" aria-label="Pen settings">
+            <div class="drawing-popover-header">
+                <strong>Pen settings</strong>
+                <button type="button" @onclick="CloseBrushPanel" aria-label="Close pen settings">×</button>
+            </div>
+            <fieldset>
+                <legend>Colour</legend>
+                <div class="drawing-picker" aria-label="Pen colours">
+                    @foreach (var colour in Options.Colours)
+                    {
+                        <button type="button"
+                                class="drawing-palette-choice @(colour == state.SelectedColour ? "selected" : null)"
+                                style="background-color: @colour"
+                                aria-label="Use colour @colour"
+                                aria-pressed="@(colour == state.SelectedColour)"
+                                @onclick="() => SelectColourAsync(colour)"></button>
+                    }
+                </div>
+            </fieldset>
+            <fieldset>
+                <legend>Size</legend>
+                <div class="drawing-picker drawing-size-picker" aria-label="Brush sizes">
+                    @foreach (var width in Options.Widths)
+                    {
+                        <button type="button"
+                                class="drawing-size-choice @(width == state.SelectedWidth ? "selected" : null)"
+                                aria-label="Use brush size @width"
+                                aria-pressed="@(width == state.SelectedWidth)"
+                                @onclick="() => SelectWidthAsync(width)">
+                            <span style="width: @($"{Math.Clamp(width, 4, 28)}px"); height: @($"{Math.Clamp(width, 4, 28)}px")"></span>
+                        </button>
+                    }
+                </div>
+            </fieldset>
+            <div class="drawing-popover-actions">
+                @if (Options.FrameCount > 1)
+                {
+                    <button type="button"
+                            class="@(state.OnionSkinEnabled ? "active" : null)"
+                            disabled="@(state.CurrentFrame <= 1)"
+                            aria-pressed="@state.OnionSkinEnabled"
+                            @onclick="ToggleOnionSkinAsync">
+                        <span aria-hidden="true">◉</span> Onion skin
+                    </button>
+                }
                 <button type="button"
-                        class="drawing-palette-choice @(colour == state.SelectedColour ? "selected" : null)"
-                        style="background-color: @colour"
-                        aria-label="Use colour @colour"
-                        aria-pressed="@(colour == state.SelectedColour)"
-                        @onclick="() => SelectColourAsync(colour)"></button>
-            }
-        </div>
-    }
-    @if (sizesOpen)
-    {
-        <div id="drawing-size-picker" class="drawing-picker drawing-size-picker" aria-label="Brush sizes">
-            @foreach (var width in Options.Widths)
-            {
-                <button type="button"
-                        class="drawing-size-choice @(width == state.SelectedWidth ? "selected" : null)"
-                        aria-label="Use brush size @width"
-                        aria-pressed="@(width == state.SelectedWidth)"
-                        @onclick="() => SelectWidthAsync(width)">
-                    <span style="width: @($"{Math.Clamp(width, 4, 28)}px"); height: @($"{Math.Clamp(width, 4, 28)}px")"></span>
+                        class="drawing-clear-button @(clearArmed ? "drawing-clear-armed" : null)"
+                        disabled="@(!state.CanUndo)"
+                        @onclick="ClearAsync">
+                    @(clearArmed ? "Tap again to clear" : "Clear frame")
                 </button>
-            }
-        </div>
-    }
-
-    @if (Options.FrameCount > 1)
-    {
-        <div class="drawing-frame-controls" aria-label="Animation frames">
-            <button type="button" disabled="@(state.CurrentFrame <= 1)" @onclick="PreviousFrameAsync">Previous</button>
-            <span class="drawing-frame-position" aria-live="polite">Frame @state.CurrentFrame of @state.FrameCount</span>
-            <button type="button" disabled="@(state.CurrentFrame >= state.FrameCount)" @onclick="NextFrameAsync">Next</button>
-            <label class="drawing-onion-toggle">
-                <input type="checkbox"
-                       checked="@state.OnionSkinEnabled"
-                       disabled="@(state.CurrentFrame <= 1)"
-                       @onchange="SetOnionSkinAsync" />
-                Onion skin
-            </label>
-        </div>
+            </div>
+        </aside>
     }
 
     @if (showRestoredMessage)
@@ -100,7 +140,7 @@
     @if (!string.IsNullOrWhiteSpace(SubmissionEndpoint))
     {
         <button type="button"
-                class="btn btn-primary btn-lg w-100 mt-2"
+                class="drawing-submit-button"
                 disabled="@(Disabled || submitting)"
                 @onclick="SubmitAsync">
             @(submitting ? "Sending your drawing…" : SubmitLabel)
@@ -126,8 +166,7 @@
     private DrawingStateSummary state = new(
         1, 1, [false], false, DrawingControllerOptions.DefaultColours[0],
         DrawingControllerOptions.DefaultWidths[1], "pen", false, false, DateTimeOffset.UtcNow);
-    private bool paletteOpen;
-    private bool sizesOpen;
+    private bool brushPanelOpen;
     private bool clearArmed;
     private bool showRestoredMessage;
     private bool submitting;
@@ -223,30 +262,22 @@
         }
     }
 
-    private void TogglePalette()
+    private void ToggleBrushPanel()
     {
-        paletteOpen = !paletteOpen;
-        sizesOpen = false;
+        brushPanelOpen = !brushPanelOpen;
         clearArmed = false;
     }
 
-    private void ToggleSizes()
-    {
-        sizesOpen = !sizesOpen;
-        paletteOpen = false;
-        clearArmed = false;
-    }
+    private void CloseBrushPanel() => brushPanelOpen = false;
 
     private async Task SelectColourAsync(string colour)
     {
-        paletteOpen = false;
         clearArmed = false;
         await InvokeControllerAsync("setColour", colour);
     }
 
     private async Task SelectWidthAsync(int width)
     {
-        sizesOpen = false;
         clearArmed = false;
         await InvokeControllerAsync("setWidth", width);
     }
@@ -273,13 +304,12 @@
     private async Task SetFrameAsync(int zeroBasedIndex)
     {
         clearArmed = false;
-        paletteOpen = false;
-        sizesOpen = false;
+        brushPanelOpen = false;
         await InvokeControllerAsync("setFrame", zeroBasedIndex);
     }
 
-    private Task SetOnionSkinAsync(ChangeEventArgs args) =>
-        InvokeControllerAsync("setOnionSkin", args.Value is true || args.Value?.ToString() == "true");
+    private Task ToggleOnionSkinAsync() =>
+        InvokeControllerAsync("setOnionSkin", !state.OnionSkinEnabled);
 
     private async Task InvokeControllerAsync(string method, params object?[] args)
     {

@@ -10,7 +10,7 @@ Changes to shared UI should be checked at these representative viewport classes:
 |---|---|---|
 | Small phone | 320×568, 360×640 | 44 px controls, readable inputs, no clipped labels, stacked actions |
 | Modern phone | 390×844, 430×932 | safe-area padding, drawing canvas and tools, controller reachability |
-| Phone landscape | 667×375, 844×390 | short-height compaction, scrolling, drawing controls below the canvas |
+| Phone landscape | 667×375, 844×390 | short-height compaction, canvas beside the compact drawing dock |
 | Tablet | 768×1024, 1024×768 | account navigation, host cards, adaptive option grids |
 | Desktop | 1280×720 and 1440×900 | bounded readable content and persistent navigation |
 | Shared display | 1280×720, 1920×1080, 3840×2160 | Canvas-only 16:9 Phaser scaling with complete lobby, results, and scores |
@@ -23,7 +23,8 @@ The viewport metadata opts into device safe areas and virtual-keyboard resizing.
 - Public and account pages use the shared shell with a keyboard skip link, a collapsible 44 px mobile navigation control, fluid gutters, wrapping copy, and width-bounded forms.
 - Host roster, result, and recent-party rows remain side-by-side when space permits and stack below 480 px. Game-start and progression actions become full-width on phones.
 - Player controllers remain game-neutral. Number, text, choice, vote, waiting, and drawing primitives constrain their own content, preserve visible focus, and never require page-level horizontal scrolling.
-- Drawing uses a viewport-height-aware logical canvas so landscape phones can still reach the tool and frame controls. The five primary tools use an equal-width grid; frame controls reflow at narrow widths. Pointer input remains local JavaScript with `touch-action: none` only on the drawing surface.
+- The active phone controller uses a dark, glassy stage with one compact header for the room, phase, connection, score, and reaction launcher. Reactions open in a bounded overlay rather than occupying permanent vertical space.
+- Drawing is canvas-first: the square logical canvas grows to the maximum space permitted by both viewport axes, common actions and frame navigation live in one compact dock, and colour, size, onion skin, and destructive clear actions open in a bounded pen-settings overlay. Landscape phones place the dock beside the canvas. Pointer input remains local JavaScript with `touch-action: none` only on the drawing surface.
 - The display is a fixed-ratio Phaser stage. Its semantic snapshot includes the room code, QR, prompts, deadlines, answers, drawings, results, scores, and avatars required to reconstruct every display state. Host controls and sound remain HTML controls; audience-facing fallback markup is not rendered.
 - A single-frame drawing is marked explicitly and remains continuously visible; it does not inherit the three-frame opacity cycle.
 

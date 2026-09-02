@@ -295,6 +295,31 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void AniMates_answer_stage_separates_the_taped_animation_from_the_answer_board()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+
+        Assert.Contains("const targetX = hasSideCards ? 285 : width / 2", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("const tapeLeftShadow", presentation, StringComparison.Ordinal);
+        Assert.Contains("addAniMatesSideEntries(snapshot, entries.slice(0, 6), items)",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("PICK YOUR ANSWER", presentation, StringComparison.Ordinal);
+        Assert.Contains("board.fillRoundedRect", presentation, StringComparison.Ordinal);
+        Assert.Contains("const compactAnswerStage", presentation, StringComparison.Ordinal);
+        Assert.Contains("compactAnswerStage ? 620", presentation, StringComparison.Ordinal);
+        Assert.Contains("const compactShowdownHeader", presentation, StringComparison.Ordinal);
+        Assert.Contains("snapshot.phase === \"ShowdownResults\" && snapshot.drawing?.animations?.length",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("card.setScale(.8).setAlpha(0)", presentation, StringComparison.Ordinal);
+        Assert.Contains("targets: card", presentation, StringComparison.Ordinal);
+        Assert.Contains("scale: 1", presentation, StringComparison.Ordinal);
+        Assert.DoesNotContain("targets: [shadow, panel, frame, caption, badge], scale: 1.12",
+            presentation, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AniMates_briefings_use_the_talking_rig_and_configurable_per_frame_timer()
     {
         var presentation = ReadRepositoryFile(
@@ -432,6 +457,9 @@ public sealed class LandingPageContractTests
         var hub = ReadRepositoryFile("src/Quizizzo.Web/Realtime/PartyHub.cs");
 
         Assert.Contains("SendReactionAsync(\"Poop\")", player, StringComparison.Ordinal);
+        Assert.Contains("player-reaction-trigger", player, StringComparison.Ordinal);
+        Assert.Contains("player-reaction-popover", player, StringComparison.Ordinal);
+        Assert.Contains("aria-expanded=\"@reactionsOpen\"", player, StringComparison.Ordinal);
         Assert.Contains("TimeSpan.FromSeconds(4)", player, StringComparison.Ordinal);
         Assert.Contains("controller-notice", player, StringComparison.Ordinal);
         Assert.Contains("\"Poop\"", hub, StringComparison.Ordinal);
@@ -453,6 +481,7 @@ public sealed class LandingPageContractTests
         var component = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Shared/PhaserPresentation.razor");
         var app = ReadRepositoryFile("src/Quizizzo.Web/Components/App.razor");
+        var css = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
 
         Assert.Contains("quiz-show-groove.d6618b4f874d.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("quiz-show-sparkle.774e332653a6.mp3", audio, StringComparison.Ordinal);
@@ -463,6 +492,10 @@ public sealed class LandingPageContractTests
         Assert.Contains("controller.audio?.update(controller.snapshot)", presentation, StringComparison.Ordinal);
         Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);
         Assert.Contains("Enable sound", component, StringComparison.Ordinal);
+        Assert.Contains("left: max(1rem, env(safe-area-inset-left))", css,
+            StringComparison.Ordinal);
+        Assert.Contains("linear-gradient(110deg, rgb(255 79 163 / 92%)", css,
+            StringComparison.Ordinal);
         Assert.True(
             app.IndexOf("presentationAudio.js", StringComparison.Ordinal) <
             app.IndexOf("phaserPresentation.js", StringComparison.Ordinal));

@@ -19,4 +19,4 @@ The initial snapshot is rendered without transition effects. Consequently, a ref
 
 Characters are drawn from the persisted body, colour, eye, mouth, and accessory traits using Phaser graphics primitives. They do not require remote images, so the same player remains visually recognizable throughout the party. Phaser and SignalR are exact npm dependencies copied into local static assets by `npm run build:client`; the deployed page never depends on a CDN.
 
-Animation is disabled when the browser reports `prefers-reduced-motion: reduce`. The host-control modal and sound control remain semantic HTML controls layered above the stage, while all audience-facing display content remains in the canvas.
+Animation is disabled when the browser reports `prefers-reduced-motion: reduce`. The host-control modal and compact top-left sound control remain semantic HTML controls layered above the stage, while all audience-facing display content remains in the canvas.

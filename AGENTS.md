@@ -460,7 +460,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Import the supplied lobby, gameplay, and countdown MP3 files under a content-hashed `/media/audio` path.
 - [x] Loop Quiz Show Groove in the paired lobby and Quiz Show Sparkle throughout active game phases on the shared display only.
 - [x] Replace gameplay music with Countdown to Zero for the final 20 seconds of each authoritative AniMates drawing deadline, including mid-countdown refresh recovery.
-- [x] Add a persistent top-right sound control to every display state with remembered mute state and an explicit autoplay-permission prompt.
+- [x] Add a persistent top-left sound control to every display state with remembered mute state and an explicit autoplay-permission prompt.
 - [x] Serve audio with `audio/mpeg`, `Content-Length`, and one-year immutable browser and Cloudflare cache directives.
 - [x] Cover soundtrack selection, countdown timing, mute restoration, static delivery, cache headers, script ordering, and deadline snapshot mapping.
 - [x] Pass analyzer formatting, JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 199 .NET tests.
@@ -475,6 +475,45 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Make idle motion a slow, subtle breathing loop with the hands relaxed at waist height.
 - [x] Clear previous phase chrome before the dedicated standings interstitial so prior reveal copy cannot remain visible.
 - [x] Validate JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 200 .NET tests.
+
+### Canvas-first phone controller refresh (completed 2026-09-02)
+
+- [x] Replace the pale active-controller surface with the same dark pink, purple, and cyan visual language as the join experience and shared display.
+- [x] Consolidate room, phase heading, live connection, total score, and reaction access into one compact glass header.
+- [x] Move the five player reactions into a bounded overlay launched from a single 44 px control.
+- [x] Let the logical drawing canvas consume the full usable phone width instead of inheriting the old 42rem controller cap.
+- [x] Replace the permanent five-tool and frame rows with one compact dock for pen, eraser, undo, and frame navigation.
+- [x] Move colour, brush size, onion skin, and confirmed frame clearing into a bounded pen-settings overlay.
+- [x] Keep portrait and short-landscape controllers within one non-scrolling visual viewport while preserving 44 px touch targets and local pointer input.
+- [x] Update the responsive architecture contract, pass all 12 client tests, a zero-warning Release Web build, and all 200 .NET tests.
+
+### AniMates answer-stage composition (completed 2026-09-02)
+
+- [x] Move the current animation into a larger dedicated left-stage paper card without colliding with the answer choices.
+- [x] Add visible translucent tape, tape shadows, paper depth, and restrained entrance motion to make the animation feel mounted to the stage.
+- [x] Place every answer inside a separate rounded, high-contrast game board on the right.
+- [x] Stack two- and three-answer rounds vertically and adapt larger sets to two columns while keeping labels and copy bounded.
+- [x] Move and scale the player rail below the animation and answer regions for choosing and reveal phases.
+- [x] Document the stage regions, validate JavaScript syntax, pass all 12 client tests, and pass all 201 .NET tests.
+
+### AniMates showdown collision polish (completed 2026-09-02)
+
+- [x] Move the shared-display sound control into a compact site-styled top-left pill outside the game heading region.
+- [x] Give Round 2 playback and voting a dedicated bounded header panel so the prompt, instruction, vote count, and points never share a baseline.
+- [x] Integrate creator, vote, points, and rank metadata into each result animation card instead of covering the drawings with separate result panels.
+- [x] Reveal result cards from a contracted scale directly to their final size without an overshoot that can collide with neighbouring animations.
+- [x] Validate JavaScript syntax, pass all 12 client tests, pass the focused display contract tests, and pass all 201 .NET tests.
+
+### AniMates prompt catalogue (completed 2026-09-02)
+
+- [x] Embed and validate the supplied 1,000-entry drawing-prompt catalogue as an AniMates-owned game asset.
+- [x] Select distinct Round 1 prompt/distractor pairs and a separate shared Round 2 prompt when a new game starts.
+- [x] Persist prompt assignments in the server-authoritative module snapshot so refresh and process recovery never reroll an active game.
+- [x] Add each supplied distractor to its Round 1 choice set alongside the true prompt and human guesses.
+- [x] Award no player or animator points when a built-in distractor is selected and identify it only during the result reveal.
+- [x] Use catalogue prompts in Round 2 without exposing or using their paired distractors.
+- [x] Preserve recovery of version-2 AniMates snapshots through legacy prompt fallbacks and emit version-3 snapshots for new games.
+- [x] Cover the embedded catalogue, private assignments, neutral distractor scoring, dynamic showdown prompts, and asset-backed submission recovery; pass all 203 .NET tests with no build warnings.
 
 ## Verification requirements
 

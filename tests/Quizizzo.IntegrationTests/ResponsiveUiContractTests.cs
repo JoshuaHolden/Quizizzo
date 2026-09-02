@@ -56,13 +56,18 @@ public sealed class ResponsiveUiContractTests
     public void Drawing_and_animation_contracts_cover_phone_input_and_single_frames()
     {
         var css = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
+        var drawing = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/DrawingController.razor");
         var animation = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Shared/FrameAnimation.razor");
 
         Assert.Contains("touch-action: none", css, StringComparison.Ordinal);
-        Assert.Contains("width: min(100%, 68dvh)", css, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: repeat(5, minmax(0, 1fr))",
-            css, StringComparison.Ordinal);
+        Assert.Contains("width: min(100%, calc(100dvh - 10rem))", css,
+            StringComparison.Ordinal);
+        Assert.Contains("drawing-command-dock", drawing, StringComparison.Ordinal);
+        Assert.Contains("drawing-brush-popover", drawing, StringComparison.Ordinal);
+        Assert.Contains("role=\"dialog\" aria-label=\"Pen settings\"", drawing,
+            StringComparison.Ordinal);
         Assert.Contains("FrameAssetIds.Count == 1 ? \"single-frame\"", animation,
             StringComparison.Ordinal);
         Assert.Contains(".frame-animation.single-frame img", css,

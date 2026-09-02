@@ -14,20 +14,49 @@
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus" />
 
-<section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") mx-auto text-center" aria-label="Player controller">
-    <p class="text-uppercase mb-1">Room @player.RoomCode</p>
-    <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
+<section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") mx-auto" aria-label="Player controller">
+    <header class="player-controller-header">
+        <span class="player-room-chip">@player.RoomCode</span>
+        <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
+        <div class="player-header-actions">
+            <span class="player-connection-chip @ConnectionStatusClass" aria-live="polite">
+                <span aria-hidden="true"></span>@ConnectionLabel
+            </span>
+            @if (game is not null)
+            {
+                <span class="player-score-chip" aria-label="@($"Total score {PlayerScore:N0}")">@PlayerScore.ToString("N0") pts</span>
+            }
+            <button type="button"
+                    class="player-reaction-trigger"
+                    aria-label="Open reactions"
+                    aria-expanded="@reactionsOpen"
+                    aria-controls="player-reaction-popover"
+                    @onclick="ToggleReactions">
+                <span aria-hidden="true">☺</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="character-preview mx-auto" style="background-color: @player.Character.PrimaryColour">
         <span aria-hidden="true">:)</span>
     </div>
-    <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
-    <p><span class="badge @ConnectionBadgeClass" aria-live="polite">@ConnectionLabel</span></p>
-    <div class="player-reactions" aria-label="Send a reaction to the big screen">
-        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Kiss")' aria-label="Send a kiss">💋</button>
-        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Angry")' aria-label="Show anger">😠</button>
-        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Laugh")' aria-label="Laugh">😂</button>
-        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Wow")' aria-label="Show surprise">😮</button>
-        <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Poop")' aria-label="Send poop">💩</button>
-    </div>
+
+    @if (reactionsOpen)
+    {
+        <aside id="player-reaction-popover" class="player-reaction-popover" role="dialog" aria-label="Send a reaction to the big screen">
+            <div class="player-reaction-popover-header">
+                <strong>Send to the big screen</strong>
+                <button type="button" @onclick="CloseReactions" aria-label="Close reactions">×</button>
+            </div>
+            <div class="player-reactions">
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Kiss")' aria-label="Send a kiss">💋</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Angry")' aria-label="Show anger">😠</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Laugh")' aria-label="Laugh">😂</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Wow")' aria-label="Show surprise">😮</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Poop")' aria-label="Send poop">💩</button>
+            </div>
+        </aside>
+    }
 
     @if (!string.IsNullOrWhiteSpace(actionError))
     {
@@ -46,10 +75,13 @@
     else
     {
         <section class="player-game-panel">
-            <p class="lead player-game-instructions">@game.Instructions</p>
-            @if (gameView.PhaseEndsAtUtc is not null)
+            @if (game.Controller.Kind != PlayerControllerKind.Drawing)
             {
-                <p class="fs-5 player-game-deadline"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+                <p class="lead player-game-instructions">@game.Instructions</p>
+                @if (gameView.PhaseEndsAtUtc is not null)
+                {
+                    <p class="fs-5 player-game-deadline"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+                }
             }
 
             @switch (game.Controller.Kind)
@@ -70,6 +102,8 @@
                     {
                         <DrawingController @key="DrawingControllerKey(drawingConfiguration)"
                                            Options="CreateDrawingOptions(drawingConfiguration)"
+                                           Prompt="@game.Instructions"
+                                           EndsAtUtc="gameView.PhaseEndsAtUtc"
                                            SubmissionEndpoint="/api/drawing-submissions/animates"
                                            SubmitLabel="@game.Controller.SubmitLabel"
                                            Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
@@ -121,7 +155,6 @@
                     break;
             }
 
-            <p class="player-controller-score">Total score: <strong>@PlayerScore.ToString("N0")</strong></p>
         </section>
     }
 </section>
@@ -139,12 +172,13 @@
     private CancellationTokenSource? errorDismissal;
     private bool submitting;
     private bool focusHeadingAfterRender;
+    private bool reactionsOpen;
     private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
         ? score
         : player.Score;
-    private string ConnectionBadgeClass => connectionStatus == "Connected"
-        ? "text-bg-success"
-        : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
+    private string ConnectionStatusClass => connectionStatus == "Connected"
+        ? "connected"
+        : connectionStatus == "Reconnecting" ? "reconnecting" : "disconnected";
     private string ConnectionLabel => connectionStatus switch
     {
         "Connected" => "You're live",
@@ -199,6 +233,7 @@
         {
             return;
         }
+        reactionsOpen = false;
         try
         {
             await partyConnection.InvokeAsync("SendReaction", reaction);
@@ -208,6 +243,10 @@
             ShowTransientError(exception);
         }
     }
+
+    private void ToggleReactions() => reactionsOpen = !reactionsOpen;
+
+    private void CloseReactions() => reactionsOpen = false;
 
     private async Task SubmitSelectionAsync(string actionKind, string propertyName, string optionId)
     {

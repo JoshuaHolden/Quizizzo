@@ -35,7 +35,7 @@ public sealed class AniMatesSubmissionTests
             SubmissionContent(baseFactory.State, commandId, ValidPng()));
         var after = await client.GetStringAsync("/play");
 
-        Assert.Contains("Spanking a blue dog", before, StringComparison.Ordinal);
+        Assert.Contains("Create your animation", before, StringComparison.Ordinal);
         firstResponse.EnsureSuccessStatusCode();
         retryResponse.EnsureSuccessStatusCode();
         Assert.Contains("Animation submitted", after, StringComparison.Ordinal);

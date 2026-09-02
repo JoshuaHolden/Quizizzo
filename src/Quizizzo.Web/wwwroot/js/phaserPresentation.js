@@ -376,30 +376,41 @@ window.quizizzoPresentation = (() => {
             let frameIndex = 0;
             let completedLoops = 0;
             const hasSideCards = ["Choosing", "Results"].includes(this.controller.snapshot?.phase);
-            const targetScale = hasSideCards ? .72 : .78;
-            const targetX = hasSideCards ? 350 : width / 2;
-            const shadow = this.add.rectangle(18, 20, 530, 430, 0x090516, .4);
-            const panel = this.add.rectangle(0, 0, 530, 430, 0xfffbeb, 0.99)
+            const targetScale = hasSideCards ? .84 : .78;
+            const targetX = hasSideCards ? 285 : width / 2;
+            const targetY = hasSideCards ? 335 : 310;
+            const panelWidth = hasSideCards ? 500 : 530;
+            const panelHeight = hasSideCards ? 440 : 430;
+            const shadow = this.add.rectangle(16, 20, panelWidth, panelHeight, 0x090516, .42);
+            const panel = this.add.rectangle(0, 0, panelWidth, panelHeight, 0xfffbeb, 0.99)
                 .setStrokeStyle(9, 0x24123f, 1);
-            const inner = this.add.rectangle(0, -18, 370, 370, 0xffffff, 1)
+            const inner = this.add.rectangle(0, -22, hasSideCards ? 390 : 370,
+                hasSideCards ? 370 : 370, 0xffffff, 1)
                 .setStrokeStyle(3, 0xa78bfa, .8);
-            const tapeLeft = this.add.rectangle(-205, -190, 90, 28, 0xfde68a, .78).setAngle(-8);
-            const tapeRight = this.add.rectangle(205, -190, 90, 28, 0x67e8f9, .72).setAngle(8);
+            const tapeY = -panelHeight / 2 + 13;
+            const tapeLeftShadow = this.add.rectangle(-178, tapeY + 5, 102, 32, 0x090516, .18).setAngle(-8);
+            const tapeRightShadow = this.add.rectangle(178, tapeY + 5, 102, 32, 0x090516, .18).setAngle(8);
+            const tapeLeft = this.add.rectangle(-178, tapeY, 102, 32, 0xffe58f, .84)
+                .setStrokeStyle(2, 0xffffff, .32).setAngle(-8);
+            const tapeRight = this.add.rectangle(178, tapeY, 102, 32, 0x8cecff, .78)
+                .setStrokeStyle(2, 0xffffff, .28).setAngle(8);
             const frame = this.add.image(0, -20, `drawing-${drawing.animations[0].frameUrls[0].split("/").pop()}`)
-                .setDisplaySize(350, 350);
-            const caption = this.add.text(0, 172, "", {
+                .setDisplaySize(hasSideCards ? 360 : 350, hasSideCards ? 360 : 350);
+            const caption = this.add.text(0, hasSideCards ? 185 : 172, "", {
                 color: "#24123f",
                 fontFamily: displayFont,
-                fontSize: "25px",
+                fontSize: hasSideCards ? "23px" : "25px",
                 fontStyle: "bold",
                 align: "center",
-                wordWrap: { width: 450 }
+                wordWrap: { width: panelWidth - 46 }
             }).setOrigin(0.5);
             const frameDots = Array.from({ length: drawing.animations[0].frameUrls.length }, (_, index) =>
-                this.add.circle((index - (drawing.animations[0].frameUrls.length - 1) / 2) * 18, 202, 5,
+                this.add.circle((index - (drawing.animations[0].frameUrls.length - 1) / 2) * 18,
+                    panelHeight / 2 - 12, 5,
                     index === 0 ? 0xdb2777 : 0xc4b5fd, 1));
-            this.drawingContainer = this.add.container(targetX, 310,
-                [shadow, panel, inner, tapeLeft, tapeRight, frame, caption, ...frameDots])
+            this.drawingContainer = this.add.container(targetX, targetY,
+                [shadow, panel, inner, tapeLeftShadow, tapeRightShadow,
+                    tapeLeft, tapeRight, frame, caption, ...frameDots])
                 .setDepth(12).setScale(targetScale);
             if (!this.controller.reducedMotion) {
                 this.drawingContainer.setScale(targetScale * .82).setAlpha(0).setAngle(-2);
@@ -607,21 +618,41 @@ window.quizizzoPresentation = (() => {
 
             const briefing = ["Briefing", "ShowdownBriefing"].includes(snapshot.phase);
             if (!briefing) {
+                const compactShowdownHeader = ["ShowdownPlayback", "ShowdownVoting"]
+                    .includes(snapshot.phase);
+                if (compactShowdownHeader) {
+                    const headerPanel = this.add.graphics();
+                    headerPanel.fillStyle(0x09051f, .7);
+                    headerPanel.fillRoundedRect(165, 8, 950, 112, 22);
+                    headerPanel.lineStyle(2, 0xffffff, .14);
+                    headerPanel.strokeRoundedRect(165, 8, 950, 112, 22);
+                    items.push(headerPanel);
+                }
                 if (snapshot.title) {
-                    items.push(this.add.text(width / 2, 22, snapshot.title.toUpperCase(), {
-                        color: "#fde68a", fontFamily: displayFont, fontSize: "18px",
+                    items.push(this.add.text(width / 2, compactShowdownHeader ? 20 : 22,
+                        snapshot.title.toUpperCase(), {
+                        color: "#fde68a", fontFamily: displayFont,
+                        fontSize: compactShowdownHeader ? "16px" : "18px",
                         fontStyle: "bold", letterSpacing: 3
                     }).setOrigin(.5));
                 }
                 if (snapshot.prompt) {
-                    items.push(this.add.text(width / 2, 53, snapshot.prompt, {
-                        color: "#ffffff", fontFamily: displayFont, fontSize: "31px", fontStyle: "bold",
-                        align: "center", wordWrap: { width: 870 }, stroke: "#24123f", strokeThickness: 6
+                    items.push(this.add.text(width / 2, compactShowdownHeader ? 55 : 53,
+                        snapshot.prompt, {
+                        color: "#ffffff", fontFamily: displayFont,
+                        fontSize: compactShowdownHeader ? "22px" : "31px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: compactShowdownHeader ? 900 : 870 },
+                        stroke: "#24123f", strokeThickness: compactShowdownHeader ? 4 : 6
                     }).setOrigin(.5));
                 }
                 if (snapshot.phaseMessage) {
-                    items.push(this.add.text(width / 2, 87, snapshot.phaseMessage, {
-                        color: "#ffffff", fontFamily: bodyFont, fontSize: "17px", fontStyle: "bold",
+                    items.push(this.add.text(width / 2, compactShowdownHeader ? 94 : 87,
+                        snapshot.phaseMessage, {
+                        color: compactShowdownHeader ? "#dff9ff" : "#ffffff",
+                        backgroundColor: compactShowdownHeader ? "#312e81" : undefined,
+                        padding: compactShowdownHeader ? { x: 11, y: 4 } : undefined,
+                        fontFamily: bodyFont,
+                        fontSize: compactShowdownHeader ? "14px" : "17px", fontStyle: "bold",
                         align: "center", wordWrap: { width: 800 }
                     }).setOrigin(.5));
                 }
@@ -666,13 +697,22 @@ window.quizizzoPresentation = (() => {
             const phasesWithEntries = ["Choosing", "Results", "Voting", "ShowdownVoting", "ShowdownResults"];
             const entries = snapshot.entries || [];
             if (!phasesWithEntries.includes(snapshot.phase) || entries.length === 0) return;
+            if (snapshot.phase === "ShowdownResults" && snapshot.drawing?.animations?.length) {
+                // Creator, votes, points, and rank are integrated into each reveal card.
+                // A second results layer would cover the animation itself.
+                return;
+            }
             const besideDrawing = Boolean(snapshot.drawing?.animations?.length)
                 && ["Choosing", "Results"].includes(snapshot.phase);
-            const columns = Math.min(besideDrawing ? 2 : 3, entries.length);
-            const cardWidth = besideDrawing ? 235 : Math.min(340, 1040 / columns - 18);
+            if (besideDrawing) {
+                this.addAniMatesSideEntries(snapshot, entries.slice(0, 6), items);
+                return;
+            }
+            const columns = Math.min(3, entries.length);
+            const cardWidth = Math.min(340, 1040 / columns - 18);
             const cardHeight = entries.length > columns ? 112 : 140;
-            const centreX = besideDrawing ? 990 : width / 2;
-            const startY = besideDrawing ? 180 : 185;
+            const centreX = width / 2;
+            const startY = 185;
             entries.slice(0, 6).forEach((entry, index) => {
                 const row = Math.floor(index / columns);
                 const itemsInRow = Math.min(columns, entries.length - row * columns);
@@ -699,43 +739,160 @@ window.quizizzoPresentation = (() => {
             });
         }
 
+        addAniMatesSideEntries(snapshot, entries, items) {
+            const centreX = 900;
+            const centreY = 322;
+            const boardWidth = 630;
+            const boardHeight = 350;
+            const boardShadow = this.add.graphics();
+            boardShadow.fillStyle(0x090516, .34);
+            boardShadow.fillRoundedRect(
+                centreX - boardWidth / 2 + 10, centreY - boardHeight / 2 + 12,
+                boardWidth, boardHeight, 24);
+            const board = this.add.graphics();
+            board.fillStyle(0x09051f, .7);
+            board.fillRoundedRect(
+                centreX - boardWidth / 2, centreY - boardHeight / 2,
+                boardWidth, boardHeight, 24);
+            board.lineStyle(3, 0x67e8f9, .65);
+            board.strokeRoundedRect(
+                centreX - boardWidth / 2, centreY - boardHeight / 2,
+                boardWidth, boardHeight, 24);
+            const kicker = this.add.text(centreX - boardWidth / 2 + 24,
+                centreY - boardHeight / 2 + 18,
+                snapshot.phase === "Results" ? "THE ANSWERS" : "PICK YOUR ANSWER", {
+                    color: "#fff4a8", fontFamily: displayFont, fontSize: "18px",
+                    fontStyle: "bold", letterSpacing: 2
+                }).setOrigin(0, 0);
+            const columns = entries.length <= 3 ? 1 : 2;
+            const rows = Math.ceil(entries.length / columns);
+            const gap = 12;
+            const cardWidth = columns === 1 ? 574 : 281;
+            const availableHeight = boardHeight - 78;
+            const cardHeight = Math.min(112,
+                Math.floor((availableHeight - gap * (rows - 1)) / rows));
+            const startY = centreY - boardHeight / 2 + 65 + cardHeight / 2;
+            items.push(boardShadow, board, kicker);
+
+            entries.forEach((entry, index) => {
+                const row = Math.floor(index / columns);
+                const column = index % columns;
+                const itemsInRow = Math.min(columns, entries.length - row * columns);
+                const x = centreX + (column - (itemsInRow - 1) / 2) * (cardWidth + gap);
+                const y = startY + row * (cardHeight + gap);
+                const shadow = this.add.graphics();
+                shadow.fillStyle(0x090516, .32);
+                shadow.fillRoundedRect(
+                    x - cardWidth / 2 + 6, y - cardHeight / 2 + 7,
+                    cardWidth, cardHeight, 14);
+                const panel = this.add.graphics();
+                panel.fillStyle(0xfffbeb, 1);
+                panel.fillRoundedRect(x - cardWidth / 2, y - cardHeight / 2,
+                    cardWidth, cardHeight, 14);
+                panel.lineStyle(3, 0x24123f, 1);
+                panel.strokeRoundedRect(x - cardWidth / 2, y - cardHeight / 2,
+                    cardWidth, cardHeight, 14);
+                const badgeX = x - cardWidth / 2 + 38;
+                const badge = this.add.circle(badgeX, y, 23,
+                    index % 2 === 0 ? 0xdb2777 : 0x7c3aed, 1)
+                    .setStrokeStyle(3, 0xffffff, .7);
+                const label = this.add.text(badgeX, y, entry.label || "", {
+                    color: "#ffffff", fontFamily: displayFont,
+                    fontSize: "21px", fontStyle: "bold"
+                }).setOrigin(.5);
+                const value = this.add.text(x - cardWidth / 2 + 74, y,
+                    entry.value || "", {
+                        color: "#17131f", fontFamily: displayFont,
+                        fontSize: columns === 1 ? "21px" : "17px", fontStyle: "bold",
+                        wordWrap: { width: cardWidth - 96 }, align: "left"
+                    }).setOrigin(0, .5);
+                items.push(shadow, panel, badge, label, value);
+                if (entry.rank != null) {
+                    items.push(this.add.text(x + cardWidth / 2 - 14,
+                        y + cardHeight / 2 - 9,
+                        `#${entry.rank} · +${Number(entry.pointsAwarded || 0).toLocaleString()} pts`, {
+                            color: "#7c2d92", fontFamily: displayFont,
+                            fontSize: "13px", fontStyle: "bold"
+                        }).setOrigin(1, 1));
+                }
+            });
+        }
+
         startShowdownReveal(drawing) {
             const animations = drawing.animations || [];
             if (animations.length === 0) return;
             const grid = this.showdownGrid(animations);
-            const frameSize = Math.max(78, Math.min(grid.cardWidth - 24, grid.cardHeight - 66));
+            const frameSize = Math.max(72, Math.min(grid.cardWidth - 24, grid.cardHeight - 82));
             const items = [];
+            const cards = [];
             animations.forEach((animation, index) => {
                 const row = Math.floor(index / grid.columns);
                 const column = index % grid.columns;
                 const x = (column - (Math.min(grid.columns, animations.length - row * grid.columns) - 1) / 2)
                     * (grid.cardWidth + grid.gapX);
                 const y = row * (grid.cardHeight + grid.gapY);
-                const shadow = this.add.rectangle(x + 7, y + 9, grid.cardWidth, grid.cardHeight, 0x090516, .38);
-                const panel = this.add.rectangle(x, y, grid.cardWidth, grid.cardHeight, 0xfffbeb, .99)
+                const shadow = this.add.rectangle(7, 9, grid.cardWidth, grid.cardHeight, 0x090516, .38);
+                const panel = this.add.rectangle(0, 0, grid.cardWidth, grid.cardHeight, 0xfffbeb, .99)
                     .setStrokeStyle(animation.rank === 1 ? 9 : 5,
                         animation.rank === 1 ? 0xfacc15 : 0x24123f, 1);
                 const frameUrl = animation.frameUrls[0];
-                const frame = this.add.image(x, y - 17, `drawing-${frameUrl.split("/").pop()}`)
+                const frame = this.add.image(0, grid.rows > 1 ? -18 : -25,
+                    `drawing-${frameUrl.split("/").pop()}`)
                     .setDisplaySize(frameSize, frameSize);
-                const caption = this.add.text(x, y + grid.cardHeight / 2 - 17,
+                const caption = this.add.text(0, grid.cardHeight / 2 - (grid.rows > 1 ? 36 : 48),
                     `${animation.prompt} — ${animation.creatorName || "?"}`, {
-                        color: "#24123f", fontFamily: displayFont, fontSize: "19px",
+                        color: "#24123f", fontFamily: displayFont,
+                        fontSize: grid.rows > 1 ? "13px" : "18px",
                         fontStyle: "bold", align: "center", wordWrap: { width: grid.cardWidth - 20 }
                     }).setOrigin(.5);
-                const badge = this.add.text(x - grid.cardWidth / 2 + 10, y - grid.cardHeight / 2 + 10,
+                const result = this.add.text(0, grid.cardHeight / 2 - (grid.rows > 1 ? 15 : 20),
+                    `${animation.votes} vote(s) · +${Number(animation.pointsAwarded || 0).toLocaleString()} pts`, {
+                        color: animation.rank === 1 ? "#9a3412" : "#6b21a8",
+                        fontFamily: displayFont, fontSize: grid.rows > 1 ? "11px" : "14px",
+                        fontStyle: "bold"
+                    }).setOrigin(.5);
+                const badge = this.add.text(-grid.cardWidth / 2 + 10, -grid.cardHeight / 2 + 10,
                     animation.prompt, {
                     color: "#ffffff", backgroundColor: animation.rank === 1 ? "#db2777" : "#312e81",
-                    padding: { x: 9, y: 5 }, fontFamily: displayFont, fontSize: "18px", fontStyle: "bold"
+                    padding: { x: 9, y: 5 }, fontFamily: displayFont,
+                    fontSize: grid.rows > 1 ? "13px" : "18px", fontStyle: "bold"
                 }).setOrigin(0, 0).setAngle(-2);
-                items.push(shadow, panel, frame, caption, badge);
-                if (animation.rank === 1 && !this.controller.reducedMotion) {
-                    this.tweens.add({ targets: [shadow, panel, frame, caption, badge], scale: 1.12,
-                        duration: 450, yoyo: true, repeat: 1, ease: "Back.easeOut" });
-                    this.burst(width / 2 + x, 138 + grid.cardHeight / 2 + y, 60);
+                const rank = this.add.text(grid.cardWidth / 2 - 12, -grid.cardHeight / 2 + 12,
+                    `#${animation.rank || "–"}`, {
+                        color: "#24123f", backgroundColor: animation.rank === 1 ? "#fde68a" : "#e9d5ff",
+                        padding: { x: 9, y: 5 }, fontFamily: displayFont,
+                        fontSize: grid.rows > 1 ? "12px" : "16px", fontStyle: "bold"
+                    }).setOrigin(1, 0).setAngle(2);
+                const card = this.add.container(x, y,
+                    [shadow, panel, frame, caption, result, badge, rank]);
+                items.push(card);
+                cards.push({ animation, frame, frameIndex: 0, card });
+                if (!this.controller.reducedMotion) {
+                    card.setScale(.8).setAlpha(0);
+                    this.tweens.add({
+                        targets: card,
+                        scale: 1,
+                        alpha: 1,
+                        delay: index * 110,
+                        duration: 460,
+                        ease: "Cubic.easeOut"
+                    });
                 }
             });
             this.drawingContainer = this.add.container(width / 2, 138 + grid.cardHeight / 2, items).setDepth(12);
+            const show = () => cards.forEach(card => {
+                const url = card.animation.frameUrls[card.frameIndex];
+                card.frame.setTexture(`drawing-${url.split("/").pop()}`);
+                card.frameIndex = (card.frameIndex + 1) % card.animation.frameUrls.length;
+            });
+            show();
+            if (!this.controller.reducedMotion) {
+                this.drawingTimer = this.time.addEvent({
+                    delay: Math.max(100, drawing.frameDurationMilliseconds || 150),
+                    loop: true,
+                    callback: show
+                });
+            }
         }
 
         startRoundRanking(snapshot, initial) {
@@ -1014,9 +1171,14 @@ window.quizizzoPresentation = (() => {
             // portrait row below it so the HTML overlay cannot mask faces.
             const compactShowdown = snapshot.gameKey === "animates"
                 && ["ShowdownPlayback", "ShowdownVoting"].includes(snapshot.phase);
-            const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555) : compactShowdown ? 618 : 570;
+            const compactAnswerStage = snapshot.gameKey === "animates"
+                && ["Choosing", "Results"].includes(snapshot.phase)
+                && Boolean(snapshot.drawing?.animations?.length);
+            const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555)
+                : compactShowdown ? 618 : compactAnswerStage ? 620 : 570;
             const rowSpacing = rows > 1 ? 165 : 0;
-            const scale = compactShowdown ? 0.58 : players.length > 8 ? 0.62 : players.length > 6 ? 0.68 : 0.76;
+            const scale = compactShowdown ? 0.58 : compactAnswerStage ? .62
+                : players.length > 8 ? 0.62 : players.length > 6 ? 0.68 : 0.76;
 
             const podiumResults = snapshot.showRoundRanking
                 ? [...(snapshot.results || [])].sort((left, right) => left.rank - right.rank)

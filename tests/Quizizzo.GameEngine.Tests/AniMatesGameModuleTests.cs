@@ -17,6 +17,22 @@ public sealed class AniMatesGameModuleTests
     }
 
     [Fact]
+    public void Prompt_catalogue_is_embedded_with_one_thousand_complete_pairs()
+    {
+        using var stream = typeof(AniMatesGameModule).Assembly.GetManifestResourceStream(
+            "Quizizzo.Games.AniMates.Assets.drawing-prompts-1000.json");
+        Assert.NotNull(stream);
+        using var document = JsonDocument.Parse(stream);
+
+        Assert.Equal(1000, document.RootElement.GetArrayLength());
+        Assert.All(document.RootElement.EnumerateArray(), item =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(item.GetProperty("drawingPrompt").GetString()));
+            Assert.False(string.IsNullOrWhiteSpace(item.GetProperty("distractor").GetString()));
+        });
+    }
+
+    [Fact]
     public void Start_waits_in_a_presenter_briefing_until_the_host_starts_round_one()
     {
         var module = new AniMatesGameModule();
@@ -75,11 +91,14 @@ public sealed class AniMatesGameModuleTests
         var game = new Fixture();
         var animator = game.PlayerView(game.PlayerIds[0]);
         var drawing = animator.Controller.Configuration.Deserialize<DrawingControllerConfiguration>();
+        var assigned = game.AssignedPrompt(game.PlayerIds[0]);
 
         Assert.Equal(PlayerControllerKind.Drawing, animator.Controller.Kind);
         Assert.Equal(3, drawing!.FrameCount);
         Assert.Equal(PlayerControllerKind.Drawing, game.PlayerView(game.PlayerIds[1]).Controller.Kind);
         Assert.NotEqual(animator.Instructions, game.PlayerView(game.PlayerIds[1]).Instructions);
+        Assert.Equal(assigned.DrawingPrompt, animator.Instructions);
+        Assert.False(string.IsNullOrWhiteSpace(assigned.Distractor));
         Assert.DoesNotContain(animator.Instructions, game.DisplayView().Prompt, StringComparison.Ordinal);
         Assert.Null(game.DisplayView().Drawing);
     }
@@ -120,11 +139,12 @@ public sealed class AniMatesGameModuleTests
     public void Scoring_pays_guess_writer_and_correct_chooser_and_animator()
     {
         var game = new Fixture();
+        var drawingPrompt = game.AssignedPrompt(game.PlayerIds[0]).DrawingPrompt;
         game.SubmitAllAnimations();
         game.Guess(game.PlayerIds[1], "A silly dog");
         game.Guess(game.PlayerIds[2], "A confused dog");
         var correct = game.ChoiceView(game.PlayerIds[1]).Options.Single(option =>
-            option.Detail == "Spanking a blue dog");
+            option.Detail == drawingPrompt);
         var firstGuess = game.ChoiceView(game.PlayerIds[2]).Options.Single(option =>
             option.Detail == "A silly dog");
 
@@ -136,6 +156,26 @@ public sealed class AniMatesGameModuleTests
         Assert.DoesNotContain(reveal.ScoreAwards, award => award.PlayerId == game.PlayerIds[2]);
         Assert.Contains(game.DisplayView().Entries,
             entry => entry.Label.Contains("CORRECT ANSWER", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Built_in_distractor_is_available_but_awards_no_points_to_anyone()
+    {
+        var game = new Fixture();
+        var distractor = game.AssignedPrompt(game.PlayerIds[0]).Distractor;
+        game.SubmitAllAnimations();
+        game.Guess(game.PlayerIds[1], "A human guess");
+        game.Guess(game.PlayerIds[2], "Another human guess");
+        var decoy = game.ChoiceView(game.PlayerIds[1]).Options.Single(option =>
+            option.Detail == distractor);
+
+        game.Choose(game.PlayerIds[1], decoy.Id);
+        var reveal = game.Choose(game.PlayerIds[2], decoy.Id);
+
+        Assert.Empty(reveal.ScoreAwards);
+        Assert.Contains(game.DisplayView().Entries, entry =>
+            entry.Label.Contains("BUILT-IN DECOY", StringComparison.Ordinal) &&
+            entry.PointsAwarded == 0);
     }
 
     [Fact]
@@ -186,8 +226,10 @@ public sealed class AniMatesGameModuleTests
         var drawing = game.PlayerView(game.PlayerIds[0]).Controller.Configuration
             .Deserialize<DrawingControllerConfiguration>();
         Assert.Equal(5, drawing!.FrameCount);
+        var showdownPrompt = game.PlayerView(game.PlayerIds[0]).Instructions;
         Assert.All(game.PlayerIds, id => Assert.Equal(
-            "A grandma escaping from prison", game.PlayerView(id).Instructions));
+            showdownPrompt, game.PlayerView(id).Instructions));
+        Assert.False(string.IsNullOrWhiteSpace(showdownPrompt));
 
         game.SubmitAllAnimations(5);
         Assert.Equal(AniMatesGameModule.ShowdownVotingPhase, game.State.Phase);
@@ -382,6 +424,13 @@ public sealed class AniMatesGameModuleTests
 
         public GameTransition Vote(Guid playerId, Guid submissionPlayerId) => Apply(
             GameActor.Player(playerId), new VoteForShowdownAnimationAction(submissionPlayerId));
+
+        public (string DrawingPrompt, string Distractor) AssignedPrompt(Guid playerId)
+        {
+            var prompt = State.Data.GetProperty("RoundOnePrompts").GetProperty(playerId.ToString());
+            return (prompt.GetProperty("DrawingPrompt").GetString()!,
+                prompt.GetProperty("Distractor").GetString()!);
+        }
 
         public void ReachShowdownBriefing()
         {

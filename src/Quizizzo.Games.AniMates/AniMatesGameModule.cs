@@ -21,6 +21,7 @@ public sealed class AniMatesGameModule(
     public const string ShowdownVotingPhase = "ShowdownVoting";
     public const string ShowdownResultsPhase = "ShowdownResults";
     public const string CompletedPhase = "Completed";
+    public const int StateSchemaVersion = 3;
     public const int RoundOneFrameCount = 3;
     public const int RoundTwoFrameCount = 5;
     public const int MaximumFrameCount = RoundTwoFrameCount;
@@ -38,6 +39,10 @@ public sealed class AniMatesGameModule(
     public const int MinimumDrawingSecondsPerFrame = 10;
     public const int MaximumDrawingSecondsPerFrame = 180;
 
+    private const string PromptResourceName =
+        "Quizizzo.Games.AniMates.Assets.drawing-prompts-1000.json";
+    private const int ExpectedPromptCount = 1000;
+
     private readonly TimeSpan? fixedDrawingDuration = drawingDuration;
     private readonly TimeSpan guessingDuration = guessingDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
@@ -50,11 +55,16 @@ public sealed class AniMatesGameModule(
         var configuration = ReadConfiguration(context.Configuration);
         var participants = context.Participants
             .Select(player => new AnimateParticipant(player.PlayerId, player.DisplayName)).ToArray();
+        var selectedPrompts = SelectPrompts(participants.Length + 1);
+        var roundOnePrompts = participants.Select((player, index) =>
+                new KeyValuePair<Guid, DrawingPromptPair>(player.PlayerId, selectedPrompts[index]))
+            .ToDictionary();
         return ModuleState(BriefingPhase, null, false,
             new AnimateState(1, configuration.DrawingSecondsPerFrame, 0, participants,
                 new Dictionary<Guid, AnimationSubmission>(),
                 new Dictionary<Guid, string>(), [], new Dictionary<Guid, Guid>(), [],
-                new Dictionary<Guid, Guid>(), []));
+                new Dictionary<Guid, Guid>(), [], roundOnePrompts,
+                selectedPrompts[^1].DrawingPrompt));
     }
 
     public GameTransition Apply(GameModuleState state, GameActionContext context, IGameAction action)
@@ -255,9 +265,11 @@ public sealed class AniMatesGameModule(
 
     private GameTransition BeginChoosing(AnimateState state, DateTimeOffset now)
     {
+        var prompt = PromptPair(state);
         var options = new List<AnimationAnswerOption>
         {
-            new(Guid.NewGuid(), Prompt(state), true, null)
+            new(Guid.NewGuid(), prompt.DrawingPrompt, true, null),
+            new(Guid.NewGuid(), prompt.Distractor, false, null, true)
         };
         options.AddRange(state.Guesses.Select(guess =>
             new AnimationAnswerOption(Guid.NewGuid(), guess.Value, false, guess.Key)));
@@ -414,7 +426,7 @@ public sealed class AniMatesGameModule(
         {
             return new PlayerGameViewPayload(
                 state.RoundNumber == 1 ? "Create your animation" : "Same Prompt Showdown",
-                state.RoundNumber == 1 ? PromptForPlayer(state, playerId) : ShowdownPrompt,
+                state.RoundNumber == 1 ? PromptForPlayer(state, playerId) : ShowdownPrompt(state),
                 new PlayerControllerView(PlayerControllerKind.Drawing, SubmitAnimationAction.ActionKind, true,
                     "Send my animation", GameJson.From(new DrawingControllerConfiguration(
                         LogicalSize, LogicalSize, FrameCount(state), $"animates-round-{state.RoundNumber}", true))),
@@ -571,10 +583,14 @@ public sealed class AniMatesGameModule(
                 var picks = counts.GetValueOrDefault(option.OptionId);
                 var author = option.AuthorPlayerId is { } id
                     ? RequiredParticipant(state, id).DisplayName : Animator(state).DisplayName;
-                var label = option.IsCorrect ? $"{Letter(index)} — CORRECT ANSWER" : $"{Letter(index)} — {author}";
+                var label = option.IsCorrect
+                    ? $"{Letter(index)} — CORRECT ANSWER"
+                    : option.IsDistractor
+                        ? $"{Letter(index)} — BUILT-IN DECOY"
+                        : $"{Letter(index)} — {author}";
                 var points = option.IsCorrect
                     ? picks * (CorrectChoicePoints + AnimatorCorrectChoicePoints)
-                    : picks * GuessChosenPoints;
+                    : option.IsDistractor ? 0 : picks * GuessChosenPoints;
                 return new GamePresentationEntry(
                     option.OptionId, label, $"{option.Text} — {picks} pick(s)", null, points);
             }).ToArray();
@@ -615,12 +631,12 @@ public sealed class AniMatesGameModule(
         ShowdownBriefingPhase => RoundTwoBriefing,
         DrawingPhase => state.RoundNumber == 1
             ? "Everyone has a different secret prompt"
-            : ShowdownPrompt,
+            : ShowdownPrompt(state),
         GuessingPhase => "What do you think this is?",
         ChoosingPhase => "Choose the best-fitting answer",
-        ShowdownPlaybackPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt}",
-        ShowdownVotingPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt}",
-        ShowdownResultsPhase => ShowdownPrompt,
+        ShowdownPlaybackPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt(state)}",
+        ShowdownVotingPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt(state)}",
+        ShowdownResultsPhase => ShowdownPrompt(state),
         _ => "The answer is..."
     };
 
@@ -628,7 +644,7 @@ public sealed class AniMatesGameModule(
     {
         BriefingPhase => RoundOneBriefing,
         ShowdownBriefingPhase => RoundTwoBriefing,
-        DrawingPhase => state.RoundNumber == 1 ? "Everyone is animating at once" : ShowdownPrompt,
+        DrawingPhase => state.RoundNumber == 1 ? "Everyone is animating at once" : ShowdownPrompt(state),
         ResultsPhase => Prompt(state),
         ShowdownVotingPhase => "Players have 90 seconds to choose their favourite",
         ShowdownResultsPhase => "Showdown creators and winner revealed",
@@ -699,12 +715,33 @@ public sealed class AniMatesGameModule(
             : DefaultDrawingSecondsPerFrame;
 
     private static AnimateParticipant Animator(AnimateState state) => state.Participants[state.TurnIndex];
-    private static string Prompt(AnimateState state) => Prompts[state.TurnIndex % Prompts.Length];
+    private static string Prompt(AnimateState state) => PromptPair(state).DrawingPrompt;
     private static string PromptForPlayer(AnimateState state, Guid playerId)
     {
-        var index = state.Participants.ToList().FindIndex(player => player.PlayerId == playerId);
-        return Prompts[index % Prompts.Length];
+        return PromptPairForPlayer(state, playerId).DrawingPrompt;
     }
+
+    private static DrawingPromptPair PromptPair(AnimateState state) =>
+        PromptPairForPlayer(state, Animator(state).PlayerId);
+
+    private static DrawingPromptPair PromptPairForPlayer(AnimateState state, Guid playerId)
+    {
+        if (state.RoundOnePrompts?.GetValueOrDefault(playerId) is { } assigned)
+        {
+            return assigned;
+        }
+        var index = state.Participants.ToList().FindIndex(player => player.PlayerId == playerId);
+        if (index < 0)
+        {
+            throw new GameRuleViolationException("player-required", "A current player is required.");
+        }
+        return LegacyPrompts[index % LegacyPrompts.Length];
+    }
+
+    private static string ShowdownPrompt(AnimateState state) =>
+        string.IsNullOrWhiteSpace(state.ShowdownDrawingPrompt)
+            ? LegacyShowdownPrompt
+            : state.ShowdownDrawingPrompt;
 
     private static AnimationSubmission? CurrentSubmission(AnimateState state) =>
         state.Submissions.GetValueOrDefault(Animator(state).PlayerId);
@@ -853,25 +890,61 @@ public sealed class AniMatesGameModule(
 
     private static GameModuleState ModuleState(
         string phase, DateTimeOffset? deadline, bool complete, AnimateState state) =>
-        new(2, phase, deadline, complete, GameJson.From(state));
+        new(StateSchemaVersion, phase, deadline, complete, GameJson.From(state));
 
-    private static readonly string[] Prompts =
+    private static DrawingPromptPair[] SelectPrompts(int count)
+    {
+        var catalogue = PromptCatalogue.Value;
+        if (count > catalogue.Length)
+        {
+            throw new InvalidOperationException("The AniMates prompt catalogue is too small.");
+        }
+        var indexes = Enumerable.Range(0, catalogue.Length).ToArray();
+        for (var index = 0; index < count; index++)
+        {
+            var swap = RandomNumberGenerator.GetInt32(index, indexes.Length);
+            (indexes[index], indexes[swap]) = (indexes[swap], indexes[index]);
+        }
+        return indexes.Take(count).Select(index => catalogue[index]).ToArray();
+    }
+
+    private static DrawingPromptPair[] LoadPromptCatalogue()
+    {
+        using var stream = typeof(AniMatesGameModule).Assembly
+            .GetManifestResourceStream(PromptResourceName)
+            ?? throw new InvalidOperationException("The AniMates prompt catalogue is missing.");
+        var prompts = JsonSerializer.Deserialize<DrawingPromptPair[]>(stream, PromptJsonOptions)
+            ?? throw new InvalidOperationException("The AniMates prompt catalogue is invalid.");
+        if (prompts.Length != ExpectedPromptCount || prompts.Any(prompt =>
+                string.IsNullOrWhiteSpace(prompt.DrawingPrompt) ||
+                string.IsNullOrWhiteSpace(prompt.Distractor) ||
+                prompt.DrawingPrompt.Length > MaximumGuessLength ||
+                prompt.Distractor.Length > MaximumGuessLength ||
+                prompt.DrawingPrompt.Any(char.IsControl) ||
+                prompt.Distractor.Any(char.IsControl)))
+        {
+            throw new InvalidOperationException("The AniMates prompt catalogue failed validation.");
+        }
+        return prompts;
+    }
+
+    private static readonly Lazy<DrawingPromptPair[]> PromptCatalogue = new(LoadPromptCatalogue);
+    private static readonly JsonSerializerOptions PromptJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    private static readonly DrawingPromptPair[] LegacyPrompts =
     [
-        "Spanking a blue dog",
-        "Escaping from a giant sandwich",
-        "Trying to open an umbrella indoors",
-        "A penguin learning to skateboard",
-        "Fighting with a stubborn deckchair",
-        "Celebrating after finding the TV remote",
-        "A robot attempting a cartwheel",
-        "Running away from an angry goose",
-        "A wizard whose spell backfires",
-        "Dancing on a very slippery floor",
-        "Waking a dragon with an alarm clock",
-        "Trying to carry too many balloons"
+        new("Spanking a blue dog", "Polishing a bowling ball with cheese"),
+        new("Escaping from a giant sandwich", "Octopus directing airport traffic"),
+        new("Trying to open an umbrella indoors", "Kissing a burnt doughnut"),
+        new("A penguin learning to skateboard", "Robot skating on two bananas"),
+        new("Fighting with a stubborn deckchair", "A driving test at a car wash"),
+        new("Celebrating after finding the TV remote", "Vicar replacing their hands with rubber chickens")
     ];
 
-    private const string ShowdownPrompt = "A grandma escaping from prison";
+    private const string LegacyShowdownPrompt = "A grandma escaping from prison";
     private const string RoundOneBriefing =
         "Everyone gets a different secret prompt. Make a three-frame animation, then fool your friends with guesses.";
     private const string RoundTwoBriefing =
@@ -888,11 +961,19 @@ public sealed class AniMatesGameModule(
         IReadOnlyDictionary<Guid, Guid> Choices,
         IReadOnlyList<AnimationAward> Awards,
         IReadOnlyDictionary<Guid, Guid> ShowdownVotes,
-        IReadOnlyList<ShowdownResult> ShowdownResults);
+        IReadOnlyList<ShowdownResult> ShowdownResults,
+        Dictionary<Guid, DrawingPromptPair>? RoundOnePrompts = null,
+        string? ShowdownDrawingPrompt = null);
 
     private sealed record AnimateParticipant(Guid PlayerId, string DisplayName);
     private sealed record AnimationSubmission(Guid PlayerId, IReadOnlyList<Guid> FrameAssetIds);
-    private sealed record AnimationAnswerOption(Guid OptionId, string Text, bool IsCorrect, Guid? AuthorPlayerId);
+    private sealed record AnimationAnswerOption(
+        Guid OptionId,
+        string Text,
+        bool IsCorrect,
+        Guid? AuthorPlayerId,
+        bool IsDistractor = false);
+    private sealed record DrawingPromptPair(string DrawingPrompt, string Distractor);
     private sealed record AnimationAward(Guid PlayerId, int Points);
     private sealed record ShowdownResult(Guid PlayerId, int Votes, int Rank, int Points);
 }
