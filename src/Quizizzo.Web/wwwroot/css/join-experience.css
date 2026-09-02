@@ -11,3 +11,53 @@ button,input,a{transition:transform 160ms ease,box-shadow 160ms ease,border-colo
 @media(max-width:380px){.avatar-options{gap:.5rem}.avatar-preview{min-height:0}.join-card .avatar-tabs button{font-size:.82rem;padding-inline:.35rem}}
 @media(prefers-reduced-motion:reduce){.join-orb{transform:none!important}.join-card button,.join-card-button{transition:none}}
 @media(forced-colors:active){.join-card,.join-card input,.room-characters i{border:2px solid CanvasText}.join-copy h1 em,.room-preview h1 strong{color:LinkText}}
+
+/* Phone routes are single-screen controllers. Content is paged inside the UI, never scrolled. */
+.phone-controller-shell .join-experience{height:100%;min-height:0;overflow:hidden}
+.phone-controller-shell .join-stage{max-height:100%;min-height:0}
+.phone-controller-shell .join-designer-card form{min-height:0}
+.phone-controller-shell .avatar-tabs{grid-template-columns:repeat(6,minmax(0,1fr))}
+.phone-controller-shell .join-card .avatar-tabs button{font-size:.72rem;padding-inline:.2rem}
+
+@media(max-width:760px),(max-height:700px){
+  .phone-controller-shell .join-experience{align-items:stretch;padding:max(.4rem,env(safe-area-inset-top)) max(.55rem,env(safe-area-inset-right)) max(.4rem,env(safe-area-inset-bottom)) max(.55rem,env(safe-area-inset-left))}
+  .phone-controller-shell .join-stage{display:grid;gap:.35rem;height:100%;margin:0;max-width:none}
+  .phone-controller-shell .join-stage:not(.join-stage-party){grid-template-columns:1fr;place-items:center}
+  .phone-controller-shell .join-stage:not(.join-stage-party) .join-copy{display:none}
+  .phone-controller-shell .join-stage-party{grid-template-rows:auto minmax(0,1fr)}
+  .phone-controller-shell .room-preview{align-items:center;display:flex;gap:.45rem;justify-content:center;min-height:44px;text-align:center}
+  .phone-controller-shell .room-preview>p,.phone-controller-shell .room-characters{display:none}
+  .phone-controller-shell .room-preview h1{font-size:.9rem;letter-spacing:.02em;margin:0}
+  .phone-controller-shell .room-preview h1 strong{display:inline;font-size:1.15rem;letter-spacing:.1em;margin-left:.25rem}
+  .phone-controller-shell .room-preview>span{font-size:.72rem;justify-content:center}
+  .phone-controller-shell .join-card{border-radius:1rem;max-height:100%;padding:.55rem .65rem}
+  .phone-controller-shell .join-card::before{left:1rem;right:1rem}
+  .phone-controller-shell .join-card-kicker{display:none}
+  .phone-controller-shell .join-card h2{font-size:clamp(1.25rem,5dvh,1.65rem);line-height:1;margin:.12rem 0 .35rem;text-align:center}
+  .phone-controller-shell .join-designer-card{display:flex;flex-direction:column;min-height:0}
+  .phone-controller-shell .join-designer-card form{display:grid;flex:1;gap:.3rem;grid-template-columns:1fr;grid-template-rows:minmax(3.5rem,12dvh) auto 44px minmax(0,1fr) 44px}
+  .phone-controller-shell .avatar-preview{border-radius:.75rem;height:100%;min-height:0}
+  .phone-controller-shell .join-card form>label[for=display-name]{display:none}
+  .phone-controller-shell .join-card input#display-name{font-size:1rem;min-height:44px;padding:.35rem .65rem}
+  .phone-controller-shell .avatar-tabs{margin:0;padding:.18rem}
+  .phone-controller-shell .join-card .avatar-tabs button{font-size:clamp(.58rem,2.5vw,.7rem);line-height:1;min-height:40px;padding:.2rem .05rem}
+  .phone-controller-shell .avatar-options{align-content:start;gap:.3rem .45rem;margin:0;overflow:hidden}
+  .phone-controller-shell .join-card .avatar-options label{font-size:.65rem;line-height:1.05}
+  .phone-controller-shell .avatar-options select{font-size:.9rem;height:44px;min-height:44px;padding:.2rem .35rem}
+  .phone-controller-shell .join-card form>button{font-size:.9rem;margin:0;min-height:44px;padding:.3rem .75rem}
+  .phone-controller-shell .join-designer-card>a:not(.join-card-button){font-size:.7rem;line-height:1;margin:.25rem 0 0}
+  .phone-controller-shell .join-error{font-size:.72rem;margin:.15rem 0;padding:.3rem .45rem}
+  .phone-controller-shell .join-card:not(.join-designer-card){max-width:27rem;padding:1rem}
+}
+
+@media(max-height:500px) and (orientation:landscape){
+  .phone-controller-shell .join-stage-party{grid-template-rows:0 minmax(0,1fr)}
+  .phone-controller-shell .room-preview{overflow:hidden;visibility:hidden}
+  .phone-controller-shell .join-designer-card form{grid-template-columns:minmax(5rem,.7fr) minmax(0,1.3fr);grid-template-rows:auto 44px minmax(0,1fr) 44px}
+  .phone-controller-shell .join-designer-card h2{display:none}
+  .phone-controller-shell .avatar-preview{grid-row:1/5}
+  .phone-controller-shell .join-card form>label[for=display-name]{display:none}
+  .phone-controller-shell .join-card input#display-name{grid-column:2}
+  .phone-controller-shell .avatar-tabs,.phone-controller-shell .avatar-options,.phone-controller-shell .join-card form>button{grid-column:2}
+  .phone-controller-shell .join-designer-card>a:not(.join-card-button){display:none}
+}

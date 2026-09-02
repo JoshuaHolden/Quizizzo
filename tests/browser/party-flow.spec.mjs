@@ -31,6 +31,20 @@ async function assertNoHorizontalOverflow(page) {
     expect(overflow, `horizontal overflow at ${page.url()}`).toBeLessThanOrEqual(1);
 }
 
+async function assertSingleViewportController(page) {
+    const dimensions = await page.evaluate(() => ({
+        clientHeight: document.documentElement.clientHeight,
+        scrollHeight: document.documentElement.scrollHeight,
+        bodyScrollHeight: document.body.scrollHeight,
+        bodyOverflow: getComputedStyle(document.body).overflow,
+    }));
+    expect(dimensions.scrollHeight, `document scroll at ${page.url()}`)
+        .toBeLessThanOrEqual(dimensions.clientHeight + 1);
+    expect(dimensions.bodyScrollHeight, `body scroll at ${page.url()}`)
+        .toBeLessThanOrEqual(dimensions.clientHeight + 1);
+    expect(dimensions.bodyOverflow).toBe("hidden");
+}
+
 async function gotoReliable(page, url) {
     for (let attempt = 0; attempt < 3; attempt += 1) {
         try {
@@ -112,6 +126,7 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             await page.getByLabel("Skin").selectOption(name === "Pixel" ? "Tint7" : "Tint3");
             await page.getByLabel("Hair").selectOption(name === "Pixel" ? "Red" : "Black");
             await page.getByLabel("Length").selectOption(name === "Pixel" ? "Shorts" : "Cropped");
+            await assertSingleViewportController(page);
             await page.screenshot({
                 path: testInfo.outputPath(`${name.toLowerCase()}-avatar-designer.png`),
                 fullPage: true,
@@ -121,6 +136,7 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             await expect(page).toHaveURL(/\/play$/);
             await expect(page.getByRole("heading", { name: new RegExp(`You're in, ${name}`, "i") }))
                 .toBeVisible();
+            await assertSingleViewportController(page);
             await page.getByRole("button", { name: name === "Pixel" ? "Send a kiss" : "Show anger" }).click();
         }
 
@@ -143,6 +159,7 @@ test("host, display, and two players can reach a live Estimate controller", asyn
         for (const [page, value] of [[playerOne, "50"], [playerTwo, "60"]]) {
             const submit = page.getByRole("button", { name: "Lock in my guess" });
             await expect(submit).toBeVisible({ timeout: 20_000 });
+            await assertSingleViewportController(page);
             const numberInput = page.getByLabel("Your estimate");
             const minimum = Number(await numberInput.getAttribute("min"));
             const maximum = Number(await numberInput.getAttribute("max"));
@@ -154,7 +171,7 @@ test("host, display, and two players can reach a live Estimate controller", asyn
             await expect(submit).toBeHidden({ timeout: 20_000 });
             await expect(page.getByRole("heading", { name: /locked|round results/i }))
                 .toBeVisible({ timeout: 20_000 });
-            await expect(page.getByRole("link", { name: "Skip to main content" }))
+            await expect(page.getByRole("link", { name: "Skip to controller" }))
                 .not.toBeFocused();
         }
 

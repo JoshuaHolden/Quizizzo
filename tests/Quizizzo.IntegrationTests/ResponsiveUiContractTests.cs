@@ -69,6 +69,46 @@ public sealed class ResponsiveUiContractTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Phone_join_and_game_controllers_use_a_non_scrolling_viewport_shell()
+    {
+        var css = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
+        var joinCss = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/css/join-experience.css");
+        var controllerLayout = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Layout/ControllerLayout.razor");
+        var join = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Join.razor");
+        var designer = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/JoinParty.razor");
+        var play = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Play.razor");
+
+        Assert.Contains("phone-controller-shell", controllerLayout, StringComparison.Ordinal);
+        Assert.Contains("height: 100dvh", css, StringComparison.Ordinal);
+        Assert.Contains("body:has(.phone-controller-shell)", css, StringComparison.Ordinal);
+        Assert.Contains("overflow: hidden", css, StringComparison.Ordinal);
+        Assert.Contains(".phone-controller-shell .join-experience", joinCss,
+            StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns:repeat(6", joinCss,
+            StringComparison.Ordinal);
+        Assert.Contains("Layout.ControllerLayout", join, StringComparison.Ordinal);
+        Assert.Contains("Layout.ControllerLayout", designer, StringComparison.Ordinal);
+        Assert.Contains("Layout.ControllerLayout", play, StringComparison.Ordinal);
+        Assert.Equal(6, CountOccurrences(designer, "data-avatar-tab="));
+    }
+
+    private static int CountOccurrences(string value, string needle)
+    {
+        var count = 0;
+        var startIndex = 0;
+        while ((startIndex = value.IndexOf(needle, startIndex,
+                   StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += needle.Length;
+        }
+        return count;
+    }
+
     private static string ReadRepositoryFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

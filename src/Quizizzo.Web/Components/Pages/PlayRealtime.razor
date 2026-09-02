@@ -14,7 +14,7 @@
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus" />
 
-<section class="join-panel player-controller-page mx-auto text-center" aria-label="Player controller">
+<section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") mx-auto text-center" aria-label="Player controller">
     <p class="text-uppercase mb-1">Room @player.RoomCode</p>
     <div class="character-preview mx-auto my-3" style="background-color: @player.Character.PrimaryColour">
         <span aria-hidden="true">:)</span>
@@ -46,10 +46,10 @@
     else
     {
         <section class="player-game-panel">
-            <p class="lead">@game.Instructions</p>
+            <p class="lead player-game-instructions">@game.Instructions</p>
             @if (gameView.PhaseEndsAtUtc is not null)
             {
-                <p class="fs-5"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
+                <p class="fs-5 player-game-deadline"><DeadlineCountdown EndsAtUtc="gameView.PhaseEndsAtUtc" /></p>
             }
 
             @switch (game.Controller.Kind)
@@ -121,7 +121,7 @@
                     break;
             }
 
-            <p class="mt-4">Total score: <strong>@PlayerScore.ToString("N0")</strong></p>
+            <p class="player-controller-score">Total score: <strong>@PlayerScore.ToString("N0")</strong></p>
         </section>
     }
 </section>

@@ -1597,3 +1597,352 @@ fieldset {
         outline-offset: 2px;
     }
 }
+
+/* Phone controller routes deliberately fit one visual viewport with no page scrolling. */
+html:has(.phone-controller-shell),
+body:has(.phone-controller-shell) {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+.phone-controller-shell {
+    background:
+        radial-gradient(circle at 12% 12%, rgb(124 60 255 / 18%), transparent 15rem),
+        radial-gradient(circle at 88% 88%, rgb(55 217 245 / 12%), transparent 18rem),
+        #f8f6ff;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+        env(safe-area-inset-bottom) env(safe-area-inset-left);
+    width: 100%;
+}
+
+.phone-controller-shell > main {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.phone-controller-shell .player-controller-page {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    height: 100%;
+    max-width: 42rem;
+    min-height: 0;
+    overflow: hidden;
+    padding: .4rem max(.55rem, env(safe-area-inset-right)) .35rem max(.55rem, env(safe-area-inset-left));
+}
+
+.player-controller-page > p,
+.player-controller-page > h1,
+.player-game-panel > p {
+    margin: 0;
+}
+
+.player-controller-page > h1 {
+    font-size: clamp(1.25rem, 4.5dvh, 2rem);
+    line-height: 1.05;
+    max-height: 2.2em;
+    overflow: hidden;
+}
+
+.phone-controller-shell .player-controller-page .character-preview {
+    flex: 0 0 auto;
+    font-size: 1.35rem;
+    height: min(10dvh, 4.5rem);
+    margin-block: 0 !important;
+    width: min(10dvh, 4.5rem);
+}
+
+.phone-controller-shell .player-controller-active .character-preview {
+    display: none;
+}
+
+.phone-controller-shell .player-reactions {
+    flex: 0 0 auto;
+    gap: clamp(.25rem, 2vw, .55rem);
+    margin: 0 auto;
+}
+
+.phone-controller-shell .player-reactions button {
+    font-size: 1.2rem;
+    height: 44px;
+    width: 44px;
+}
+
+.phone-controller-shell .controller-notice {
+    left: max(.5rem, env(safe-area-inset-left));
+    margin: 0;
+    max-width: min(30rem, calc(100vw - 1rem));
+    padding: .55rem .7rem;
+    position: fixed;
+    right: max(.5rem, env(safe-area-inset-right));
+    top: max(.5rem, env(safe-area-inset-top));
+    z-index: 2200;
+}
+
+.phone-controller-shell .player-game-panel {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    gap: .3rem;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.phone-controller-shell .player-game-instructions {
+    display: -webkit-box;
+    font-size: clamp(.78rem, 2.4dvh, 1rem);
+    line-height: 1.15;
+    max-height: 2.3em;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.phone-controller-shell .player-game-deadline {
+    font-size: .9rem !important;
+    line-height: 1;
+}
+
+.phone-controller-shell .player-controller-score {
+    flex: 0 0 auto;
+    font-size: .78rem;
+    line-height: 1;
+    margin: 0;
+}
+
+.phone-controller-shell .number-controller,
+.phone-controller-shell .text-controller,
+.phone-controller-shell .vote-controller,
+.phone-controller-shell .drawing-controller,
+.phone-controller-shell .waiting-controller {
+    flex: 1 1 auto;
+    margin: 0 auto;
+    min-height: 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+.phone-controller-shell .number-controller,
+.phone-controller-shell .text-controller {
+    align-content: center;
+    display: grid;
+    gap: .3rem;
+}
+
+.phone-controller-shell .number-controller label,
+.phone-controller-shell .number-controller p,
+.phone-controller-shell .text-controller label,
+.phone-controller-shell .controller-meta {
+    margin: 0 !important;
+}
+
+.phone-controller-shell .text-controller textarea {
+    min-height: 4.5rem;
+    resize: none;
+}
+
+.phone-controller-shell .vote-controller {
+    display: flex;
+    flex-direction: column;
+}
+
+.phone-controller-shell .vote-options {
+    display: grid;
+    flex: 1 1 auto;
+    gap: .3rem;
+    grid-auto-rows: minmax(44px, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    min-height: 0;
+    overflow: hidden;
+}
+
+.phone-controller-shell .vote-option,
+.phone-controller-shell .vote-review-option {
+    border-width: 2px;
+    border-radius: .7rem;
+    font-size: clamp(.68rem, 2dvh, .9rem);
+    gap: .1rem;
+    justify-content: center;
+    min-height: 44px;
+    overflow: hidden;
+    padding: .25rem .35rem;
+}
+
+.phone-controller-shell .vote-option strong,
+.phone-controller-shell .vote-option span {
+    display: -webkit-box;
+    line-height: 1.05;
+    max-height: 2.1em;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.phone-controller-shell .vote-review-option strong {
+    font-size: .9rem;
+}
+
+.phone-controller-shell .vote-controller > .btn,
+.phone-controller-shell .number-controller > .btn,
+.phone-controller-shell .text-controller > .btn,
+.phone-controller-shell .drawing-controller > .btn {
+    flex: 0 0 44px;
+    font-size: .9rem;
+    margin-top: .3rem !important;
+    min-height: 44px;
+    padding-block: .35rem;
+}
+
+.phone-controller-shell .drawing-controller {
+    display: flex;
+    flex-direction: column;
+    padding-bottom: 0;
+}
+
+.phone-controller-shell .drawing-prompt,
+.phone-controller-shell .drawing-controller > .deadline-countdown {
+    margin: 0;
+}
+
+.phone-controller-shell .drawing-canvas-stack {
+    flex: 1 1 auto;
+    margin: .2rem auto;
+    max-height: 100%;
+    min-height: 0;
+    width: auto;
+}
+
+.phone-controller-shell .drawing-toolbar {
+    flex: 0 0 44px;
+    gap: .2rem;
+}
+
+.phone-controller-shell .drawing-tool-button {
+    height: 44px;
+    min-height: 44px;
+    padding: .1rem;
+}
+
+.phone-controller-shell .drawing-picker {
+    bottom: 92px;
+    box-shadow: 0 .75rem 2rem rgb(23 17 46 / 28%);
+    left: .25rem;
+    margin: 0;
+    position: absolute;
+    right: .25rem;
+    z-index: 5;
+}
+
+.phone-controller-shell .drawing-frame-controls {
+    flex: 0 0 44px;
+    flex-wrap: nowrap;
+    font-size: .72rem;
+    gap: .2rem;
+    margin-top: .2rem;
+}
+
+.phone-controller-shell .drawing-frame-controls button {
+    min-width: 44px;
+    padding-inline: .35rem;
+}
+
+.phone-controller-shell .drawing-onion-toggle {
+    gap: .2rem;
+    white-space: nowrap;
+}
+
+.phone-controller-shell .drawing-draft-message,
+.phone-controller-shell .drawing-controller > .alert {
+    font-size: .72rem;
+    margin: .2rem 0 0 !important;
+    padding: .25rem;
+    position: absolute;
+    z-index: 6;
+}
+
+.phone-controller-shell .waiting-controller {
+    gap: .35rem;
+    justify-content: center;
+    margin-top: 0;
+}
+
+.phone-controller-shell .animation-review-dialog {
+    display: flex;
+    flex-direction: column;
+    height: min(100%, 34rem);
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.phone-controller-shell .animation-review-dialog .frame-animation {
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.phone-controller-shell .animation-review-actions {
+    flex: 0 0 auto;
+}
+
+@media (max-width: 360px), (max-height: 600px) {
+    .phone-controller-shell .player-controller-page {
+        gap: .18rem;
+        padding-block: .2rem;
+    }
+
+    .phone-controller-shell .player-controller-page > p:first-child,
+    .phone-controller-shell .player-controller-page > p:has(.badge) {
+        font-size: .7rem;
+        line-height: 1;
+    }
+
+    .phone-controller-shell .player-controller-page > h1 {
+        font-size: clamp(1rem, 4dvh, 1.4rem);
+    }
+
+    .phone-controller-shell .player-reactions button {
+        font-size: 1.05rem;
+    }
+
+    .phone-controller-shell .vote-options {
+        gap: .2rem;
+    }
+
+    .phone-controller-shell .drawing-tool-button {
+        font-size: .65rem;
+    }
+}
+
+@media (max-height: 430px) and (orientation: landscape) {
+    .phone-controller-shell .player-controller-page {
+        display: grid;
+        grid-template-columns: minmax(9.5rem, .35fr) minmax(0, 1fr);
+        grid-template-rows:auto auto auto minmax(0, 1fr);
+    }
+
+    .phone-controller-shell .player-controller-page > p:first-child,
+    .phone-controller-shell .player-controller-page > h1,
+    .phone-controller-shell .player-controller-page > p:has(.badge),
+    .phone-controller-shell .player-reactions {
+        grid-column: 1;
+    }
+
+    .phone-controller-shell .player-game-panel {
+        grid-column: 2;
+        grid-row: 1 / -1;
+    }
+
+    .phone-controller-shell .player-reactions {
+        flex-wrap: wrap;
+        max-width: 9rem;
+    }
+
+    .phone-controller-shell .player-controller-lobby .character-preview {
+        display: none;
+    }
+}

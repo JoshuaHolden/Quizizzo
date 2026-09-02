@@ -1,5 +1,5 @@
 @page "/join/{RoomCode}"
-@layout Quizizzo.Web.Components.Layout.LandingLayout
+@layout Quizizzo.Web.Components.Layout.ControllerLayout
 @using Quizizzo.Application.Parties
 @using Quizizzo.Application.Players
 @using Quizizzo.Domain
@@ -41,28 +41,40 @@
                 <div class="avatar-preview" data-avatar-preview aria-label="Character preview"></div>
                 <label for="display-name">Player name</label>
                 <input id="display-name" name="displayName" maxlength="@QuizizzoLimits.PlayerNameLength"
-                       autocomplete="nickname" placeholder="Your brilliant nickname" required />
+                       autocomplete="nickname" placeholder="Your brilliant nickname" aria-label="Player name" required />
                 <div class="avatar-tabs" role="tablist" aria-label="Character sections">
-                    <button type="button" role="tab" id="avatar-tab-head" aria-controls="avatar-panel-head" aria-selected="true" data-avatar-tab="head">Head</button>
-                    <button type="button" role="tab" id="avatar-tab-body" aria-controls="avatar-panel-body" aria-selected="false" tabindex="-1" data-avatar-tab="body">Body</button>
+                    <button type="button" role="tab" id="avatar-tab-basics" aria-controls="avatar-panel-basics" aria-selected="true" data-avatar-tab="basics">Basics</button>
+                    <button type="button" role="tab" id="avatar-tab-hair" aria-controls="avatar-panel-hair" aria-selected="false" tabindex="-1" data-avatar-tab="hair">Hair</button>
+                    <button type="button" role="tab" id="avatar-tab-eyes" aria-controls="avatar-panel-eyes" aria-selected="false" tabindex="-1" data-avatar-tab="eyes">Eyes</button>
+                    <button type="button" role="tab" id="avatar-tab-face" aria-controls="avatar-panel-face" aria-selected="false" tabindex="-1" data-avatar-tab="face">Face</button>
+                    <button type="button" role="tab" id="avatar-tab-top" aria-controls="avatar-panel-top" aria-selected="false" tabindex="-1" data-avatar-tab="top">Top</button>
                     <button type="button" role="tab" id="avatar-tab-legs" aria-controls="avatar-panel-legs" aria-selected="false" tabindex="-1" data-avatar-tab="legs">Legs</button>
                 </div>
-                <fieldset class="avatar-options" id="avatar-panel-head" role="tabpanel" aria-labelledby="avatar-tab-head" data-avatar-panel="head">
-                    <legend class="visually-hidden">Head options</legend>
+                <fieldset class="avatar-options" id="avatar-panel-basics" role="tabpanel" aria-labelledby="avatar-tab-basics" data-avatar-panel="basics">
+                    <legend class="visually-hidden">Basic options</legend>
                     <label>Style<select name="presentation"><option>Man</option><option>Woman</option></select></label>
                     <label>Skin<select name="skinTone"><option value="Tint1">Warm</option><option value="Tint3">Golden</option><option value="Tint5">Brown</option><option value="Tint7">Deep</option></select></label>
+                    <label>Body size<select name="bodySize"><option>Thin</option><option selected>Normal</option><option>Thick</option></select></label>
+                    <label>Face shape<select name="faceShape"><option>Oval</option><option>Round</option><option>Wide</option></select></label>
+                </fieldset>
+                <fieldset class="avatar-options" id="avatar-panel-hair" role="tabpanel" aria-labelledby="avatar-tab-hair" data-avatar-panel="hair" hidden>
+                    <legend class="visually-hidden">Hair options</legend>
                     <label>Hair colour<select name="hairColour"><option>Brown</option><option>Black</option><option>Blonde</option><option>Red</option></select></label>
                     <label>Hairstyle<select name="hairStyle" data-hair-style><option>Style1</option><option>Style2</option><option>Style3</option><option>Style4</option><option>Style5</option><option>Style6</option><option>Style7</option><option>Style8</option></select></label>
-                    <label>Face shape<select name="faceShape"><option>Oval</option><option>Round</option><option>Wide</option></select></label>
+                </fieldset>
+                <fieldset class="avatar-options" id="avatar-panel-eyes" role="tabpanel" aria-labelledby="avatar-tab-eyes" data-avatar-panel="eyes" hidden>
+                    <legend class="visually-hidden">Eye options</legend>
                     <label>Eye colour<select name="eyeColour"><option>Blue</option><option>Brown</option><option>Green</option><option>Black</option><option>Pine</option></select></label>
                     <label>Eye size<select name="eyeSize"><option>Large</option><option>Small</option></select></label>
                     <label>Brows<select name="browShape"><option value="Brow1">Shape 1</option><option value="Brow2">Shape 2</option><option value="Brow3">Shape 3</option></select></label>
+                </fieldset>
+                <fieldset class="avatar-options" id="avatar-panel-face" role="tabpanel" aria-labelledby="avatar-tab-face" data-avatar-panel="face" hidden>
+                    <legend class="visually-hidden">Face options</legend>
                     <label>Nose<select name="noseShape"><option value="Nose1">Shape 1</option><option value="Nose2">Shape 2</option><option value="Nose3">Shape 3</option></select></label>
                     <label>Mouth<select name="mouth"><option value="Smile">Smile</option><option value="Grin">Upper teeth</option><option value="TeethLower">Lower teeth</option><option value="Surprised">Surprised</option><option value="Tongue">Glad</option><option value="Sad">Sad</option><option value="Straight">Straight</option></select></label>
                 </fieldset>
-                <fieldset class="avatar-options" id="avatar-panel-body" role="tabpanel" aria-labelledby="avatar-tab-body" data-avatar-panel="body" hidden>
-                    <legend class="visually-hidden">Body options</legend>
-                    <label>Body size<select name="bodySize"><option>Thin</option><option selected>Normal</option><option>Thick</option></select></label>
+                <fieldset class="avatar-options" id="avatar-panel-top" role="tabpanel" aria-labelledby="avatar-tab-top" data-avatar-panel="top" hidden>
+                    <legend class="visually-hidden">Top options</legend>
                     <label>Shirt<select name="shirtColour"><option>Navy</option><option>Blue</option><option>Green</option><option>Red</option></select></label>
                     <label>Top style<select name="shirtStyle" data-shirt-style><option>Style1</option><option>Style2</option><option>Style3</option><option>Style5</option><option>Style6</option><option>Style7</option></select></label>
                 </fieldset>

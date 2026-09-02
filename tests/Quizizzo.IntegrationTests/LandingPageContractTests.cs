@@ -40,14 +40,14 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void Join_routes_share_the_sidebar_free_landing_experience()
+    public void Join_routes_share_the_single_viewport_controller_experience()
     {
         var join = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Join.razor");
         var joinParty = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/JoinParty.razor");
 
-        Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", join,
+        Assert.Contains("@layout Quizizzo.Web.Components.Layout.ControllerLayout", join,
             StringComparison.Ordinal);
-        Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", joinParty,
+        Assert.Contains("@layout Quizizzo.Web.Components.Layout.ControllerLayout", joinParty,
             StringComparison.Ordinal);
         Assert.Contains("join-experience", join, StringComparison.Ordinal);
         Assert.Contains("join-experience", joinParty, StringComparison.Ordinal);
@@ -56,8 +56,11 @@ public sealed class LandingPageContractTests
         Assert.Contains("name=\"trouserLength\"", joinParty, StringComparison.Ordinal);
         Assert.Contains("name=\"shoeColour\"", joinParty, StringComparison.Ordinal);
         Assert.Contains("role=\"tablist\"", joinParty, StringComparison.Ordinal);
-        Assert.Contains("data-avatar-tab=\"head\"", joinParty, StringComparison.Ordinal);
-        Assert.Contains("data-avatar-tab=\"body\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"basics\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"hair\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"eyes\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"face\"", joinParty, StringComparison.Ordinal);
+        Assert.Contains("data-avatar-tab=\"top\"", joinParty, StringComparison.Ordinal);
         Assert.Contains("data-avatar-tab=\"legs\"", joinParty, StringComparison.Ordinal);
 
         var designer = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");

@@ -396,6 +396,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add a server-validated poop reaction to the phone controller and shared display.
 - [x] Replace persistent raw SignalR errors with concise controller notices that dismiss automatically.
 
+### Single-viewport phone controllers (completed 2026-09-02)
+
+- [x] Put join, avatar design, and player game routes in a dedicated safe-area-aware `100dvh` shell with document scrolling disabled.
+- [x] Split the dense avatar designer into six keyboard-accessible sections while preserving every persisted character option.
+- [x] Compact number, text, choice, vote, waiting, reaction, and drawing controls to fit portrait and short-landscape phones without reducing touch targets below 44 px.
+- [x] Keep transient errors and drawing pickers as bounded overlays so they do not reflow the active controller.
+- [x] Add responsive contracts and full-party browser assertions that reject vertical document scrolling on join and play routes.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
