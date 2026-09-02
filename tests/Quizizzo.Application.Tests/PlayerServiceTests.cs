@@ -122,6 +122,33 @@ public sealed class PlayerServiceTests
     }
 
     [Fact]
+    public async Task Kicked_player_cookie_can_create_a_fresh_membership_when_joining_again()
+    {
+        var fixture = new Fixture();
+        var original = await fixture.Service.JoinAsync("K7XM", "First player");
+        await fixture.Service.KickAsync(
+            fixture.Party.Id.Value,
+            "host-1",
+            original.View.PlayerId);
+
+        var rejoined = await fixture.Service.JoinAsync(
+            "K7XM",
+            "Fresh player",
+            original.SessionToken);
+
+        Assert.True(rejoined.IsNew);
+        Assert.NotEqual(original.View.PlayerId, rejoined.View.PlayerId);
+        Assert.NotEqual(original.SessionToken, rejoined.SessionToken);
+        Assert.Equal("Fresh player", rejoined.View.DisplayName);
+        Assert.Equal(2, fixture.PlayerRepository.Players.Count);
+        Assert.Equal(PlayerStatus.Kicked, fixture.PlayerRepository.Players[0].Status);
+        Assert.Equal(PlayerStatus.Connected, fixture.PlayerRepository.Players[1].Status);
+        Assert.Single(await fixture.Service.ListForHostAsync(
+            fixture.Party.Id.Value,
+            "host-1"));
+    }
+
+    [Fact]
     public async Task Different_host_cannot_kick_a_player()
     {
         var fixture = new Fixture();
@@ -181,7 +208,14 @@ public sealed class PlayerServiceTests
 
     private sealed class FakeCredentials : IPlayerCredentialService
     {
-        public string GenerateSessionToken() => "raw-token";
+        private int generatedTokenCount;
+
+        public string GenerateSessionToken()
+        {
+            generatedTokenCount++;
+            return generatedTokenCount == 1 ? "raw-token" : $"raw-token-{generatedTokenCount}";
+        }
+
         public string HashSessionToken(string sessionToken) => $"HASHED:{sessionToken}";
     }
 

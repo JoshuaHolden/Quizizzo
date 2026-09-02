@@ -404,6 +404,17 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Keep transient errors and drawing pickers as bounded overlays so they do not reflow the active controller.
 - [x] Add responsive contracts and full-party browser assertions that reject vertical document scrolling on join and play routes.
 
+### Removed-player rejoin hotfix (completed 2026-09-02)
+
+- [x] Preserve normal cookie-based reconnect for active and temporarily disconnected party members.
+- [x] Treat a kicked or left membership as retired when the same phone submits the join form again, issuing a fresh player identity and replacing its cookie.
+- [x] Keep the retired record excluded from the roster and member count while covering the fresh-membership path with an application regression test.
+
+### Avatar-designer contrast hotfix (completed 2026-09-02)
+
+- [x] Give the phone join and character-designer journey a dedicated dark party-game surface.
+- [x] Raise field-label, tab, hint, placeholder, input-border, and navigation-link contrast without changing the single-viewport layout.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

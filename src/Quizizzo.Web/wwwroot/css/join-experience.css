@@ -13,9 +13,16 @@ button,input,a{transition:transform 160ms ease,box-shadow 160ms ease,border-colo
 @media(forced-colors:active){.join-card,.join-card input,.room-characters i{border:2px solid CanvasText}.join-copy h1 em,.room-preview h1 strong{color:LinkText}}
 
 /* Phone routes are single-screen controllers. Content is paged inside the UI, never scrolled. */
-.phone-controller-shell .join-experience{height:100%;min-height:0;overflow:hidden}
+.phone-controller-shell .join-experience{background:radial-gradient(circle at 14% 15%,rgba(255,79,163,.2),transparent 17rem),radial-gradient(circle at 86% 82%,rgba(55,217,245,.15),transparent 18rem),linear-gradient(145deg,#120725 0%,#211044 48%,#101a45 100%);color:#fff;height:100%;min-height:0;overflow:hidden}
 .phone-controller-shell .join-stage{max-height:100%;min-height:0}
 .phone-controller-shell .join-designer-card form{min-height:0}
+.phone-controller-shell .join-card{background:linear-gradient(145deg,rgba(50,30,91,.96),rgba(20,12,50,.96));border-color:rgba(226,216,255,.32)}
+.phone-controller-shell .join-card h1,.phone-controller-shell .join-card h2,.phone-controller-shell .room-preview h1{color:#fff;text-shadow:0 .15rem .5rem rgba(0,0,0,.38)}
+.phone-controller-shell .join-card label,.phone-controller-shell .join-card .avatar-options label{color:#f7f3ff;font-weight:850;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.phone-controller-shell .avatar-options select,.phone-controller-shell .join-card input{background:#130a2b;border-color:#8c7bac;color:#fff}
+.phone-controller-shell .join-card input::placeholder{color:#c6bddd;opacity:1}
+.phone-controller-shell .join-card .avatar-tabs button{color:#eee8ff;font-weight:850;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.phone-controller-shell .join-hint,.phone-controller-shell .join-card-message p,.phone-controller-shell .room-preview>span,.phone-controller-shell .join-card>a:not(.join-card-button){color:#ddd5ef}
 .phone-controller-shell .avatar-tabs{grid-template-columns:repeat(6,minmax(0,1fr))}
 .phone-controller-shell .join-card .avatar-tabs button{font-size:.72rem;padding-inline:.2rem}
 

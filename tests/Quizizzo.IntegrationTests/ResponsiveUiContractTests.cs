@@ -88,6 +88,10 @@ public sealed class ResponsiveUiContractTests
         Assert.Contains("overflow: hidden", css, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .join-experience", joinCss,
             StringComparison.Ordinal);
+        Assert.Contains("linear-gradient(145deg,#120725", joinCss,
+            StringComparison.Ordinal);
+        Assert.Contains("color:#f7f3ff;font-weight:850", joinCss,
+            StringComparison.Ordinal);
         Assert.Contains("grid-template-columns:repeat(6", joinCss,
             StringComparison.Ordinal);
         Assert.Contains("Layout.ControllerLayout", join, StringComparison.Ordinal);

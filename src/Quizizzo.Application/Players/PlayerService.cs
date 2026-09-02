@@ -41,7 +41,7 @@ public sealed class PlayerService(
         {
             var existing = await players.GetBySessionTokenHashAsync(
                 credentials.HashSessionToken(existingSessionToken), cancellationToken);
-            if (existing is not null && existing.PartyId == party.Id)
+            if (existing is not null && existing.PartyId == party.Id && existing.IsPartyMember)
             {
                 existing.Reconnect(timeProvider.GetUtcNow());
                 await players.SaveChangesAsync(cancellationToken);
