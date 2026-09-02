@@ -139,9 +139,13 @@ public sealed class MajorityRulesGameModuleTests
         var vote = module.DecodeAction(
             VoteForMajorityAnswerAction.ActionKind,
             GameJson.From(new { answerOptionId = voteId }));
+        var compactVote = module.DecodeAction(
+            VoteForMajorityAnswerAction.ActionKind,
+            GameJson.From(new { answerOptionId = voteId.ToString("N") }));
 
         Assert.Equal("Hello", Assert.IsType<SubmitMajorityAnswerAction>(answer).Value);
         Assert.Equal(voteId, Assert.IsType<VoteForMajorityAnswerAction>(vote).AnswerOptionId);
+        Assert.Equal(voteId, Assert.IsType<VoteForMajorityAnswerAction>(compactVote).AnswerOptionId);
         var malformed = Assert.Throws<GameRuleViolationException>(() => module.DecodeAction(
             VoteForMajorityAnswerAction.ActionKind,
             GameJson.From(new { answerOptionId = "nope" })));

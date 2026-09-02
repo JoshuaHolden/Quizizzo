@@ -163,6 +163,10 @@ public sealed class LandingPageContractTests
         Assert.Contains("part.scaleX *= bodyWidth", designer, StringComparison.Ordinal);
         Assert.Contains("part.scaleX *= variants.bodyWidth", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("neck.png`, .5, 0).setScale(.42, 1)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("neck.png`, .5, 0).setScale(.42, 1)", designer,
+            StringComparison.Ordinal);
         Assert.Contains("signature === this.podiumSignature", presentation,
             StringComparison.Ordinal);
         Assert.Contains("this.tweens.killTweensOf(this.podiumContainer.getAll())", presentation,
@@ -222,6 +226,11 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("setVisible(isThinking)", presentation, StringComparison.Ordinal);
         Assert.Contains("mode === \"full\" ? .31 : .4", presentation, StringComparison.Ordinal);
+        Assert.Contains("avatar.shadow.setY(mode === \"full\" ? 12 : 62)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("const y = 658 - podiumHeight", presentation, StringComparison.Ordinal);
+        Assert.Contains("const name = this.add.text(0, 47", presentation, StringComparison.Ordinal);
+        Assert.Contains("const score = this.add.text(0, 75", presentation, StringComparison.Ordinal);
         Assert.Contains("configureHost", presentation, StringComparison.Ordinal);
     }
 

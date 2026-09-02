@@ -407,7 +407,8 @@ public sealed class MajorityRulesGameModule(
     private static Guid ReadGuid(JsonElement payload, string propertyName)
     {
         if (payload.ValueKind == JsonValueKind.Object && payload.TryGetProperty(propertyName, out var value) &&
-            value.ValueKind == JsonValueKind.String && value.TryGetGuid(out var parsed) && parsed != Guid.Empty)
+            value.ValueKind == JsonValueKind.String &&
+            Guid.TryParse(value.GetString(), out var parsed) && parsed != Guid.Empty)
         {
             return parsed;
         }

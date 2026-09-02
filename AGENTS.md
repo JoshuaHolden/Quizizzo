@@ -415,6 +415,26 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Give the phone join and character-designer journey a dedicated dark party-game surface.
 - [x] Raise field-label, tab, hint, placeholder, input-border, and navigation-link contrast without changing the single-viewport layout.
 
+### Phone answer-selection hotfix (completed 2026-09-02)
+
+- [x] Accept the compact opaque GUID format emitted by reusable phone choice and vote controllers.
+- [x] Apply the transport fix consistently to AniMates choices/showdown votes, Bullshit choices, and Majority Rules votes.
+- [x] Retain rejection of missing, malformed, and empty identifiers and cover both dashed and compact transport formats.
+
+### Phone gesture hardening (completed 2026-09-02)
+
+- [x] Disable pinch and double-tap zoom inside the dedicated phone controller shell without affecting public, host, or display pages.
+- [x] Prevent long-press callouts and accidental selection/highlighting of controller chrome and labels.
+- [x] Preserve caret placement and text editing inside player-name, text-answer, and numeric entry fields.
+- [x] Add a Safari gesture-event fallback and responsive contract coverage for the route-scoped behavior.
+
+### Full-body avatar neck polish (completed 2026-09-02)
+
+- [x] Narrow the Kenney neck layer so the head and shirt masks form a clean collar instead of pointed skin flaps.
+- [x] Keep the live display, phone avatar preview, and presenter lab rigs visually consistent.
+- [x] Ground full-body shoes on their stage shadow and results podium, lower the reveal row toward the bottom of the display, and separate player-name and score baselines inside the card.
+- [x] Validate all three JavaScript entry points and cover the production/designer neck proportion with a presentation contract test.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

@@ -130,7 +130,7 @@
                 bodyParts.push(part);
                 return part;
             };
-            addBodyPart(0, 168, "skin", `tint${skin}_neck.png`, .5, 0).setScale(.72, 1);
+            addBodyPart(0, 168, "skin", `tint${skin}_neck.png`, .5, 0).setScale(.42, 1);
             addBodyPart(-58, 218, "shirts", `${shirt}Arm_long.png`, .69, .18).setFlipX(true);
             addBodyPart(58, 218, "shirts", `${shirt}Arm_long.png`, .31, .18);
             addBodyPart(-166, 301, "skin", `tint${skin}_hand.png`, .5, .12);

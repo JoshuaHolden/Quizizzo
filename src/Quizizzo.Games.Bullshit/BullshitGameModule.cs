@@ -492,7 +492,7 @@ public sealed class BullshitGameModule(
         if (payload.ValueKind == JsonValueKind.Object &&
             payload.TryGetProperty(propertyName, out var value) &&
             value.ValueKind == JsonValueKind.String &&
-            value.TryGetGuid(out var parsed) && parsed != Guid.Empty)
+            Guid.TryParse(value.GetString(), out var parsed) && parsed != Guid.Empty)
         {
             return parsed;
         }

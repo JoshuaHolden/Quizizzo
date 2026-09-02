@@ -81,6 +81,9 @@ public sealed class ResponsiveUiContractTests
         var designer = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Pages/JoinParty.razor");
         var play = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Play.razor");
+        var app = ReadRepositoryFile("src/Quizizzo.Web/Components/App.razor");
+        var gestures = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phoneControllerGestures.js");
 
         Assert.Contains("phone-controller-shell", controllerLayout, StringComparison.Ordinal);
         Assert.Contains("height: 100dvh", css, StringComparison.Ordinal);
@@ -98,6 +101,13 @@ public sealed class ResponsiveUiContractTests
         Assert.Contains("Layout.ControllerLayout", designer, StringComparison.Ordinal);
         Assert.Contains("Layout.ControllerLayout", play, StringComparison.Ordinal);
         Assert.Equal(6, CountOccurrences(designer, "data-avatar-tab="));
+        Assert.Contains("touch-action: none", css, StringComparison.Ordinal);
+        Assert.Contains("-webkit-user-select: none", css, StringComparison.Ordinal);
+        Assert.Contains(".phone-controller-shell input", css, StringComparison.Ordinal);
+        Assert.Contains("phoneControllerGestures.js", app, StringComparison.Ordinal);
+        Assert.Contains("gesturestart", gestures, StringComparison.Ordinal);
+        Assert.Contains("dblclick", gestures, StringComparison.Ordinal);
+        Assert.Contains("passive: false", gestures, StringComparison.Ordinal);
     }
 
     private static int CountOccurrences(string value, string needle)

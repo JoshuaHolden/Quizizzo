@@ -240,6 +240,28 @@ public sealed class AniMatesGameModuleTests
             module.DecodeAction(ChooseAnimationAnswerAction.ActionKind, GameJson.Empty)).Code);
     }
 
+    [Fact]
+    public void Decoder_accepts_compact_option_ids_emitted_by_phone_controllers()
+    {
+        var module = new AniMatesGameModule();
+        var answerOptionId = Guid.NewGuid();
+        var submissionPlayerId = Guid.NewGuid();
+
+        var choice = module.DecodeAction(
+            ChooseAnimationAnswerAction.ActionKind,
+            GameJson.From(new { answerOptionId = answerOptionId.ToString("N") }));
+        var vote = module.DecodeAction(
+            VoteForShowdownAnimationAction.ActionKind,
+            GameJson.From(new { submissionPlayerId = submissionPlayerId.ToString("N") }));
+
+        Assert.Equal(
+            answerOptionId,
+            Assert.IsType<ChooseAnimationAnswerAction>(choice).AnswerOptionId);
+        Assert.Equal(
+            submissionPlayerId,
+            Assert.IsType<VoteForShowdownAnimationAction>(vote).SubmissionPlayerId);
+    }
+
     private sealed class Fixture
     {
         private readonly AniMatesGameModule module = new(

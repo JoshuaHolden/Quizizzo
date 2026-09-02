@@ -36,7 +36,7 @@
             this.leftArm = this.makeArm(-58, 218, true);
             this.rightArm = this.makeArm(58, 218, false);
             this.neckBacking = this.add.graphics(); this.rig.add(this.neckBacking);
-            this.neck = this.part(0, 168, "skin", "tint1_neck.png", .5, 0).setScale(.72, 1);
+            this.neck = this.part(0, 168, "skin", "tint1_neck.png", .5, 0).setScale(.42, 1);
             this.shirt = this.part(0, 200, "shirts", "navyShirt1.png", .5, 0);
             this.pants = this.part(0, 341, "pants", "pantsNavy1.png", .5, 0);
             this.head = this.add.container(0, 35); this.rig.add(this.head);

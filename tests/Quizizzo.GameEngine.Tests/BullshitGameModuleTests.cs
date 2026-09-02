@@ -181,9 +181,13 @@ public sealed class BullshitGameModuleTests
         var choice = module.DecodeAction(
             ChooseBullshitAnswerAction.ActionKind,
             GameJson.From(new { choiceId }));
+        var compactChoice = module.DecodeAction(
+            ChooseBullshitAnswerAction.ActionKind,
+            GameJson.From(new { choiceId = choiceId.ToString("N") }));
 
         Assert.Equal("Moon", Assert.IsType<SubmitBluffAction>(bluff).Value);
         Assert.Equal(choiceId, Assert.IsType<ChooseBullshitAnswerAction>(choice).ChoiceId);
+        Assert.Equal(choiceId, Assert.IsType<ChooseBullshitAnswerAction>(compactChoice).ChoiceId);
         var malformed = Assert.Throws<GameRuleViolationException>(() => module.DecodeAction(
             ChooseBullshitAnswerAction.ActionKind,
             GameJson.From(new { choiceId = "nope" })));

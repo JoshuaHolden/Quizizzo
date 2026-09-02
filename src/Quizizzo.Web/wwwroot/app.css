@@ -1617,7 +1617,17 @@ body:has(.phone-controller-shell) {
     overflow: hidden;
     padding: env(safe-area-inset-top) env(safe-area-inset-right)
         env(safe-area-inset-bottom) env(safe-area-inset-left);
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
     width: 100%;
+}
+
+.phone-controller-shell input,
+.phone-controller-shell textarea {
+    -webkit-user-select: text;
+    user-select: text;
 }
 
 .phone-controller-shell > main {

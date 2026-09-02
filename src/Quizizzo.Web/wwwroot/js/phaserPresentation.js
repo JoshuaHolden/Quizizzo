@@ -616,7 +616,7 @@ window.quizizzoPresentation = (() => {
                 fontSize: "18px",
                 fontStyle: "bold"
             }).setOrigin(0.5);
-            const name = this.add.text(0, 55, player.displayName, {
+            const name = this.add.text(0, 47, player.displayName, {
                 color: "#ffffff",
                 fontFamily: bodyFont,
                 fontSize: "22px",
@@ -624,13 +624,13 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 5
             }).setOrigin(0.5);
-            const score = this.add.text(0, 69, `${player.score.toLocaleString()} pts`, {
+            const score = this.add.text(0, 75, `${player.score.toLocaleString()} pts`, {
                 color: "#fde68a",
                 fontFamily: displayFont,
-                fontSize: "16px",
+                fontSize: "15px",
                 fontStyle: "bold",
                 stroke: "#130828",
-                strokeThickness: 4
+                strokeThickness: 3
             }).setOrigin(0.5);
             const activity = this.add.text(48, -142, "", {
                 color: "#ffffff", backgroundColor: "#24123f", padding: { x: 10, y: 7 },
@@ -716,7 +716,7 @@ window.quizizzoPresentation = (() => {
                     bodyParts.push(part);
                     return part;
                 };
-                addBodyPart(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.72, 1);
+                addBodyPart(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.42, 1);
                 addBodyPart(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
                 addBodyPart(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
                 addBodyPart(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
@@ -747,6 +747,7 @@ window.quizizzoPresentation = (() => {
             avatar.character.setScale(mode === "full" ? .31 : .4);
             avatar.character.setPosition(0, mode === "full" ? -160 : -54);
             avatar.shadow.setVisible(mode === "full");
+            avatar.shadow.setY(mode === "full" ? 12 : 62);
             avatar.card.setVisible(mode === "portrait");
             avatar.cardShadow.setVisible(mode === "portrait");
             avatar.shadow.setScale(variants.bodyWidth, 1);
@@ -937,7 +938,9 @@ window.quizizzoPresentation = (() => {
                     const spacing = Math.min(180, 1080 / podiumResults.length);
                     const x = width / 2 + (podiumIndex - (podiumResults.length - 1) / 2) * spacing;
                     const podiumHeight = 70 + (player.score / maximumScore) * 145;
-                    const y = 565 - podiumHeight;
+                    // Full-body rigs use their container origin as the shoe baseline.
+                    // Ground them on the podium instead of leaving them hovering above it.
+                    const y = 658 - podiumHeight;
                     if (avatar) {
                         this.tweens.killTweensOf(avatar.container);
                         avatar.container.setDepth(20);
