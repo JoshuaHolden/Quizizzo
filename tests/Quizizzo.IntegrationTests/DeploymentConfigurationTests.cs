@@ -99,6 +99,25 @@ public sealed class DeploymentConfigurationTests
         Assert.DoesNotContain("dotnet restore Quizizzo.sln", dockerfile, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Production_logs_only_errors_and_container_logs_are_bounded()
+    {
+        var compose = ReadRepositoryFile("compose.yaml");
+        var program = ReadRepositoryFile("src/Quizizzo.Web/Program.cs");
+
+        Assert.Contains("builder.Environment.IsProduction()", program, StringComparison.Ordinal);
+        Assert.Contains("level >= LogLevel.Error", program, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(compose, "Logging__LogLevel__Default: Error"));
+        Assert.Equal(2,
+            CountOccurrences(compose, "Logging__LogLevel__Microsoft.AspNetCore: Error"));
+        Assert.Equal(4, CountOccurrences(compose, "driver: json-file"));
+        Assert.Equal(4, CountOccurrences(compose, "max-size: \"10m\""));
+        Assert.Equal(4, CountOccurrences(compose, "max-file: \"3\""));
+    }
+
+    private static int CountOccurrences(string value, string search) =>
+        value.Split(search, StringSplitOptions.None).Length - 1;
+
     private static string ReadRepositoryFile(string relativePath)
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

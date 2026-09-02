@@ -32,6 +32,10 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false);
+if (builder.Environment.IsProduction())
+{
+    builder.Logging.AddFilter((_, level) => level >= LogLevel.Error);
+}
 
 // Add services to the container.
 builder.Services.AddRazorComponents()

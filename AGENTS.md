@@ -538,6 +538,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Treat a machine/human tie as a human final outcome so the machine cue requires an outright machine-only first place.
 - [x] Document the complete state map, verify all source/target files and published assets, validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 236 .NET tests.
 
+### Slop Machine display and log-containment hotfix (completed 2026-09-02)
+
+- [x] Prevent machine-owned and repeated presentation entries from colliding on an empty player ID after Slop Machine submissions.
+- [x] Restrict activity and non-podium result mapping to real party players while retaining every game entry for the display content boards.
+- [x] Enforce error-only logging inside the production Web image and its Compose runtime configuration.
+- [x] Cap every Quizizzo container at three 10 MB Docker JSON log files so repeated faults cannot consume the host drive.
+- [x] Add exact mapper and deployment regressions, validate Compose, pass analyzer formatting, pass a zero-warning strict Release build, and pass all 238 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

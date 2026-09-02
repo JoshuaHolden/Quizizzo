@@ -234,6 +234,36 @@ public sealed class PhaserPresentationMapperTests
             snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).PointsAwarded);
     }
 
+    [Fact]
+    public void Machine_owned_and_repeated_entries_do_not_break_the_display_snapshot()
+    {
+        var partyId = Guid.NewGuid();
+        var playerId = Guid.NewGuid();
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var players = new[] { Player(playerId, partyId, "Player") };
+        var payload = new DisplayGameViewPayload(
+            "SLOP MACHINE", "VOTE", "Pick one", 0, 1,
+            [
+                new GamePresentationEntry(Guid.Empty, "A", "Machine title one", 1, 0),
+                new GamePresentationEntry(Guid.Empty, "B", "Machine title two", 2, 0),
+                new GamePresentationEntry(playerId, "C", "Human title one", 3, 100),
+                new GamePresentationEntry(playerId, "D", "Human title two", 4, 100)
+            ]);
+        var game = new PartyGameView(
+            partyId, Guid.NewGuid(), "slop-machine", GameAudienceRole.Display,
+            "FreshResults", 5, null, false, GameJson.From(payload),
+            new Dictionary<Guid, int> { [playerId] = 100 });
+
+        var snapshot = PhaserPresentationMapper.Create(session, players, game, payload);
+
+        Assert.Equal("Human title two", Assert.Single(snapshot.Players).Activity);
+        var result = Assert.Single(snapshot.Results);
+        Assert.Equal(playerId.ToString("N"), result.PlayerId);
+        Assert.Equal(3, result.Rank);
+        Assert.DoesNotContain(snapshot.Results, item => item.PlayerId == Guid.Empty.ToString("N"));
+    }
+
     private static PlayerView Player(Guid playerId, Guid partyId, string name) => new(
         playerId, partyId, "K7XM", name, 0, PlayerStatus.Connected,
         new CharacterView(

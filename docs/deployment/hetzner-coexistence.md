@@ -2,6 +2,9 @@
 
 Quizizzo is isolated as the Compose project `quizizzo`. Its PostgreSQL and Redis services have no published host ports, and its volume/network names are Quizizzo-specific. Redis is an ephemeral SignalR backplane and must use a separate strong `QUIZIZZO_REDIS_PASSWORD`. The existing `logiagraph.com` site is protected: Quizizzo deployment must not stop or recreate its containers, change its existing proxy route, reuse its volumes, or take over its host ports.
 
+Production application logging is error-only. Every Quizizzo Compose service uses Docker's
+`json-file` driver with three 10 MB files, bounding retained container logs to 30 MB per service.
+
 ## Server inventory
 
 - Hetzner server: `ubuntu-8gb-hel1-1`

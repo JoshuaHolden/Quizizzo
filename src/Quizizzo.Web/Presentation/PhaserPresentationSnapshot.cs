@@ -119,7 +119,11 @@ public static class PhaserPresentationMapper
         var mode = !session.IsPaired
             ? "Pairing"
             : gameView is null ? "Lobby" : "Game";
-        var activities = game?.Entries.ToDictionary(entry => entry.PlayerId, entry => entry.Value) ?? [];
+        var playerIds = players.Select(player => player.PlayerId).ToHashSet();
+        var activities = game?.Entries
+            .Where(entry => playerIds.Contains(entry.PlayerId))
+            .GroupBy(entry => entry.PlayerId)
+            .ToDictionary(group => group.Key, group => group.Last().Value) ?? [];
         var presentationPlayers = players.Select(player => new PhaserPlayerSnapshot(
             player.PlayerId.ToString("N"),
             player.DisplayName,
@@ -154,7 +158,9 @@ public static class PhaserPresentationMapper
         var results = game?.ShowRoundRanking == true
             ? RankedScores(presentationPlayers, game.Entries)
             : game?.Entries
-                .Where(entry => entry.Rank.HasValue)
+                .Where(entry => entry.Rank.HasValue && playerIds.Contains(entry.PlayerId))
+                .GroupBy(entry => entry.PlayerId)
+                .Select(group => group.OrderBy(entry => entry.Rank).First())
                 .Select(entry => new PhaserResultSnapshot(
                     entry.PlayerId.ToString("N"), entry.Rank!.Value, entry.PointsAwarded))
                 .ToArray() ?? [];
