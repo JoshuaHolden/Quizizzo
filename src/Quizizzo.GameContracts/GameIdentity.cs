@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace Quizizzo.GameContracts;
 
 public readonly record struct GameInstanceId(Guid Value)
@@ -28,4 +30,5 @@ public sealed record GameStartContext(
     Guid PartyId,
     string HostUserId,
     IReadOnlyList<GameParticipant> Participants,
-    DateTimeOffset StartedAtUtc);
+    DateTimeOffset StartedAtUtc,
+    JsonElement Configuration = default);

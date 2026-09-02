@@ -38,6 +38,7 @@ window.quizizzoPresentation = (() => {
             this.presenterContainer = null;
             this.presenterRig = null;
             this.presenterMessage = null;
+            this.presenterPhase = null;
             this.roundRankingSignature = null;
             this.roundRankingTimer = null;
             this.roundRankingScoreTimers = [];
@@ -193,7 +194,7 @@ window.quizizzoPresentation = (() => {
 
             this.stopRoundRanking();
             const podiumChanged = this.renderPodium(snapshot);
-            this.applyPresenter(snapshot.presenterMessage);
+            this.applyPresenter(snapshot.presenterMessage, snapshot.phase);
             this.applyTutorial(snapshot.tutorial);
             this.layoutAvatars(snapshot, initial, podiumChanged);
             this.applyDrawing(snapshot.drawing);
@@ -224,9 +225,10 @@ window.quizizzoPresentation = (() => {
             }).catch(() => { });
         }
 
-        applyPresenter(message) {
-            if (message === this.presenterMessage) return;
+        applyPresenter(message, phase = null) {
+            if (message === this.presenterMessage && phase === this.presenterPhase) return;
             this.presenterMessage = message;
+            this.presenterPhase = phase;
             this.presenterRig?.stop();
             this.presenterRig = null;
             this.presenterContainer?.destroy(true);
@@ -248,21 +250,29 @@ window.quizizzoPresentation = (() => {
             host.score.setVisible(false);
             host.presence.setVisible(false);
             host.activity.setVisible(false);
-            host.container.setPosition(-430, 205).setScale(.68);
+            const isBriefing = ["Briefing", "ShowdownBriefing"].includes(phase);
+            host.container
+                .setPosition(isBriefing ? -425 : -430, isBriefing ? 210 : 205)
+                .setScale(isBriefing ? 1.42 : .68);
 
-            const bubble = this.add.rectangle(115, -15, 760, 235, 0xffffff, .97)
+            const bubble = this.add.rectangle(isBriefing ? 150 : 115, -15,
+                isBriefing ? 700 : 760, 235, 0xffffff, .97)
                 .setStrokeStyle(8, 0x24123f, 1);
-            const speech = this.add.text(115, -15, message, {
+            const speech = this.add.text(isBriefing ? 150 : 115, -15, message, {
                 color: "#24123f", fontFamily: displayFont, fontSize: "29px", fontStyle: "bold",
-                align: "center", wordWrap: { width: 680 }
+                align: "center", wordWrap: { width: isBriefing ? 620 : 680 }
             }).setOrigin(.5);
-            this.presenterContainer = this.add.container(width / 2, 260,
+            this.presenterContainer = this.add.container(width / 2, isBriefing ? 205 : 260,
                 [host.container, bubble, speech]).setDepth(70);
             if (!this.controller.reducedMotion) {
                 this.presenterContainer.x = -500;
                 this.tweens.add({ targets: this.presenterContainer, x: width / 2,
                     duration: 700, ease: "Back.easeOut" });
-                host.rig.play("idle");
+                host.rig.play(isBriefing ? "talk" : "idle");
+                if (isBriefing) {
+                    this.tweens.add({ targets: [bubble, speech], scale: { from: .985, to: 1.015 },
+                        duration: 1150, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                }
             }
         }
 
@@ -1047,8 +1057,14 @@ window.quizizzoPresentation = (() => {
             resizeHandler: null,
             resizeTimer: null,
             dotNetReference,
-            canManagePlayers
+            canManagePlayers,
+            audio: null
         };
+        controller.audio = window.quizizzoPresentationAudio?.create((muted, blocked) => {
+            controller.dotNetReference?.invokeMethodAsync("AudioStateChanged", muted, blocked)
+                .catch(() => { });
+        }) || null;
+        controller.audio?.update(controller.snapshot);
         const scene = new PartyPresentationScene(controller);
         controller.game = new Phaser.Game({
             type: Phaser.AUTO,
@@ -1099,11 +1115,16 @@ window.quizizzoPresentation = (() => {
             throw new Error("The Phaser presentation has not started.");
         }
         controller.snapshot = cloneSnapshot(snapshot);
+        controller.audio?.update(controller.snapshot);
         controller.scene?.applySnapshot(controller.snapshot);
     }
 
     function react(key, playerId, reaction) {
         presentations.get(key)?.scene?.react(playerId, reaction);
+    }
+
+    function toggleAudio(key) {
+        return presentations.get(key)?.audio?.toggle();
     }
 
     function configureHost(key, dotNetReference) {
@@ -1125,8 +1146,9 @@ window.quizizzoPresentation = (() => {
         if (controller.resizeHandler) {
             window.removeEventListener("resize", controller.resizeHandler);
         }
+        controller.audio?.destroy();
         controller.game?.destroy(true);
     }
 
-    return { start, update, react, configureHost, stop };
+    return { start, update, react, toggleAudio, configureHost, stop };
 })();

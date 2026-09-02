@@ -4,6 +4,15 @@
 @inject IJSRuntime JavaScript
 
 <div id="@elementId" class="phaser-presentation @(CanManagePlayers ? "host-interactive" : null)" aria-hidden="true"></div>
+<button type="button"
+        class="display-audio-toggle @(audioBlocked ? "needs-permission" : null)"
+        aria-label="@AudioButtonLabel"
+        aria-pressed="@(!audioMuted && !audioBlocked)"
+        title="@AudioButtonLabel"
+        @onclick="ToggleAudioAsync">
+    <span aria-hidden="true">@(audioMuted || audioBlocked ? "🔇" : "🔊")</span>
+    <span>@AudioButtonLabel</span>
+</button>
 
 @code {
     [Parameter, EditorRequired] public PhaserPresentationSnapshot Snapshot { get; set; } = default!;
@@ -15,7 +24,12 @@
     private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
     private bool started;
     private bool updatePending = true;
+    private bool audioMuted;
+    private bool audioBlocked;
     private DotNetObjectReference<PhaserPresentation>? dotNetReference;
+    private string AudioButtonLabel => audioBlocked
+        ? "Enable sound"
+        : audioMuted ? "Sound off" : "Sound on";
 
     protected override void OnParametersSet() => updatePending = true;
 
@@ -82,6 +96,23 @@
             await JavaScript.InvokeVoidAsync(
                 "quizizzoPresentation.react", presentationKey, playerId.ToString("N"), reaction);
         }
+    }
+
+    private async Task ToggleAudioAsync()
+    {
+        if (started)
+        {
+            await JavaScript.InvokeVoidAsync(
+                "quizizzoPresentation.toggleAudio", presentationKey);
+        }
+    }
+
+    [JSInvokable]
+    public Task AudioStateChanged(bool muted, bool blocked)
+    {
+        audioMuted = muted;
+        audioBlocked = blocked;
+        return InvokeAsync(StateHasChanged);
     }
 
     [JSInvokable]

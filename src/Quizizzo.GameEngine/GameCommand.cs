@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Quizizzo.GameContracts;
 
 namespace Quizizzo.GameEngine;
@@ -32,4 +33,5 @@ public sealed record GameStartRequest(
     Guid PartyId,
     string HostUserId,
     string GameKey,
-    IReadOnlyList<GameParticipant> Participants);
+    IReadOnlyList<GameParticipant> Participants,
+    JsonElement Configuration = default);

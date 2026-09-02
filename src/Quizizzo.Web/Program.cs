@@ -242,6 +242,13 @@ app.Use(async (context, next) =>
         context.Response.Headers.XFrameOptions = "DENY";
         context.Response.Headers.Append("Referrer-Policy", "same-origin");
         context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        if (HttpMethods.IsGet(context.Request.Method) &&
+            context.Request.Path.StartsWithSegments("/media/audio", StringComparison.OrdinalIgnoreCase) &&
+            context.Response.StatusCode == StatusCodes.Status200OK)
+        {
+            context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+            context.Response.Headers.Append("CDN-Cache-Control", "public, max-age=31536000");
+        }
         return Task.CompletedTask;
     });
     await next(context);

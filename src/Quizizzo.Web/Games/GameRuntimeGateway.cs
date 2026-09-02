@@ -20,7 +20,8 @@ public sealed class GameRuntimeGateway(
             request.PartyId,
             request.HostUserId,
             request.GameKey,
-            request.Participants), cancellationToken);
+            request.Participants,
+            request.Configuration), cancellationToken);
         return new RuntimeGameStatus(
             status.GameInstanceId,
             status.Phase,

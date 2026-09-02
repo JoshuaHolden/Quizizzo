@@ -34,8 +34,11 @@ public sealed class AniMatesGameModule(
     public const int AnimatorCorrectChoicePoints = 100;
     public const int ShowdownVotePoints = 100;
     public const int ShowdownWinnerBonus = 200;
+    public const int DefaultDrawingSecondsPerFrame = 45;
+    public const int MinimumDrawingSecondsPerFrame = 10;
+    public const int MaximumDrawingSecondsPerFrame = 180;
 
-    private readonly TimeSpan drawingDuration = drawingDuration ?? TimeSpan.FromSeconds(90);
+    private readonly TimeSpan? fixedDrawingDuration = drawingDuration;
     private readonly TimeSpan guessingDuration = guessingDuration ?? TimeSpan.FromSeconds(45);
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
     private readonly TimeSpan showdownVotingDuration = showdownVotingDuration ?? TimeSpan.FromSeconds(90);
@@ -44,10 +47,12 @@ public sealed class AniMatesGameModule(
 
     public GameModuleState Start(GameStartContext context)
     {
+        var configuration = ReadConfiguration(context.Configuration);
         var participants = context.Participants
             .Select(player => new AnimateParticipant(player.PlayerId, player.DisplayName)).ToArray();
         return ModuleState(BriefingPhase, null, false,
-            new AnimateState(1, 0, participants, new Dictionary<Guid, AnimationSubmission>(),
+            new AnimateState(1, configuration.DrawingSecondsPerFrame, 0, participants,
+                new Dictionary<Guid, AnimationSubmission>(),
                 new Dictionary<Guid, string>(), [], new Dictionary<Guid, Guid>(), [],
                 new Dictionary<Guid, Guid>(), []));
     }
@@ -384,8 +389,11 @@ public sealed class AniMatesGameModule(
     }
 
     private GameTransition StartDrawing(AnimateState state, DateTimeOffset now) => new(
-        ModuleState(DrawingPhase, now.Add(drawingDuration), false, state), [],
+        ModuleState(DrawingPhase, now.Add(DrawingDuration(state)), false, state), [],
         [new GameEvent("AniMatesDrawingStarted", GameJson.From(new { round = state.RoundNumber }))]);
+
+    private TimeSpan DrawingDuration(AnimateState state) => fixedDrawingDuration ?? TimeSpan.FromSeconds(
+        (long)FrameCount(state) * EffectiveDrawingSecondsPerFrame(state));
 
     private static PlayerGameViewPayload PlayerView(
         GameModuleState current,
@@ -685,6 +693,11 @@ public sealed class AniMatesGameModule(
     private static int FrameCount(AnimateState state) =>
         state.RoundNumber == 1 ? RoundOneFrameCount : RoundTwoFrameCount;
 
+    private static int EffectiveDrawingSecondsPerFrame(AnimateState state) =>
+        state.DrawingSecondsPerFrame is >= MinimumDrawingSecondsPerFrame and <= MaximumDrawingSecondsPerFrame
+            ? state.DrawingSecondsPerFrame
+            : DefaultDrawingSecondsPerFrame;
+
     private static AnimateParticipant Animator(AnimateState state) => state.Participants[state.TurnIndex];
     private static string Prompt(AnimateState state) => Prompts[state.TurnIndex % Prompts.Length];
     private static string PromptForPlayer(AnimateState state, Guid playerId)
@@ -810,6 +823,34 @@ public sealed class AniMatesGameModule(
     private static AnimateState ReadState(GameModuleState state) => state.Data.Deserialize<AnimateState>()
         ?? throw new InvalidOperationException("AniMates state could not be read.");
 
+    private static AniMatesGameConfiguration ReadConfiguration(JsonElement configuration)
+    {
+        if (configuration.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ||
+            configuration.ValueKind == JsonValueKind.Object && !configuration.EnumerateObject().Any())
+        {
+            return new AniMatesGameConfiguration();
+        }
+        AniMatesGameConfiguration? value;
+        try
+        {
+            value = configuration.Deserialize<AniMatesGameConfiguration>();
+        }
+        catch (JsonException)
+        {
+            throw new GameRuleViolationException(
+                "invalid-configuration", "AniMates game settings are invalid.");
+        }
+        if (value?.DrawingSecondsPerFrame is not
+            (>= MinimumDrawingSecondsPerFrame and <= MaximumDrawingSecondsPerFrame))
+        {
+            throw new GameRuleViolationException(
+                "invalid-configuration",
+                $"Drawing time per frame must be between {MinimumDrawingSecondsPerFrame} and " +
+                $"{MaximumDrawingSecondsPerFrame} seconds.");
+        }
+        return value;
+    }
+
     private static GameModuleState ModuleState(
         string phase, DateTimeOffset? deadline, bool complete, AnimateState state) =>
         new(2, phase, deadline, complete, GameJson.From(state));
@@ -838,6 +879,7 @@ public sealed class AniMatesGameModule(
 
     private sealed record AnimateState(
         int RoundNumber,
+        int DrawingSecondsPerFrame,
         int TurnIndex,
         IReadOnlyList<AnimateParticipant> Participants,
         Dictionary<Guid, AnimationSubmission> Submissions,

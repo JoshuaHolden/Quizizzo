@@ -19,10 +19,19 @@ public sealed class PartyGameService(
 {
     public IReadOnlyList<GameDescriptor> ListGames() => runtime.ListGames();
 
+    public Task<PartyGameSessionView> StartAsync(
+        Guid partyId,
+        string hostUserId,
+        string gameKey,
+        CancellationToken cancellationToken = default)
+        => StartAsync(
+            partyId, hostUserId, gameKey, GameJson.Empty, cancellationToken);
+
     public async Task<PartyGameSessionView> StartAsync(
         Guid partyId,
         string hostUserId,
         string gameKey,
+        JsonElement configuration,
         CancellationToken cancellationToken = default)
     {
         await using var mutation = await partyMutations.AcquireAsync(
@@ -44,7 +53,8 @@ public sealed class PartyGameService(
             party.Id.Value,
             hostUserId,
             gameKey,
-            participants), cancellationToken);
+            participants,
+            configuration), cancellationToken);
 
         party.StartGame(gameInstanceId.Value, gameKey, timeProvider.GetUtcNow());
         await parties.SaveChangesAsync(cancellationToken);

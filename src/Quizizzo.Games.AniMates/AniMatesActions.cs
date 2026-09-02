@@ -2,6 +2,9 @@ using Quizizzo.GameContracts;
 
 namespace Quizizzo.Games.AniMates;
 
+public sealed record AniMatesGameConfiguration(
+    int DrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame);
+
 public sealed record SubmitAnimationAction(IReadOnlyList<Guid> FrameAssetIds) : IGameAction
 {
     public const string ActionKind = "animates.submit";

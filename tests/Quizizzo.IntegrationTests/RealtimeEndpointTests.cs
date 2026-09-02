@@ -65,6 +65,23 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
         Assert.DoesNotContain("signalR", bridge);
     }
 
+    [Theory]
+    [InlineData("/media/audio/quiz-show-groove.d6618b4f874d.mp3")]
+    [InlineData("/media/audio/quiz-show-sparkle.774e332653a6.mp3")]
+    [InlineData("/media/audio/countdown-to-zero.fd84e59f102d.mp3")]
+    public async Task Presentation_audio_is_served_with_long_lived_edge_cache_headers(string path)
+    {
+        using var response = await client.GetAsync(path);
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("audio/mpeg", response.Content.Headers.ContentType?.MediaType);
+        Assert.True(response.Content.Headers.ContentLength > 400_000);
+        Assert.True(response.Headers.CacheControl?.Public);
+        Assert.Equal(TimeSpan.FromDays(365), response.Headers.CacheControl?.MaxAge);
+        Assert.Contains("immutable", response.Headers.CacheControl?.Extensions.Select(value => value.Name) ?? []);
+        Assert.Equal("public, max-age=31536000", response.Headers.GetValues("CDN-Cache-Control").Single());
+    }
+
     [Fact]
     public async Task Presentation_fonts_are_served_locally()
     {
@@ -88,12 +105,14 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
         var html = await response.Content.ReadAsStringAsync();
         var phaserIndex = html.IndexOf("src=\"vendor/phaser.min", StringComparison.Ordinal);
         var rigIndex = html.IndexOf("src=\"js/playerCharacterRig", StringComparison.Ordinal);
+        var audioIndex = html.IndexOf("src=\"js/presentationAudio", StringComparison.Ordinal);
         var bridgeIndex = html.IndexOf("src=\"js/phaserPresentation", StringComparison.Ordinal);
         var blazorIndex = html.IndexOf("src=\"_framework/blazor.web", StringComparison.Ordinal);
 
         Assert.True(phaserIndex >= 0);
         Assert.True(rigIndex > phaserIndex);
-        Assert.True(bridgeIndex > rigIndex);
+        Assert.True(audioIndex > rigIndex);
+        Assert.True(bridgeIndex > audioIndex);
         Assert.True(blazorIndex > bridgeIndex);
     }
 

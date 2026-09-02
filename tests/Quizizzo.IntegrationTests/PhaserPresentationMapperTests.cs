@@ -102,6 +102,7 @@ public sealed class PhaserPresentationMapperTests
                 "Playback",
                 150,
                 [new DrawingAnimationView(playerId, null, "A prompt", assetIds, 0, null, 0)]));
+        var phaseEndsAtUtc = DateTimeOffset.UtcNow.AddSeconds(20);
         var game = new PartyGameView(
             partyId,
             Guid.NewGuid(),
@@ -109,7 +110,7 @@ public sealed class PhaserPresentationMapperTests
             GameAudienceRole.Display,
             "Voting",
             2,
-            DateTimeOffset.UtcNow.AddSeconds(20),
+            phaseEndsAtUtc,
             false,
             GameJson.From(payload),
             new Dictionary<Guid, int>());
@@ -118,6 +119,7 @@ public sealed class PhaserPresentationMapperTests
 
         var animation = Assert.Single(snapshot.Drawing!.Animations);
         Assert.Equal("Playback", snapshot.Drawing.Mode);
+        Assert.Equal(phaseEndsAtUtc, snapshot.PhaseEndsAtUtc);
         Assert.Equal(1, snapshot.Drawing.LoopsPerAnimation);
         Assert.Null(animation.CreatorName);
         Assert.Equal(

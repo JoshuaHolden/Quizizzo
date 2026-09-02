@@ -267,6 +267,31 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void AniMates_briefings_use_the_talking_rig_and_configurable_per_frame_timer()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var rig = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/playerCharacterRig.js");
+        var display = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var module = ReadRepositoryFile(
+            "src/Quizizzo.Games.AniMates/AniMatesGameModule.cs");
+
+        Assert.Contains("isBriefing ? 1.42 : .68", presentation, StringComparison.Ordinal);
+        Assert.Contains("host.rig.play(isBriefing ? \"talk\" : \"idle\")", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("action === \"talk\"", rig, StringComparison.Ordinal);
+        Assert.Contains("parts.armLeft?.setAngle(-18)", rig, StringComparison.Ordinal);
+        Assert.Contains("Drawing time per frame", display, StringComparison.Ordinal);
+        Assert.Contains("DefaultDrawingSecondsPerFrame", display, StringComparison.Ordinal);
+        Assert.Contains("new AniMatesGameConfiguration(aniMatesDrawingSecondsPerFrame)", display,
+            StringComparison.Ordinal);
+        Assert.Contains("(long)FrameCount(state) * EffectiveDrawingSecondsPerFrame(state)", module,
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AniMates_phone_votes_are_reviewed_in_a_looping_modal_before_submission()
     {
         var voteController = ReadRepositoryFile(
@@ -391,6 +416,31 @@ public sealed class LandingPageContractTests
         Assert.Contains("fontSize: \"16px\"", presentation, StringComparison.Ordinal);
         Assert.Contains("CanManagePlayers=\"HasHostControls\"", display, StringComparison.Ordinal);
         Assert.DoesNotContain("display-player-removal-layer", display, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Display_audio_follows_lobby_game_and_drawing_deadline_states_with_a_persistent_mute_control()
+    {
+        var audio = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/presentationAudio.js");
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var component = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/PhaserPresentation.razor");
+        var app = ReadRepositoryFile("src/Quizizzo.Web/Components/App.razor");
+
+        Assert.Contains("quiz-show-groove.d6618b4f874d.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("quiz-show-sparkle.774e332653a6.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("countdown-to-zero.fd84e59f102d.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("countdownWindowSeconds = 20", audio, StringComparison.Ordinal);
+        Assert.Contains("snapshot.phase !== \"Drawing\"", audio, StringComparison.Ordinal);
+        Assert.Contains("quizizzo.display.audio-muted", audio, StringComparison.Ordinal);
+        Assert.Contains("controller.audio?.update(controller.snapshot)", presentation, StringComparison.Ordinal);
+        Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);
+        Assert.Contains("Enable sound", component, StringComparison.Ordinal);
+        Assert.True(
+            app.IndexOf("presentationAudio.js", StringComparison.Ordinal) <
+            app.IndexOf("phaserPresentation.js", StringComparison.Ordinal));
     }
 
     private static string ReadRepositoryFile(string relativePath)

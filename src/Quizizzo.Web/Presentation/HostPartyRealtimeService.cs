@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Quizizzo.Application.Games;
 using Quizizzo.Application.Parties;
@@ -43,12 +44,13 @@ public sealed class HostPartyRealtimeService(
         Guid partyId,
         string hostUserId,
         string gameKey,
+        JsonElement configuration,
         CancellationToken cancellationToken = default)
     {
         await using (var scope = scopeFactory.CreateAsyncScope())
         {
             await scope.ServiceProvider.GetRequiredService<PartyGameService>()
-                .StartAsync(partyId, hostUserId, gameKey, cancellationToken);
+                .StartAsync(partyId, hostUserId, gameKey, configuration, cancellationToken);
         }
 
         await realtime.PartyChangedAsync(partyId, "GameStarted", cancellationToken);

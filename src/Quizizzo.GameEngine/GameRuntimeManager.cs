@@ -51,7 +51,8 @@ public sealed class GameRuntimeManager(
                 request.PartyId,
                 request.HostUserId,
                 participants,
-                now));
+                now,
+                request.Configuration));
             GameStateValidator.Validate(moduleState, module.Descriptor.Key);
             var snapshot = new GameRuntimeSnapshot(
                 request.GameInstanceId,

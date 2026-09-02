@@ -445,6 +445,26 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Keep the designer avatar idling and trigger only an occasional one-second fart after a long delay while respecting reduced-motion preferences.
 - [x] Validate JavaScript syntax, pass all 9 client tests, pass the focused presentation/game contracts, and pass all 191 .NET tests.
 
+### AniMates briefing and drawing-timer configuration (completed 2026-09-02)
+
+- [x] Make both AniMates briefing screens feature a substantially larger presenter with a looping talking mouth, subtle body motion, and animated speech panel.
+- [x] Move the shared talking rig's arms down and inward from the shoulders so its hands rest beside the body rather than forming a wide T-pose.
+- [x] Add a host-control setting for drawing seconds per frame, default it to 45 seconds, and show the calculated three- and five-frame round durations before launch.
+- [x] Carry bounded game configuration through the generic start pipeline and persist the selected timing inside the reconstructable AniMates state.
+- [x] Calculate authoritative drawing deadlines as frame count multiplied by seconds per frame while preserving the fixed-duration test seam and backward-compatible state recovery.
+- [x] Reject values outside 10–180 seconds server-side and cover default, custom, round-one, round-two, forwarding, UI, and presentation behavior.
+- [x] Pass analyzer formatting, JavaScript syntax, all 9 client tests, a zero-warning strict Release build, and all 195 .NET tests.
+
+### Cloudflare-ready display soundtrack (completed 2026-09-02)
+
+- [x] Import the supplied lobby, gameplay, and countdown MP3 files under a content-hashed `/media/audio` path.
+- [x] Loop Quiz Show Groove in the paired lobby and Quiz Show Sparkle throughout active game phases on the shared display only.
+- [x] Replace gameplay music with Countdown to Zero for the final 20 seconds of each authoritative AniMates drawing deadline, including mid-countdown refresh recovery.
+- [x] Add a persistent top-right sound control to every display state with remembered mute state and an explicit autoplay-permission prompt.
+- [x] Serve audio with `audio/mpeg`, `Content-Length`, and one-year immutable browser and Cloudflare cache directives.
+- [x] Cover soundtrack selection, countdown timing, mute restoration, static delivery, cache headers, script ordering, and deadline snapshot mapping.
+- [x] Pass analyzer formatting, JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 199 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

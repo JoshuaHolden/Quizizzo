@@ -35,6 +35,41 @@ public sealed class AniMatesGameModuleTests
     }
 
     [Fact]
+    public void Drawing_deadlines_multiply_the_configured_seconds_by_each_rounds_frame_count()
+    {
+        var game = new Fixture(20);
+
+        Assert.Equal(TimeSpan.FromSeconds(60), game.State.PhaseEndsAtUtc - game.CurrentTime);
+
+        game.ReachShowdownBriefing();
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+
+        Assert.Equal(TimeSpan.FromSeconds(100), game.State.PhaseEndsAtUtc - game.CurrentTime);
+    }
+
+    [Fact]
+    public void Drawing_time_defaults_to_45_seconds_per_frame_and_rejects_unsafe_values()
+    {
+        var module = new AniMatesGameModule();
+        var participants = new[]
+        {
+            new GameParticipant(Guid.NewGuid(), "One"),
+            new GameParticipant(Guid.NewGuid(), "Two")
+        };
+        var state = module.Start(new GameStartContext(
+            GameInstanceId.New(), Guid.NewGuid(), "host", participants, Now));
+        var drawing = module.Apply(state, new GameActionContext(
+            GameInstanceId.New(), Guid.NewGuid(), GameActor.Host("host"), Now),
+            new AdvanceAniMatesAction());
+
+        Assert.Equal(TimeSpan.FromSeconds(135), drawing.State.PhaseEndsAtUtc - Now);
+        var error = Assert.Throws<GameRuleViolationException>(() => module.Start(new GameStartContext(
+            GameInstanceId.New(), Guid.NewGuid(), "host", participants, Now,
+            GameJson.From(new AniMatesGameConfiguration(9)))));
+        Assert.Equal("invalid-configuration", error.Code);
+    }
+
+    [Fact]
     public void Start_gives_every_player_a_private_three_frame_prompt_at_the_same_time()
     {
         var game = new Fixture();
@@ -265,17 +300,23 @@ public sealed class AniMatesGameModuleTests
 
     private sealed class Fixture
     {
-        private readonly AniMatesGameModule module = new(
-            TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        private readonly AniMatesGameModule module;
         private readonly Guid instanceId = Guid.NewGuid();
         private readonly Guid partyId = Guid.NewGuid();
         private DateTimeOffset now = Now;
 
-        public Fixture()
+        public Fixture(int? drawingSecondsPerFrame = null)
         {
+            module = drawingSecondsPerFrame.HasValue
+                ? new AniMatesGameModule()
+                : new AniMatesGameModule(
+                    TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
             PlayerIds = [Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid()];
             State = module.Start(new GameStartContext(new GameInstanceId(instanceId), partyId, "host",
-                PlayerIds.Select((id, index) => new GameParticipant(id, $"Player {index + 1}")).ToArray(), Now));
+                PlayerIds.Select((id, index) => new GameParticipant(id, $"Player {index + 1}")).ToArray(), Now,
+                drawingSecondsPerFrame.HasValue
+                    ? GameJson.From(new AniMatesGameConfiguration(drawingSecondsPerFrame.Value))
+                    : GameJson.Empty));
             LastTransition = GameTransition.To(State);
             Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
         }

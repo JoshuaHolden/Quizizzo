@@ -108,6 +108,10 @@ window.quizizzoCharacterRig = (() => {
                 parts?.eyeLeft?.setScale(1);
                 parts?.eyeRight?.setScale(1);
                 parts?.mouth?.setTexture(`${atlasPrefix}face`, variants.mouth);
+                parts?.armLeft?.setAngle(0);
+                parts?.armRight?.setAngle(0);
+                parts?.handLeft?.setAngle(0);
+                parts?.handRight?.setAngle(0);
             }
             animationOrigin = null;
         };
@@ -129,11 +133,27 @@ window.quizizzoCharacterRig = (() => {
                     bodyParts.push(part);
                     return part;
                 };
+                const arm = (x, left) => {
+                    const group = scene.add.container(x, 218);
+                    const sleeve = scene.add.image(0, 0, `${atlasPrefix}shirts`,
+                        `${variants.shirt}Arm_long.png`)
+                        .setOrigin(left ? .69 : .31, .18)
+                        .setFlipX(left);
+                    const hand = scene.add.image(left ? -108 : 108, 83,
+                        `${atlasPrefix}skin`, `tint${variants.skin}_hand.png`)
+                        .setOrigin(.5, .12);
+                    group.add([sleeve, hand]);
+                    target.add(group);
+                    bodyParts.push(group);
+                    return { group, hand };
+                };
                 body(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.42, 1);
-                body(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
-                body(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
-                body(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
-                body(166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
+                const leftArm = arm(-58, true);
+                const rightArm = arm(58, false);
+                parts.armLeft = leftArm.group;
+                parts.armRight = rightArm.group;
+                parts.handLeft = leftArm.hand;
+                parts.handRight = rightArm.hand;
                 body(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
                 body(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
                 body(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
@@ -173,6 +193,35 @@ window.quizizzoCharacterRig = (() => {
                 rememberTween(scene.tweens.add({
                     targets: target, y: origin.y - 5, duration: 1650,
                     yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                }));
+                return;
+            }
+            if (action === "talk") {
+                let mouthFrame = 0;
+                const mouthFrames = [variants.mouth, "mouth_teethUpper.png", "mouth_oh.png", variants.mouth];
+                timer = scene.time.addEvent({
+                    delay: 155,
+                    loop: true,
+                    callback: () => parts.mouth.setTexture(
+                        `${atlasPrefix}face`, mouthFrames[mouthFrame++ % mouthFrames.length])
+                });
+                // Rotate from the shoulders so both hands rest lower and closer
+                // to the body instead of holding the atlas's wide default pose.
+                parts.armLeft?.setAngle(-18);
+                parts.armRight?.setAngle(18);
+                if (parts.armLeft && parts.armRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armLeft, angle: { from: -22, to: -14 },
+                        duration: 720, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armRight, angle: { from: 14, to: 22 },
+                        duration: 720, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
+                rememberTween(scene.tweens.add({
+                    targets: target, y: origin.y - 4, angle: { from: -.7, to: .7 },
+                    duration: 820, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                 }));
                 return;
             }

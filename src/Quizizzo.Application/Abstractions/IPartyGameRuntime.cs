@@ -27,7 +27,8 @@ public sealed record RuntimeGameStart(
     Guid PartyId,
     string HostUserId,
     string GameKey,
-    IReadOnlyList<GameParticipant> Participants);
+    IReadOnlyList<GameParticipant> Participants,
+    JsonElement Configuration = default);
 
 public sealed record RuntimeGameStatus(
     GameInstanceId GameInstanceId,

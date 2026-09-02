@@ -28,6 +28,19 @@ public sealed class PartyGameServiceTests
     }
 
     [Fact]
+    public async Task Start_forwards_game_configuration_to_the_runtime()
+    {
+        var fixture = new Fixture();
+        var configuration = GameJson.From(new { DrawingSecondsPerFrame = 45 });
+
+        await fixture.Service.StartAsync(
+            fixture.Party.Id.Value, Fixture.HostId, "animates", configuration);
+
+        Assert.Equal(45, Assert.Single(fixture.Runtime.Starts).Configuration
+            .GetProperty("DrawingSecondsPerFrame").GetInt32());
+    }
+
+    [Fact]
     public async Task Completed_game_persists_scores_returns_to_lobby_and_allows_a_second_game()
     {
         var fixture = new Fixture();

@@ -8,6 +8,7 @@
 @using Quizizzo.Domain
 @using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
+@using Quizizzo.Games.AniMates
 @using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
 @inject DisplayRealtimeStateLoader StateLoader
@@ -201,14 +202,40 @@
                     <div class="display-host-game-grid">
                         @foreach (var availableGame in availableGames)
                         {
-                            <button type="button"
-                                    disabled="@(players.Count < availableGame.MinimumPlayers ||
-                                        players.Count > availableGame.MaximumPlayers || hostActionPending ||
-                                        hostParty!.Status != PartyStatus.Lobby)"
-                                    @onclick="() => StartGameAsync(availableGame.Key)">
-                                <strong>@availableGame.DisplayName</strong>
-                                <span>@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
-                            </button>
+                            <article class="display-host-game-card">
+                                <header>
+                                    <strong>@availableGame.DisplayName</strong>
+                                    <span>@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
+                                </header>
+                                @if (availableGame.Key == AniMatesGameModule.GameKey)
+                                {
+                                    <div class="display-host-game-setting">
+                                        <label for="animates-drawing-seconds">Drawing time per frame</label>
+                                        <div>
+                                            <input id="animates-drawing-seconds" type="number"
+                                                   min="@AniMatesGameModule.MinimumDrawingSecondsPerFrame"
+                                                   max="@AniMatesGameModule.MaximumDrawingSecondsPerFrame"
+                                                   step="5" inputmode="numeric"
+                                                   @bind="aniMatesDrawingSecondsPerFrame"
+                                                   @bind:event="oninput" />
+                                            <span>seconds</span>
+                                        </div>
+                                        <small>
+                                            Round 1: 3 × @aniMatesDrawingSecondsPerFrame s =
+                                            @FormatDuration(AniMatesGameModule.RoundOneFrameCount * aniMatesDrawingSecondsPerFrame)
+                                            · Round 2: 5 × @aniMatesDrawingSecondsPerFrame s =
+                                            @FormatDuration(AniMatesGameModule.RoundTwoFrameCount * aniMatesDrawingSecondsPerFrame)
+                                        </small>
+                                    </div>
+                                }
+                                <button type="button" class="btn btn-primary"
+                                        disabled="@(players.Count < availableGame.MinimumPlayers ||
+                                            players.Count > availableGame.MaximumPlayers || hostActionPending ||
+                                            hostParty!.Status != PartyStatus.Lobby)"
+                                        @onclick="() => StartGameAsync(availableGame.Key)">
+                                    Start @availableGame.DisplayName
+                                </button>
+                            </article>
                         }
                     </div>
                 </section>
@@ -255,6 +282,7 @@
     private bool hostActionPending;
     private bool hostControlsOpen;
     private bool closeConfirmationRequested;
+    private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
     private string connectionStatus = "Connecting";
     private PhaserPresentation? phaserPresentation;
     private bool phaserReady;
@@ -347,8 +375,20 @@
 
     private async Task StartGameAsync(string gameKey) => await RunHostActionAsync(async () =>
     {
-        await HostPartyState.StartGameAsync(session.PartyId!.Value, hostUserId!, gameKey);
+        var configuration = gameKey == AniMatesGameModule.GameKey
+            ? GameJson.From(new AniMatesGameConfiguration(aniMatesDrawingSecondsPerFrame))
+            : GameJson.Empty;
+        await HostPartyState.StartGameAsync(
+            session.PartyId!.Value, hostUserId!, gameKey, configuration);
     });
+
+    private static string FormatDuration(int totalSeconds)
+    {
+        var duration = TimeSpan.FromSeconds(Math.Max(0, totalSeconds));
+        return duration.TotalMinutes >= 1
+            ? $"{(int)duration.TotalMinutes}m {duration.Seconds:D2}s"
+            : $"{duration.Seconds}s";
+    }
 
     private async Task AdvanceGameAsync()
     {
