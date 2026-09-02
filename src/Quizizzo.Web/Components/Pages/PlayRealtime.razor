@@ -24,7 +24,7 @@
             </span>
             @if (game is not null)
             {
-                <span class="player-score-chip" aria-label="@($"Total score {PlayerScore:N0}")">@PlayerScore.ToString("N0") pts</span>
+                <span class="player-score-chip" aria-label="@($"Total score {PlayerScore:N0}")">@PlayerScore.ToString("N0") @(game?.ScoreUnit ?? "pts")</span>
             }
             <button type="button"
                     class="player-reaction-trigger"
@@ -54,6 +54,9 @@
                 <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Laugh")' aria-label="Laugh">😂</button>
                 <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Wow")' aria-label="Show surprise">😮</button>
                 <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Poop")' aria-label="Send poop">💩</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Fake")'>FAKE</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Unsubscribe")'>UNSUB</button>
+                <button type="button" disabled="@(connectionStatus != "Connected")" @onclick='() => SendReactionAsync("Report")'>REPORT</button>
             </div>
         </aside>
     }
@@ -75,6 +78,33 @@
     else
     {
         <section class="player-game-panel">
+            @if (game.Media is { Items.Count: > 0 } media)
+            {
+                <section class="controller-game-media @($"controller-game-media-{media.Mode}")"
+                         aria-label="Game media">
+                    @foreach (var item in media.Items)
+                    {
+                        <article class="controller-game-media-card">
+                            @if (!string.IsNullOrWhiteSpace(item.ImageUrl))
+                            {
+                                <img src="@item.ImageUrl" alt="@item.AlternativeText" />
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Badge))
+                            {
+                                <span class="controller-game-media-badge">@item.Badge</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Heading))
+                            {
+                                <strong>@item.Heading</strong>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(item.Body))
+                            {
+                                <span>@item.Body</span>
+                            }
+                        </article>
+                    }
+                </section>
+            }
             @if (game.Controller.Kind != PlayerControllerKind.Drawing)
             {
                 <p class="lead player-game-instructions">@game.Instructions</p>

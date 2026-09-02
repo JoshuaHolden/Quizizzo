@@ -15,6 +15,7 @@ using Quizizzo.GameContracts;
 using Quizizzo.Games.Estimate;
 using Quizizzo.Games.AniMates;
 using Quizizzo.Games.MajorityRules;
+using Quizizzo.Games.SlopMachine;
 using Quizizzo.Games.Bullshit;
 using Quizizzo.Web.Components;
 using Quizizzo.Web.Components.Account;
@@ -133,6 +134,7 @@ builder.Services.AddSingleton<IGameModule, EstimateGameModule>();
 builder.Services.AddSingleton<IGameModule, AniMatesGameModule>();
 builder.Services.AddSingleton<IGameModule, MajorityRulesGameModule>();
 builder.Services.AddSingleton<IGameModule, BullshitGameModule>();
+builder.Services.AddSingleton<IGameModule, SlopMachineGameModule>();
 builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
 builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
@@ -243,7 +245,9 @@ app.Use(async (context, next) =>
         context.Response.Headers.Append("Referrer-Policy", "same-origin");
         context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
         if (HttpMethods.IsGet(context.Request.Method) &&
-            context.Request.Path.StartsWithSegments("/media/audio", StringComparison.OrdinalIgnoreCase) &&
+            (context.Request.Path.StartsWithSegments("/media/audio", StringComparison.OrdinalIgnoreCase) ||
+             context.Request.Path.StartsWithSegments(
+                 "/media/games/slop-machine", StringComparison.OrdinalIgnoreCase)) &&
             context.Response.StatusCode == StatusCodes.Status200OK)
         {
             context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";

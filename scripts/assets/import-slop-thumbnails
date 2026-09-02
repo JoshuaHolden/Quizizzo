@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <thumbnails.json> <directory-containing-webp-files>" >&2
+  exit 64
+fi
+
+manifest_source=$1
+image_source=$2
+repository_root=$(cd "$(dirname "$0")/../.." && pwd)
+manifest_target="$repository_root/src/Quizizzo.Games.SlopMachine/Assets/thumbnails.json"
+image_target="$repository_root/src/Quizizzo.Web/wwwroot/media/games/slop-machine/thumbnails"
+
+command -v jq >/dev/null || { echo "jq is required." >&2; exit 69; }
+[[ -f "$manifest_source" ]] || { echo "Manifest not found: $manifest_source" >&2; exit 66; }
+[[ -d "$image_source" ]] || { echo "Image directory not found: $image_source" >&2; exit 66; }
+
+jq -e '
+  type == "array" and length >= 24 and
+  (map(.id) | length == (unique | length)) and
+  all(.[];
+    (.id | type == "string" and test("^[A-Za-z0-9_-]+$")) and
+    (.imageUrl | type == "string" and
+      startswith("/media/games/slop-machine/thumbnails/") and endswith(".webp")) and
+    (.alternativeText | type == "string" and length > 0) and
+    (.category | type == "string") and
+    (.composition | type == "string") and
+    (.aiTitles | type == "array" and length >= 2 and all(.[]; type == "string" and length > 0)))
+' "$manifest_source" >/dev/null || {
+  echo "Manifest schema validation failed." >&2
+  exit 65
+}
+
+while IFS= read -r filename; do
+  [[ -f "$image_source/$filename" ]] || {
+    echo "Manifest image is missing: $image_source/$filename" >&2
+    exit 66
+  }
+done < <(jq -r '.[].imageUrl | split("/")[-1]' "$manifest_source")
+
+mkdir -p "$(dirname "$manifest_target")" "$image_target"
+find "$image_target" -maxdepth 1 -type f -name '*.webp' -delete
+while IFS= read -r filename; do
+  install -m 0644 "$image_source/$filename" "$image_target/$filename"
+done < <(jq -r '.[].imageUrl | split("/")[-1]' "$manifest_source")
+install -m 0644 "$manifest_source" "$manifest_target"
+
+expected=$(jq 'length' "$manifest_source")
+actual=$(find "$image_target" -maxdepth 1 -type f -name '*.webp' | wc -l | tr -d ' ')
+[[ "$expected" == "$actual" ]] || {
+  echo "Imported $actual images, expected $expected." >&2
+  exit 70
+}
+
+echo "Imported $actual Slop Machine thumbnails and manifest records."

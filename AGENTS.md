@@ -515,6 +515,29 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Preserve recovery of version-2 AniMates snapshots through legacy prompt fallbacks and emit version-3 snapshots for new games.
 - [x] Cover the embedded catalogue, private assignments, neutral distractor scoring, dynamic showdown prompts, and asset-backed submission recovery; pass all 203 .NET tests with no build warnings.
 
+### Slop Machine (completed 2026-09-02)
+
+- [x] Add a discoverable 2–12 player Slop Machine module using the existing serialized game actor, durable snapshots, generic phone controllers, SignalR hints, host controls, and return-to-lobby flow.
+- [x] Implement the complete Game Intro → two-heat Fresh Slop → Algorithm Roulette → Thumbnail Telephone → Comments Section → Beat the Machine → final review → joint-winner celebration state machine.
+- [x] Keep server authority over UTC deadlines, assignments, one-reel re-spins, objective constraint validation, derangements, decoys, anonymous options, self-vote restrictions, scoring, tied bonuses, machine titles, and machine-identification awards.
+- [x] Import and validate all 996 generated WebP thumbnails plus their embedded manifest and two stored machine titles, prevent within-session repetition, and serve immutable media with Cloudflare-ready cache headers.
+- [x] Add reconstructable thumbnail/title media contracts to reusable Choice, Vote, player, display, and Phaser snapshots without coupling the shared controller layer to a game name.
+- [x] Give the shared display a dedicated unstable content-factory treatment, hero/feed and gallery compositions, view-labelled sequential score counts, movement and biggest-gainer highlights, full-body podium characters, and a ridiculous final channel rank.
+- [x] Add FAKE, UNSUBSCRIBE, and REPORT THIS SLOP to the existing authenticated per-player reaction limiter and transient phone reaction surface.
+- [x] Keep the phone controller within one visual viewport with bounded thumbnails, large touch targets, locked submissions, authoritative countdowns, and safely rendered normalized title/comment data.
+- [x] Document scoring, recovery, media schema, static caching, presentation hooks, and the validated repeatable thumbnail import command.
+- [x] Exercise complete 2-, 3-, 4-, and 12-player games plus illegal actions, timeouts, scoring ties, Telephone behavior, final human/machine outcomes, recovery, assets, reactions, and responsive contracts; pass JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 224 .NET tests.
+
+### Slop Machine display soundtrack (completed 2026-09-02)
+
+- [x] Import the 11 supplied MP3s byte-for-byte under the game-owned `/media/audio/games/slop-machine` path with their stable production filenames.
+- [x] Extend the one shared-display audio coordinator with state-driven lobby, writing, spinner, voting, Telephone, Comments, scoreboard, final, countdown, and victory playback.
+- [x] Crossfade into the countdown from authoritative writing deadlines, recover at the correct sub-20-second offset, and stop immediately after early completion without affecting matching or voting timers.
+- [x] Preserve phase continuity without restarts, prevent stale snapshots and concurrent long-form playback, preload likely cues, and degrade silently after one useful missing-track warning.
+- [x] Persist mute/autoplay state, deduplicate victory cues across reconnects by game instance, and allow later rematches to play their own celebration.
+- [x] Treat a machine/human tie as a human final outcome so the machine cue requires an outright machine-only first place.
+- [x] Document the complete state map, verify all source/target files and published assets, validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 236 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

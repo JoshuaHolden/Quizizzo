@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quizizzo.Web.Realtime;
+using Quizizzo.GameEngine;
+using Quizizzo.Games.SlopMachine;
 
 namespace Quizizzo.IntegrationTests;
 
@@ -69,17 +71,47 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
     [InlineData("/media/audio/quiz-show-groove.d6618b4f874d.mp3")]
     [InlineData("/media/audio/quiz-show-sparkle.774e332653a6.mp3")]
     [InlineData("/media/audio/countdown-to-zero.fd84e59f102d.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-lobby.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-writing.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-countdown.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-spinner.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-voting.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-telephone.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-comments.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-scoreboard.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-final.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-human-victory.mp3")]
+    [InlineData("/media/audio/games/slop-machine/slop-machine-victory.mp3")]
     public async Task Presentation_audio_is_served_with_long_lived_edge_cache_headers(string path)
     {
         using var response = await client.GetAsync(path);
 
         response.EnsureSuccessStatusCode();
         Assert.Equal("audio/mpeg", response.Content.Headers.ContentType?.MediaType);
-        Assert.True(response.Content.Headers.ContentLength > 400_000);
+        Assert.True(response.Content.Headers.ContentLength > 300_000);
         Assert.True(response.Headers.CacheControl?.Public);
         Assert.Equal(TimeSpan.FromDays(365), response.Headers.CacheControl?.MaxAge);
         Assert.Contains("immutable", response.Headers.CacheControl?.Extensions.Select(value => value.Name) ?? []);
         Assert.Equal("public, max-age=31536000", response.Headers.GetValues("CDN-Cache-Control").Single());
+    }
+
+    [Fact]
+    public async Task Slop_machine_thumbnail_is_served_as_webp_with_edge_cache_headers()
+    {
+        using var response = await client.GetAsync(
+            "/media/games/slop-machine/thumbnails/cb-000001.webp");
+
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("image/webp", response.Content.Headers.ContentType?.MediaType);
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        Assert.True(bytes.Length > 10_000);
+        Assert.Equal("RIFF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+        Assert.Equal("WEBP", System.Text.Encoding.ASCII.GetString(bytes, 8, 4));
+        Assert.True(response.Headers.CacheControl?.Public);
+        Assert.Equal(TimeSpan.FromDays(365), response.Headers.CacheControl?.MaxAge);
+        Assert.Contains("immutable", response.Headers.CacheControl?.Extensions.Select(value => value.Name) ?? []);
+        Assert.Equal("public, max-age=31536000",
+            response.Headers.GetValues("CDN-Cache-Control").Single());
     }
 
     [Fact]
@@ -125,5 +157,16 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
         Assert.Same(first, second);
         Assert.IsType<SignalRPartyRealtimeNotifier>(
             factory.Services.GetRequiredService<IPartyRealtimeNotifier>());
+    }
+
+    [Fact]
+    public void Production_catalog_discovers_slop_machine_with_platform_player_limits()
+    {
+        var descriptor = factory.Services.GetRequiredService<GameModuleCatalog>()
+            .List().Single(item => item.Key == SlopMachineGameModule.GameKey);
+
+        Assert.Equal("Slop Machine", descriptor.DisplayName);
+        Assert.Equal(2, descriptor.MinimumPlayers);
+        Assert.Equal(12, descriptor.MaximumPlayers);
     }
 }

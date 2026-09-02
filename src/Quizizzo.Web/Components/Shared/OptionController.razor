@@ -25,6 +25,10 @@
                     {
                         <FrameAnimation FrameAssetIds="frames" AlternativeText="@option.Label" />
                     }
+                    @if (!string.IsNullOrWhiteSpace(option.ImageUrl))
+                    {
+                        <img class="controller-option-image" src="@option.ImageUrl" alt="" />
+                    }
                     <strong>@option.Label</strong>
                     @if (!string.IsNullOrWhiteSpace(option.Detail))
                     {

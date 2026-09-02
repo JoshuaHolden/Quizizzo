@@ -37,7 +37,20 @@ public sealed record ControllerOption(
     string Id,
     string Label,
     string? Detail = null,
-    IReadOnlyList<Guid>? FrameAssetIds = null);
+    IReadOnlyList<Guid>? FrameAssetIds = null,
+    string? ImageUrl = null);
+
+public sealed record GameMediaItem(
+    string Id,
+    string ImageUrl,
+    string AlternativeText,
+    string? Heading = null,
+    string? Body = null,
+    string? Badge = null);
+
+public sealed record GameMediaPresentationView(
+    string Mode,
+    IReadOnlyList<GameMediaItem> Items);
 
 public sealed record VoteControllerConfiguration(
     IReadOnlyList<ControllerOption> Options,
@@ -80,7 +93,9 @@ public sealed record PlayerGameViewPayload(
     string Heading,
     string Instructions,
     PlayerControllerView Controller,
-    JsonElement State);
+    JsonElement State,
+    GameMediaPresentationView? Media = null,
+    string ScoreUnit = "pts");
 
 public sealed record GamePresentationEntry(
     Guid PlayerId,
@@ -109,4 +124,6 @@ public sealed record DisplayGameViewPayload(
     IReadOnlyList<GamePresentationEntry> Entries,
     DrawingPresentationView? Drawing = null,
     TutorialPresentationView? Tutorial = null,
-    bool ShowRoundRanking = false);
+    bool ShowRoundRanking = false,
+    GameMediaPresentationView? Media = null,
+    string ScoreUnit = "pts");

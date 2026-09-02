@@ -103,7 +103,12 @@ window.quizizzoPresentation = (() => {
             const drawing = gameKey === "animates" && phase === "Drawing";
             const choosing = gameKey === "animates" && ["Choosing", "ShowdownVoting"].includes(phase);
             const results = gameKey === "animates" && ["Results", "ShowdownResults"].includes(phase);
-            const palette = briefing
+            const slop = gameKey === "slop-machine";
+            const palette = slop
+                ? phase?.includes("ScoreReview") || phase === "WinnerCelebration"
+                    ? [0x120507, 0x7a160c, 0xffd400]
+                    : [0x071519, 0x7d1616, 0x00e7d7]
+                : briefing
                 ? [0x071a2e, 0x0f766e, 0x7c3aed]
                 : results ? [0x2e1065, 0x7c2d92, 0xf59e0b]
                 : choosing ? [0x111827, 0x312e81, 0xdb2777]
@@ -116,7 +121,19 @@ window.quizizzoPresentation = (() => {
             this.background.fillGradientStyle(
                 palette[1], palette[2], palette[0], palette[1], 1);
             this.background.fillRect(0, 0, width, height);
-            if (briefing) {
+            if (slop) {
+                this.background.lineStyle(3, 0xffd400, .12);
+                for (let x = -80; x < width; x += 110) {
+                    this.background.lineBetween(x, 0, x + 220, height);
+                }
+                this.background.fillStyle(0x00e7d7, .12);
+                this.background.fillRect(0, 610, width, 16);
+                for (let x = 20; x < width; x += 70) {
+                    this.background.fillCircle(x, 618, 9);
+                }
+                this.background.lineStyle(5, 0xffd400, .3);
+                this.background.strokeRoundedRect(24, 24, width - 48, height - 48, 26);
+            } else if (briefing) {
                 this.background.fillStyle(0x22d3ee, .08);
                 for (let x = -120; x < width; x += 130) {
                     this.background.fillTriangle(x, height, x + 260, height, x + 130, 0);
@@ -148,6 +165,10 @@ window.quizizzoPresentation = (() => {
             graphic.generateTexture(textureKey, 12, 12);
             graphic.destroy();
             this.controller.textureKey = textureKey;
+        }
+
+        scoreLabel(value, snapshot = this.controller.snapshot) {
+            return `${Number(value || 0).toLocaleString()} ${snapshot?.scoreUnit || "pts"}`;
         }
 
         applySnapshot(snapshot, initial = false) {
@@ -552,7 +573,8 @@ window.quizizzoPresentation = (() => {
                 phaseMessage: snapshot.phaseMessage,
                 entries: snapshot.entries,
                 presenterMessage: snapshot.presenterMessage,
-                hasDrawing: Boolean(snapshot.drawing?.animations?.length)
+                hasDrawing: Boolean(snapshot.drawing?.animations?.length),
+                media: snapshot.media
             });
             if (signature === this.screenChromeSignature) return;
             this.screenChromeSignature = signature;
@@ -657,6 +679,7 @@ window.quizizzoPresentation = (() => {
                     }).setOrigin(.5));
                 }
                 this.addDeadline(snapshot.phaseEndsAtUtc, items);
+                this.addGameMedia(snapshot, items, signature);
                 this.addEntryCards(snapshot, items);
             }
             this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
@@ -693,10 +716,90 @@ window.quizizzoPresentation = (() => {
             items.push(deadline);
         }
 
+        addGameMedia(snapshot, items, expectedSignature) {
+            const mediaItems = snapshot.media?.items || [];
+            if (!mediaItems.length) return;
+            const gallery = snapshot.media.mode === "gallery";
+            const shown = mediaItems.slice(0, gallery ? 6 : 1);
+            const columns = gallery ? Math.min(3, shown.length) : 1;
+            const rows = Math.ceil(shown.length / columns);
+            const heroHasEntries = !gallery && (snapshot.entries?.length || 0) > 0;
+            const cardWidth = gallery ? 330 : heroHasEntries ? 520 : 620;
+            const cardHeight = gallery ? (rows > 1 ? 185 : 285) : heroHasEntries ? 350 : 405;
+            const imageHeight = gallery ? (rows > 1 ? 120 : 210) : heroHasEntries ? 270 : 325;
+            const centreY = gallery ? (rows > 1 ? 335 : 350) : 350;
+            const gap = gallery ? 18 : 0;
+            shown.forEach((media, index) => {
+                const row = Math.floor(index / columns);
+                const column = index % columns;
+                const inRow = Math.min(columns, shown.length - row * columns);
+                const mediaCentreX = heroHasEntries ? 330 : width / 2;
+                const x = mediaCentreX + (column - (inRow - 1) / 2) * (cardWidth + gap);
+                const y = centreY + (row - (rows - 1) / 2) * (cardHeight + gap);
+                const shadow = this.add.rectangle(x + 8, y + 10, cardWidth, cardHeight, 0x090516, .38);
+                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, 1)
+                    .setStrokeStyle(6, snapshot.gameKey === "slop-machine" ? 0xffd400 : 0x24123f, 1);
+                items.push(shadow, panel);
+                if (media.imageUrl) {
+                    const key = `game-media-${media.id}`;
+                    if (this.textures.exists(key)) {
+                        const imageY = y - cardHeight / 2 + imageHeight / 2 + 12;
+                        items.push(this.add.image(x, imageY, key).setDisplaySize(cardWidth - 24, imageHeight));
+                    } else {
+                        items.push(this.add.text(x, y - 20, "PROCESSING THUMBNAIL…", {
+                            color: "#24123f", fontFamily: displayFont, fontSize: "18px", fontStyle: "bold"
+                        }).setOrigin(.5));
+                        this.loadMediaTexture(key, media.imageUrl, expectedSignature);
+                    }
+                }
+                if (media.heading) {
+                    items.push(this.add.text(x, y + cardHeight / 2 - 40, media.heading, {
+                        color: "#24123f", fontFamily: displayFont,
+                        fontSize: gallery ? "16px" : "22px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: cardWidth - 28 }
+                    }).setOrigin(.5));
+                }
+                if (media.body) {
+                    items.push(this.add.text(x, y + cardHeight / 2 - 15, media.body, {
+                        color: "#5b2449", fontFamily: bodyFont, fontSize: "13px",
+                        align: "center", wordWrap: { width: cardWidth - 28 }
+                    }).setOrigin(.5));
+                }
+                if (media.badge) {
+                    items.push(this.add.text(x + cardWidth / 2 - 14, y - cardHeight / 2 + 14,
+                        media.badge, {
+                            color: "#ffffff", backgroundColor: "#ef2b6e", padding: { x: 8, y: 4 },
+                            fontFamily: displayFont, fontSize: "12px", fontStyle: "bold"
+                        }).setOrigin(1, 0));
+                }
+            });
+        }
+
+        loadMediaTexture(key, imageUrl, expectedSignature) {
+            if (this.textures.exists(key)) return;
+            const image = new Image();
+            image.onload = () => {
+                if (!this.textures.exists(key)) this.textures.addImage(key, image);
+                if (this.screenChromeSignature === expectedSignature && this.scene?.isActive()) {
+                    this.screenChromeSignature = null;
+                    this.applyScreenChrome(this.controller.snapshot);
+                }
+            };
+            image.src = imageUrl;
+        }
+
         addEntryCards(snapshot, items) {
-            const phasesWithEntries = ["Choosing", "Results", "Voting", "ShowdownVoting", "ShowdownResults"];
+            const phasesWithEntries = [
+                "Choosing", "Results", "Voting", "ShowdownVoting", "ShowdownResults",
+                "FreshSlopReveal", "FreshSlopVoting", "FreshSlopResults",
+                "FinalReveal", "FinalVoting", "FinalMachineGuess", "FinalResults"
+            ];
             const entries = snapshot.entries || [];
             if (!phasesWithEntries.includes(snapshot.phase) || entries.length === 0) return;
+            if (snapshot.gameKey === "slop-machine" && snapshot.media?.mode === "hero") {
+                this.addSlopSideEntries(snapshot, entries, items);
+                return;
+            }
             if (snapshot.phase === "ShowdownResults" && snapshot.drawing?.animations?.length) {
                 // Creator, votes, points, and rank are integrated into each reveal card.
                 // A second results layer would cover the animation itself.
@@ -732,7 +835,7 @@ window.quizizzoPresentation = (() => {
                 items.push(panel, label, value);
                 if (entry.rank != null) {
                     items.push(this.add.text(x, y + cardHeight / 2 - 13,
-                        `#${entry.rank} · +${Number(entry.pointsAwarded || 0).toLocaleString()} pts`, {
+                        `#${entry.rank} · +${this.scoreLabel(entry.pointsAwarded, snapshot)}`, {
                             color: "#7c2d92", fontFamily: displayFont, fontSize: "15px", fontStyle: "bold"
                         }).setOrigin(.5, 1));
                 }
@@ -810,11 +913,53 @@ window.quizizzoPresentation = (() => {
                 if (entry.rank != null) {
                     items.push(this.add.text(x + cardWidth / 2 - 14,
                         y + cardHeight / 2 - 9,
-                        `#${entry.rank} · +${Number(entry.pointsAwarded || 0).toLocaleString()} pts`, {
+                            `#${entry.rank} · +${this.scoreLabel(entry.pointsAwarded, snapshot)}`, {
                             color: "#7c2d92", fontFamily: displayFont,
                             fontSize: "13px", fontStyle: "bold"
                         }).setOrigin(1, 1));
                 }
+            });
+        }
+
+        addSlopSideEntries(snapshot, entries, items) {
+            const centreX = 935;
+            const boardWidth = 570;
+            const boardHeight = 455;
+            const top = 126;
+            const columns = entries.length > 6 ? 2 : 1;
+            const rows = Math.ceil(entries.length / columns);
+            const gap = 8;
+            const cardWidth = columns === 1 ? 526 : 255;
+            const cardHeight = Math.min(64, (boardHeight - 66 - gap * (rows - 1)) / rows);
+            const board = this.add.graphics();
+            board.fillStyle(0x071519, .9);
+            board.fillRoundedRect(centreX - boardWidth / 2, top, boardWidth, boardHeight, 20);
+            board.lineStyle(4, 0x00e7d7, .8);
+            board.strokeRoundedRect(centreX - boardWidth / 2, top, boardWidth, boardHeight, 20);
+            const heading = this.add.text(centreX, top + 20,
+                snapshot.phase.endsWith("Results") ? "CREATORS REVEALED" : "THE CONTENT FEED", {
+                    color: "#ffd400", fontFamily: displayFont, fontSize: "19px",
+                    fontStyle: "bold", letterSpacing: 2
+                }).setOrigin(.5, 0);
+            items.push(board, heading);
+            entries.forEach((entry, index) => {
+                const row = Math.floor(index / columns);
+                const column = index % columns;
+                const inRow = Math.min(columns, entries.length - row * columns);
+                const x = centreX + (column - (inRow - 1) / 2) * (cardWidth + gap);
+                const y = top + 58 + row * (cardHeight + gap) + cardHeight / 2;
+                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, 1)
+                    .setStrokeStyle(2, index % 2 ? 0xef2b6e : 0xffd400, 1);
+                const label = this.add.text(x - cardWidth / 2 + 12, y, entry.label || "", {
+                    color: "#ef2b6e", fontFamily: displayFont,
+                    fontSize: columns === 1 ? "17px" : "14px", fontStyle: "bold"
+                }).setOrigin(0, .5);
+                const value = this.add.text(x - cardWidth / 2 + 48, y, entry.value || "", {
+                    color: "#24123f", fontFamily: bodyFont,
+                    fontSize: columns === 1 ? "15px" : "12px", fontStyle: "bold",
+                    wordWrap: { width: cardWidth - 62 }
+                }).setOrigin(0, .5);
+                items.push(panel, label, value);
             });
         }
 
@@ -898,6 +1043,7 @@ window.quizizzoPresentation = (() => {
         startRoundRanking(snapshot, initial) {
             const players = playerMap(snapshot);
             const signature = JSON.stringify({
+                phase: snapshot.phase,
                 revision: snapshot.revision,
                 results: snapshot.results,
                 scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0)
@@ -907,10 +1053,10 @@ window.quizizzoPresentation = (() => {
             this.stopRoundRanking();
             this.clearPhaseChrome();
             this.roundRankingSignature = signature;
-            const previousPlayers = playerMap(this.previous);
             this.roundRankingStartScores = new Map(snapshot.players.map(player => [
                 player.playerId,
-                Math.min(player.score, previousPlayers.get(player.playerId)?.score ?? player.score)
+                Math.max(0, player.score -
+                    (snapshot.results.find(result => result.playerId === player.playerId)?.pointsAwarded || 0))
             ]));
             this.renderPodium({ ...snapshot, showRoundRanking: false });
             this.avatars.forEach(avatar => {
@@ -957,7 +1103,7 @@ window.quizizzoPresentation = (() => {
                 const start = this.roundRankingStartScores.get(result.playerId) ?? player.score;
                 const difference = Math.max(0, player.score - start);
                 const duration = difference > 0 ? Math.min(1300, 520 + difference * .55) : 420;
-                avatar.score.setText(`${start.toLocaleString()} pts`);
+                avatar.score.setText(this.scoreLabel(start, snapshot));
                 const timer = this.time.delayedCall(delay, () => {
                     if (this.roundRankingSignature !== signature) return;
                     const counter = { value: start };
@@ -967,9 +1113,9 @@ window.quizizzoPresentation = (() => {
                         duration,
                         ease: "Cubic.easeOut",
                         onUpdate: () => avatar.score.setText(
-                            `${Math.round(counter.value).toLocaleString()} pts`),
+                            this.scoreLabel(Math.round(counter.value), snapshot)),
                         onComplete: () => {
-                            avatar.score.setText(`${player.score.toLocaleString()} pts`);
+                            avatar.score.setText(this.scoreLabel(player.score, snapshot));
                             this.tweens.add({ targets: avatar.score, scale: 1.45,
                                 duration: 150, yoyo: true, ease: "Back.easeOut" });
                         }
@@ -985,6 +1131,7 @@ window.quizizzoPresentation = (() => {
             const isPodium = snapshot.showRoundRanking && snapshot.results?.length;
             const players = playerMap(snapshot);
             const signature = isPodium ? JSON.stringify({
+                phase: snapshot.phase,
                 results: snapshot.results,
                 scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0)
             }) : null;
@@ -1004,16 +1151,53 @@ window.quizizzoPresentation = (() => {
             const maximum = Math.max(1, ...ordered.map(result => players.get(result.playerId)?.score || 0));
             const spacing = Math.min(180, 1080 / ordered.length);
             const widthPerPodium = Math.max(72, spacing - 12);
+            const celebration = snapshot.phase === "WinnerCelebration";
+            const previousOrder = ordered.map(result => ({
+                playerId: result.playerId,
+                score: Math.max(0, (players.get(result.playerId)?.score || 0) -
+                    (result.pointsAwarded || 0)),
+                name: players.get(result.playerId)?.displayName || ""
+            })).sort((left, right) => right.score - left.score || left.name.localeCompare(right.name));
+            const previousRanks = new Map();
+            let previousScore = null;
+            let previousRank = 0;
+            previousOrder.forEach((player, index) => {
+                if (player.score !== previousScore) {
+                    previousRank = index + 1;
+                    previousScore = player.score;
+                }
+                previousRanks.set(player.playerId, previousRank);
+            });
+            const biggestGain = Math.max(0, ...ordered.map(result => result.pointsAwarded || 0));
+            const biggestGainers = ordered
+                .filter(result => biggestGain > 0 && result.pointsAwarded === biggestGain)
+                .map(result => players.get(result.playerId)?.displayName)
+                .filter(Boolean);
             const items = [
-                this.add.text(width / 2, 56, "ROUND COMPLETE", {
+                this.add.text(width / 2, 56,
+                    celebration ? "FINAL CHANNEL RANK" : "ROUND COMPLETE", {
                     color: "#fde68a", fontFamily: displayFont, fontSize: "24px", fontStyle: "bold",
                     letterSpacing: 5
                 }).setOrigin(.5),
-                this.add.text(width / 2, 96, "CURRENT STANDINGS", {
+                this.add.text(width / 2, 96,
+                    celebration ? "THE ALGORITHM HAS CHOSEN ITS HUMAN" : "CURRENT STANDINGS", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "46px", fontStyle: "bold",
                     stroke: "#24123f", strokeThickness: 7
                 }).setOrigin(.5)
             ];
+            const subheading = celebration
+                ? snapshot.prompt
+                : biggestGainers.length
+                    ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
+                    : "THE FEED REFRESHED WITHOUT MERCY";
+            items.push(this.add.text(width / 2, 142, subheading, {
+                color: celebration ? "#67e8f9" : "#fff4a8",
+                fontFamily: displayFont,
+                fontSize: celebration ? "20px" : "17px",
+                fontStyle: "bold",
+                align: "center",
+                wordWrap: { width: 1080 }
+            }).setOrigin(.5));
             ordered.forEach((result, index) => {
                 const score = players.get(result.playerId)?.score || 0;
                 const podiumHeight = 70 + (score / maximum) * 145;
@@ -1021,10 +1205,15 @@ window.quizizzoPresentation = (() => {
                 const podiumColour = result.rank === 1 ? 0xfacc15
                     : result.rank === 2 ? 0xcbd5e1
                         : result.rank === 3 ? 0xc08457 : 0x7c3aed;
+                const isBiggestGainer = biggestGain > 0 && result.pointsAwarded === biggestGain;
                 const block = this.add.rectangle(x, 660 - podiumHeight / 2, widthPerPodium, podiumHeight,
                     podiumColour, .92)
-                    .setStrokeStyle(4, 0x24123f, 1);
-                const rank = this.add.text(x, 638, `#${result.rank}`, {
+                    .setStrokeStyle(isBiggestGainer ? 6 : 4,
+                        isBiggestGainer ? 0x67e8f9 : 0x24123f, 1);
+                const oldRank = previousRanks.get(result.playerId) || result.rank;
+                const movement = oldRank > result.rank ? ` ▲${oldRank - result.rank}`
+                    : oldRank < result.rank ? ` ▼${result.rank - oldRank}` : "";
+                const rank = this.add.text(x, 638, `#${result.rank}${movement}`, {
                     color: "#24123f", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
                 }).setOrigin(.5);
                 items.push(block, rank);
@@ -1064,7 +1253,7 @@ window.quizizzoPresentation = (() => {
                 stroke: "#130828",
                 strokeThickness: 5
             }).setOrigin(0.5);
-            const score = this.add.text(0, 75, `${player.score.toLocaleString()} pts`, {
+            const score = this.add.text(0, 75, this.scoreLabel(player.score), {
                 color: "#fde68a",
                 fontFamily: displayFont,
                 fontSize: "15px",
@@ -1124,7 +1313,7 @@ window.quizizzoPresentation = (() => {
             avatar.name.setText(player.displayName);
             avatar.name.setFontSize(Math.max(14, Math.min(22,
                 Math.floor(250 / Math.max(10, player.displayName.length)))));
-            avatar.score.setText(`${player.score.toLocaleString()} pts`);
+            avatar.score.setText(this.scoreLabel(player.score));
             const disconnected = player.status === "Disconnected";
             avatar.presence.setText(disconnected ? "OFFLINE" : "");
             const isThinking = player.activity === "Thinking";
@@ -1174,10 +1363,12 @@ window.quizizzoPresentation = (() => {
             const compactAnswerStage = snapshot.gameKey === "animates"
                 && ["Choosing", "Results"].includes(snapshot.phase)
                 && Boolean(snapshot.drawing?.animations?.length);
+            const compactSlopStage = snapshot.gameKey === "slop-machine"
+                && Boolean(snapshot.media?.items?.length);
             const baseY = snapshot.mode === "Lobby" ? (rows === 1 ? 575 : 555)
-                : compactShowdown ? 618 : compactAnswerStage ? 620 : 570;
+                : compactShowdown ? 618 : compactAnswerStage ? 620 : compactSlopStage ? 650 : 570;
             const rowSpacing = rows > 1 ? 165 : 0;
-            const scale = compactShowdown ? 0.58 : compactAnswerStage ? .62
+            const scale = compactShowdown ? 0.58 : compactAnswerStage ? .62 : compactSlopStage ? .5
                 : players.length > 8 ? 0.62 : players.length > 6 ? 0.68 : 0.76;
 
             const podiumResults = snapshot.showRoundRanking
@@ -1332,7 +1523,10 @@ window.quizizzoPresentation = (() => {
         react(playerId, reaction) {
             const avatar = this.avatars.get(playerId);
             if (!avatar || avatar.mode !== "portrait") return;
-            const symbols = { Kiss: "💋", Angry: "💢", Laugh: "😂", Wow: "❗", Poop: "💩" };
+            const symbols = {
+                Kiss: "💋", Angry: "💢", Laugh: "😂", Wow: "❗", Poop: "💩",
+                Fake: "FAKE", Unsubscribe: "UNSUBSCRIBE", Report: "REPORT THIS SLOP"
+            };
             const direction = avatar.container.x > width / 2 ? -1 : 1;
             const symbol = this.add.text(
                 avatar.container.x + direction * 105,

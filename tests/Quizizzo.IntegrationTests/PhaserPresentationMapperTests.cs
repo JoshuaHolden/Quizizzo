@@ -29,6 +29,7 @@ public sealed class PhaserPresentationMapperTests
     {
         var partyId = Guid.NewGuid();
         var playerId = Guid.NewGuid();
+        var gameInstanceId = Guid.NewGuid();
         var session = new DisplaySessionView(
             Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
         var player = new PlayerView(
@@ -55,7 +56,7 @@ public sealed class PhaserPresentationMapperTests
             [new GamePresentationEntry(playerId, "Player One", "42", 1, 1000)]);
         var game = new PartyGameView(
             partyId,
-            Guid.NewGuid(),
+            gameInstanceId,
             "estimate",
             GameAudienceRole.Display,
             "Results",
@@ -73,6 +74,7 @@ public sealed class PhaserPresentationMapperTests
 
         Assert.Equal("Game", snapshot.Mode);
         Assert.Equal("estimate", snapshot.GameKey);
+        Assert.Equal(gameInstanceId.ToString("N"), snapshot.GameInstanceId);
         Assert.Equal("Results", snapshot.Phase);
         Assert.Equal("K7XM", snapshot.RoomCode);
         Assert.Equal("https://quizizzo.com/join/K7XM", snapshot.JoinUrl);
@@ -188,6 +190,48 @@ public sealed class PhaserPresentationMapperTests
         Assert.Equal("Thinking", snapshot.Players.Single(player => player.PlayerId == firstId.ToString("N")).Activity);
         Assert.Equal(1, snapshot.Results.Single(result => result.PlayerId == firstId.ToString("N")).Rank);
         Assert.Equal(2, snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).Rank);
+    }
+
+    [Fact]
+    public void Slop_machine_maps_thumbnail_media_view_units_and_round_score_deltas()
+    {
+        var partyId = Guid.NewGuid();
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var players = new[]
+        {
+            Player(firstId, partyId, "First"),
+            Player(secondId, partyId, "Second")
+        };
+        var payload = new DisplayGameViewPayload(
+            "SLOP MACHINE", "CURRENT CHANNEL RANKINGS", "The algorithm refreshed.", 0, 2,
+            [
+                new GamePresentationEntry(firstId, "First", "5,000 views", 1, 3000),
+                new GamePresentationEntry(secondId, "Second", "2,000 views", 2, 0)
+            ],
+            ShowRoundRanking: true,
+            Media: new GameMediaPresentationView("hero",
+            [
+                new GameMediaItem("cb-1", "/media/games/slop-machine/thumbnails/cb-1.webp",
+                    "A ridiculous thumbnail", "THE UPLOAD", "A title", "VIRAL")
+            ]),
+            ScoreUnit: "views");
+        var game = new PartyGameView(
+            partyId, Guid.NewGuid(), "slop-machine", GameAudienceRole.Display,
+            "ScoreReview1", 4, null, false, GameJson.From(payload),
+            new Dictionary<Guid, int> { [firstId] = 5000, [secondId] = 2000 });
+
+        var snapshot = PhaserPresentationMapper.Create(session, players, game, payload);
+
+        Assert.Equal("views", snapshot.ScoreUnit);
+        Assert.Equal("hero", snapshot.Media!.Mode);
+        Assert.Equal("A ridiculous thumbnail", Assert.Single(snapshot.Media.Items).AlternativeText);
+        Assert.Equal(3000,
+            snapshot.Results.Single(result => result.PlayerId == firstId.ToString("N")).PointsAwarded);
+        Assert.Equal(0,
+            snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).PointsAwarded);
     }
 
     private static PlayerView Player(Guid playerId, Guid partyId, string name) => new(

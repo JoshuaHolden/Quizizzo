@@ -256,7 +256,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("countRoundScores(snapshot, signature)", presentation,
             StringComparison.Ordinal);
         Assert.Contains("right.rank - left.rank", presentation, StringComparison.Ordinal);
-        Assert.Contains("Math.round(counter.value).toLocaleString()", presentation,
+        Assert.Contains("this.scoreLabel(Math.round(counter.value), snapshot)", presentation,
             StringComparison.Ordinal);
         Assert.Contains("delay += duration + 240", presentation, StringComparison.Ordinal);
         Assert.Contains("? \"celebrate\"", presentation, StringComparison.Ordinal);
@@ -457,6 +457,9 @@ public sealed class LandingPageContractTests
         var hub = ReadRepositoryFile("src/Quizizzo.Web/Realtime/PartyHub.cs");
 
         Assert.Contains("SendReactionAsync(\"Poop\")", player, StringComparison.Ordinal);
+        Assert.Contains("SendReactionAsync(\"Fake\")", player, StringComparison.Ordinal);
+        Assert.Contains("SendReactionAsync(\"Unsubscribe\")", player, StringComparison.Ordinal);
+        Assert.Contains("SendReactionAsync(\"Report\")", player, StringComparison.Ordinal);
         Assert.Contains("player-reaction-trigger", player, StringComparison.Ordinal);
         Assert.Contains("player-reaction-popover", player, StringComparison.Ordinal);
         Assert.Contains("aria-expanded=\"@reactionsOpen\"", player, StringComparison.Ordinal);
@@ -464,6 +467,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("controller-notice", player, StringComparison.Ordinal);
         Assert.Contains("\"Poop\"", hub, StringComparison.Ordinal);
         Assert.Contains("Poop: \"💩\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("Report: \"REPORT THIS SLOP\"", presentation, StringComparison.Ordinal);
         Assert.Contains("setDepth(200)", presentation, StringComparison.Ordinal);
         Assert.Contains("add.container(78, -78", presentation, StringComparison.Ordinal);
         Assert.Contains("fontSize: \"16px\"", presentation, StringComparison.Ordinal);
@@ -472,7 +476,29 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void Display_audio_follows_lobby_game_and_drawing_deadline_states_with_a_persistent_mute_control()
+    public void Slop_machine_media_stays_bounded_on_phone_and_shared_display_surfaces()
+    {
+        var player = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+        var options = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/OptionController.razor");
+        var styles = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+
+        Assert.Contains("controller-game-media", player, StringComparison.Ordinal);
+        Assert.Contains("item.AlternativeText", player, StringComparison.Ordinal);
+        Assert.Contains("controller-option-image", options, StringComparison.Ordinal);
+        Assert.Contains("height: min(25dvh, 13rem)", styles, StringComparison.Ordinal);
+        Assert.Contains(".phone-controller-shell .player-game-panel", styles, StringComparison.Ordinal);
+        Assert.Contains("overflow: hidden", styles, StringComparison.Ordinal);
+        Assert.Contains("snapshot.gameKey === \"slop-machine\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("addSlopSideEntries", presentation, StringComparison.Ordinal);
+        Assert.Contains("loadMediaTexture", presentation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Display_audio_maps_Slop_Machine_and_AniMates_states_with_a_persistent_mute_control()
     {
         var audio = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/presentationAudio.js");
@@ -483,11 +509,25 @@ public sealed class LandingPageContractTests
         var app = ReadRepositoryFile("src/Quizizzo.Web/Components/App.razor");
         var css = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
 
-        Assert.Contains("quiz-show-groove.d6618b4f874d.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("quiz-show-sparkle.774e332653a6.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("countdown-to-zero.fd84e59f102d.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("/media/audio/games/slop-machine", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-lobby.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-writing.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-countdown.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-spinner.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-voting.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-telephone.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-comments.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-scoreboard.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-final.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-human-victory.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("slop-machine-victory.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("countdownWindowSeconds = 20", audio, StringComparison.Ordinal);
-        Assert.Contains("snapshot.phase !== \"Drawing\"", audio, StringComparison.Ordinal);
+        Assert.Contains("snapshot.gameKey === \"animates\" && snapshot.phase === \"Drawing\"", audio,
+            StringComparison.Ordinal);
+        Assert.Contains("crossfadeMilliseconds: 600", audio, StringComparison.Ordinal);
+        Assert.Contains("duckedMusicMultiplier: .4", audio, StringComparison.Ordinal);
         Assert.Contains("quizizzo.display.audio-muted", audio, StringComparison.Ordinal);
         Assert.Contains("controller.audio?.update(controller.snapshot)", presentation, StringComparison.Ordinal);
         Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);

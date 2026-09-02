@@ -11,6 +11,7 @@ public sealed record PhaserPresentationSnapshot(
     string? JoinUrl,
     string? JoinQrDataUri,
     string? GameKey,
+    string? GameInstanceId,
     string Phase,
     DateTimeOffset? PhaseEndsAtUtc,
     long Revision,
@@ -23,7 +24,9 @@ public sealed record PhaserPresentationSnapshot(
     IReadOnlyList<PhaserResultSnapshot> Results,
     PhaserDrawingPresentationSnapshot? Drawing,
     string? PresenterMessage,
-    PhaserTutorialPresentationSnapshot? Tutorial);
+    PhaserTutorialPresentationSnapshot? Tutorial,
+    PhaserMediaPresentationSnapshot? Media = null,
+    string ScoreUnit = "pts");
 
 public sealed record PhaserEntrySnapshot(
     string Label,
@@ -88,6 +91,18 @@ public sealed record PhaserDrawingAnimationSnapshot(
     int? Rank,
     int PointsAwarded);
 
+public sealed record PhaserMediaPresentationSnapshot(
+    string Mode,
+    IReadOnlyList<PhaserMediaItemSnapshot> Items);
+
+public sealed record PhaserMediaItemSnapshot(
+    string Id,
+    string ImageUrl,
+    string AlternativeText,
+    string? Heading,
+    string? Body,
+    string? Badge);
+
 public static class PhaserPresentationMapper
 {
     public static PhaserPresentationSnapshot Create(
@@ -137,7 +152,7 @@ public static class PhaserPresentationMapper
                 (int)player.Character.TrouserStyle,
                 player.Character.BodySize.ToString()))).ToArray();
         var results = game?.ShowRoundRanking == true
-            ? RankedScores(presentationPlayers)
+            ? RankedScores(presentationPlayers, game.Entries)
             : game?.Entries
                 .Where(entry => entry.Rank.HasValue)
                 .Select(entry => new PhaserResultSnapshot(
@@ -164,6 +179,7 @@ public static class PhaserPresentationMapper
             joinUrl,
             joinQrDataUri,
             gameView?.GameKey,
+            gameView?.GameInstanceId.ToString("N"),
             gameView?.Phase ?? mode,
             gameView?.PhaseEndsAtUtc,
             gameView?.Revision ?? 0,
@@ -180,16 +196,30 @@ public static class PhaserPresentationMapper
             {
                 "Briefing" => game?.Prompt,
                 "ShowdownBriefing" => game?.Prompt,
+                { } phase when phase.EndsWith("Intro", StringComparison.Ordinal) => game?.Prompt,
                 _ => null
             },
             game?.Tutorial is { } tutorial
                 ? new PhaserTutorialPresentationSnapshot(
                     tutorial.Title, tutorial.FrameCount, tutorial.Steps)
-                : null);
+                : null,
+            game?.Media is { } media
+                ? new PhaserMediaPresentationSnapshot(
+                    media.Mode,
+                    media.Items.Select(item => new PhaserMediaItemSnapshot(
+                        item.Id, item.ImageUrl, item.AlternativeText,
+                        item.Heading, item.Body, item.Badge)).ToArray())
+                : null,
+            game?.ScoreUnit ?? "pts");
     }
 
-    private static PhaserResultSnapshot[] RankedScores(IReadOnlyList<PhaserPlayerSnapshot> players)
+    private static PhaserResultSnapshot[] RankedScores(
+        IReadOnlyList<PhaserPlayerSnapshot> players,
+        IReadOnlyList<GamePresentationEntry> entries)
     {
+        var pointsAwarded = entries
+            .GroupBy(entry => entry.PlayerId)
+            .ToDictionary(group => group.Key.ToString("N"), group => group.Sum(entry => entry.PointsAwarded));
         var ordered = players.OrderByDescending(player => player.Score)
             .ThenBy(player => player.DisplayName, StringComparer.Ordinal).ToArray();
         var results = new PhaserResultSnapshot[ordered.Length];
@@ -202,7 +232,10 @@ public static class PhaserPresentationMapper
                 rank = index + 1;
                 previousScore = ordered[index].Score;
             }
-            results[index] = new PhaserResultSnapshot(ordered[index].PlayerId, rank, 0);
+            results[index] = new PhaserResultSnapshot(
+                ordered[index].PlayerId,
+                rank,
+                pointsAwarded.GetValueOrDefault(ordered[index].PlayerId));
         }
         return results;
     }
