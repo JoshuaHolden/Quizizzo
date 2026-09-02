@@ -39,6 +39,7 @@ public sealed class EstimateGameModuleTests
         var payload = display.Data.Deserialize<DisplayGameViewPayload>()!;
 
         Assert.Equal(EstimateGameModule.ResultsPhase, revealed.Phase);
+        Assert.True(payload.ShowRoundRanking);
         Assert.All(payload.Entries, entry => Assert.Equal(1, entry.Rank));
         Assert.All(payload.Entries, entry => Assert.Equal(1000, entry.PointsAwarded));
         Assert.Equal(1000, display.Scores[game.FirstPlayerId]);

@@ -10,6 +10,7 @@ public sealed record PhaserPresentationSnapshot(
     string? GameKey,
     string Phase,
     long Revision,
+    bool ShowRoundRanking,
     IReadOnlyList<PhaserPlayerSnapshot> Players,
     IReadOnlyList<PhaserResultSnapshot> Results,
     PhaserDrawingPresentationSnapshot? Drawing,
@@ -119,7 +120,7 @@ public static class PhaserPresentationMapper
                 (int)player.Character.ShirtStyle,
                 (int)player.Character.TrouserStyle,
                 player.Character.BodySize.ToString()))).ToArray();
-        var results = gameView is { GameKey: "animates", Phase: "Results" }
+        var results = game?.ShowRoundRanking == true
             ? RankedScores(presentationPlayers)
             : game?.Entries
                 .Where(entry => entry.Rank.HasValue)
@@ -146,6 +147,7 @@ public static class PhaserPresentationMapper
             gameView?.GameKey,
             gameView?.Phase ?? mode,
             gameView?.Revision ?? 0,
+            game?.ShowRoundRanking == true,
             presentationPlayers,
             results,
             drawing,

@@ -319,7 +319,8 @@ public sealed class MajorityRulesGameModule(
         PhaseMessage(current, state),
         current.Phase == AnsweringPhase ? state.Answers.Count : state.Votes.Count,
         current.Phase == AnsweringPhase ? state.Participants.Count : EligibleVoters(state).Length,
-        Entries(current, state));
+        Entries(current, state),
+        ShowRoundRanking: current.Phase == ResultsPhase);
 
     private static GamePresentationEntry[] Entries(GameModuleState current, MajorityState state)
     {

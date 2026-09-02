@@ -122,8 +122,14 @@ public sealed class LandingPageContractTests
     {
         var presentation = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var rig = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/playerCharacterRig.js");
+        var app = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/App.razor");
 
-        Assert.Contains("this.load.atlasXML", presentation, StringComparison.Ordinal);
+        Assert.Contains("quizizzoCharacterRig.loadAtlases(this, \"player-\")", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("quizizzoCharacterRig.create", presentation, StringComparison.Ordinal);
         Assert.Contains("? \"full\"", presentation, StringComparison.Ordinal);
         Assert.Contains(": \"portrait\"", presentation, StringComparison.Ordinal);
         Assert.Contains("rows === 1 ? 575 : 555", presentation, StringComparison.Ordinal);
@@ -141,11 +147,6 @@ public sealed class LandingPageContractTests
         Assert.Contains(".setOrigin(0, 0)", presentation, StringComparison.Ordinal);
         Assert.Contains("controller.resizeObserver?.disconnect()", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("[\"face\", \"hair\", \"pants\", \"shirts\", \"shoes\", \"skin\"]",
-            presentation, StringComparison.Ordinal);
-        Assert.Contains("`player-${atlas}`", presentation, StringComparison.Ordinal);
-        Assert.Contains("presentation === \"Woman\" ? [4, 8]", presentation,
-            StringComparison.Ordinal);
         Assert.Contains("Quizizzo Display", presentation, StringComparison.Ordinal);
         Assert.Contains("animatePhaseTransition", presentation, StringComparison.Ordinal);
         Assert.Contains("startsWith(\"Showdown\")", presentation, StringComparison.Ordinal);
@@ -154,26 +155,32 @@ public sealed class LandingPageContractTests
 
         var designer = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/avatarDesigner.js");
-        Assert.Contains("presentation === \"Woman\" ? [4, 8]", designer,
+        Assert.Contains("quizizzoCharacterRig.loadAtlases(this, \"designer-\")", designer,
             StringComparison.Ordinal);
-        Assert.Contains("[1, 2, 3, 5, 6, 7]", designer, StringComparison.Ordinal);
+        Assert.Contains("quizizzoCharacterRig.create", designer, StringComparison.Ordinal);
+        Assert.Contains("presentation === \"Woman\" ? [4, 8]", rig,
+            StringComparison.Ordinal);
+        Assert.Contains("[1, 2, 3, 5, 6, 7]", rig, StringComparison.Ordinal);
         Assert.Contains("syncShirtStyles(form)", designer, StringComparison.Ordinal);
-        Assert.Contains("Thin: .84, Normal: 1, Thick: 1.16", designer,
+        Assert.Contains("Thin: .84, Normal: 1, Regular: 1, Thick: 1.16", rig,
             StringComparison.Ordinal);
-        Assert.Contains("part.scaleX *= bodyWidth", designer, StringComparison.Ordinal);
-        Assert.Contains("part.scaleX *= variants.bodyWidth", presentation,
-            StringComparison.Ordinal);
-        Assert.Contains("neck.png`, .5, 0).setScale(.42, 1)", presentation,
-            StringComparison.Ordinal);
-        Assert.Contains("neck.png`, .5, 0).setScale(.42, 1)", designer,
+        Assert.Contains("part.scaleX *= variants.bodyWidth", rig, StringComparison.Ordinal);
+        Assert.Contains("neck.png`, .5, 0).setScale(.42, 1)", rig,
             StringComparison.Ordinal);
         Assert.Contains("signature === this.podiumSignature", presentation,
             StringComparison.Ordinal);
         Assert.Contains("this.tweens.killTweensOf(this.podiumContainer.getAll())", presentation,
             StringComparison.Ordinal);
         Assert.Contains("if (!podiumChanged)", presentation, StringComparison.Ordinal);
-        Assert.Contains("`tint${skin}_head.png`, .5, 0", designer,
+        Assert.Contains("`tint${variants.skin}_head.png`, .5, 0", rig,
             StringComparison.Ordinal);
+        Assert.Contains("scheduleRareFart", designer, StringComparison.Ordinal);
+        Assert.Contains("Phaser.Math.Between(30000, 55000)", designer,
+            StringComparison.Ordinal);
+        Assert.Contains("resumeIdle: true", designer, StringComparison.Ordinal);
+        Assert.Contains("playerCharacterRig.js", app, StringComparison.Ordinal);
+        Assert.True(app.IndexOf("playerCharacterRig.js", StringComparison.Ordinal) <
+            app.IndexOf("phaserPresentation.js", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -228,10 +235,35 @@ public sealed class LandingPageContractTests
         Assert.Contains("mode === \"full\" ? .31 : .4", presentation, StringComparison.Ordinal);
         Assert.Contains("avatar.shadow.setY(mode === \"full\" ? 12 : 62)", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("const y = 658 - podiumHeight", presentation, StringComparison.Ordinal);
+        Assert.Contains("const y = podiumTop - 1", presentation, StringComparison.Ordinal);
         Assert.Contains("const name = this.add.text(0, 47", presentation, StringComparison.Ordinal);
         Assert.Contains("const score = this.add.text(0, 75", presentation, StringComparison.Ordinal);
         Assert.Contains("configureHost", presentation, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Round_interstitial_reveals_rankings_and_counts_scores_sequentially()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var rig = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/playerCharacterRig.js");
+
+        Assert.Contains("showRoundRanking", presentation, StringComparison.Ordinal);
+        Assert.Contains("That's another round over — let's see how the scores look!",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("CURRENT STANDINGS", presentation, StringComparison.Ordinal);
+        Assert.Contains("countRoundScores(snapshot, signature)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("right.rank - left.rank", presentation, StringComparison.Ordinal);
+        Assert.Contains("Math.round(counter.value).toLocaleString()", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("delay += duration + 240", presentation, StringComparison.Ordinal);
+        Assert.Contains("? \"laugh\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("? \"cry\" : \"idle\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("action === \"laugh\"", rig, StringComparison.Ordinal);
+        Assert.Contains("action === \"cry\"", rig, StringComparison.Ordinal);
+        Assert.Contains("action === \"fart\"", rig, StringComparison.Ordinal);
     }
 
     [Fact]

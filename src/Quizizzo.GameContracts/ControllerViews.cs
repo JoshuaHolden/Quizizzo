@@ -108,4 +108,5 @@ public sealed record DisplayGameViewPayload(
     int TotalPlayers,
     IReadOnlyList<GamePresentationEntry> Entries,
     DrawingPresentationView? Drawing = null,
-    TutorialPresentationView? Tutorial = null);
+    TutorialPresentationView? Tutorial = null,
+    bool ShowRoundRanking = false);

@@ -164,13 +164,15 @@ public sealed class PhaserPresentationMapperTests
             [
                 new GamePresentationEntry(firstId, "First", "Thinking", null, 0),
                 new GamePresentationEntry(secondId, "Second", "Idle", null, 0)
-            ]);
+            ],
+            ShowRoundRanking: true);
         var game = new PartyGameView(
             partyId, Guid.NewGuid(), "animates", GameAudienceRole.Display, "Results", 3, null, false,
             GameJson.From(payload), new Dictionary<Guid, int> { [firstId] = 150, [secondId] = 50 });
 
         var snapshot = PhaserPresentationMapper.Create(session, players, game, payload);
 
+        Assert.True(snapshot.ShowRoundRanking);
         Assert.Equal("Thinking", snapshot.Players.Single(player => player.PlayerId == firstId.ToString("N")).Activity);
         Assert.Equal(1, snapshot.Results.Single(result => result.PlayerId == firstId.ToString("N")).Rank);
         Assert.Equal(2, snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).Rank);

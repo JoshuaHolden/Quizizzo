@@ -297,7 +297,8 @@ public sealed class EstimateGameModule(TimeSpan? answerDuration = null) : IGameM
         PhaseMessage(current, state, question),
         state.Submissions.Count,
         state.Participants.Count,
-        CreateEntries(current, state, question));
+        CreateEntries(current, state, question),
+        ShowRoundRanking: current.Phase == ResultsPhase);
 
     private static string PhaseMessage(
         GameModuleState current,

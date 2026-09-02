@@ -1,6 +1,4 @@
 (() => {
-    const assetRoot = "/assets/kenney-presenter/spritesheets/";
-    const sheets = ["face", "hair", "pants", "shirts", "shoes", "skin"];
     const games = new Map();
 
     function values(form) {
@@ -72,89 +70,39 @@
         }
 
         preload() {
-            sheets.forEach(sheet => this.load.atlasXML(
-                `designer-${sheet}`,
-                `${assetRoot}sheet_${sheet}.png`,
-                `${assetRoot}sheet_${sheet}.xml`));
+            window.quizizzoCharacterRig.loadAtlases(this, "designer-");
         }
 
         create() {
-            this.rig = this.add.container(320, 10).setScale(.58);
+            this.rig = this.add.container(320, 30).setScale(.58);
+            this.character = window.quizizzoCharacterRig.create(this, {
+                container: this.rig,
+                atlasPrefix: "designer-",
+                includeGroundShadow: true
+            });
             this.renderChoice();
-        }
-
-        addPart(x, y, atlas, frame, originX = .5, originY = .5) {
-            const image = this.add.image(x, y, `designer-${atlas}`, frame).setOrigin(originX, originY);
-            this.rig.add(image);
-            return image;
+            this.scheduleRareFart();
+            this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+                this.fartTimer?.remove(false);
+                this.character?.destroy();
+            });
         }
 
         renderChoice() {
-            if (!this.rig) return;
-            this.rig.removeAll(true);
-            const choice = values(this.form);
-            const skin = Number(choice.skinTone?.replace("Tint", "")) || 1;
-            const presentation = choice.presentation || "Man";
-            const bodyWidth = { Thin: .84, Normal: 1, Thick: 1.16 }[choice.bodySize] || 1;
-            const hairPrefix = { Brown: "brown1", Black: "black", Blonde: "blonde", Red: "red" }[choice.hairColour] || "brown1";
-            const maximumHairStyle = presentation === "Woman" ? 6 : 8;
-            const hairStyle = Math.min(Number(choice.hairStyle?.replace("Style", "")) || 1, maximumHairStyle);
-            const faceWidth = { Oval: .92, Round: 1, Wide: 1.1 }[choice.faceShape] || 1;
-            const eyeColour = ["Black", "Blue", "Brown", "Green", "Pine"].includes(choice.eyeColour) ? choice.eyeColour : "Blue";
-            const eyeSize = choice.eyeSize === "Small" ? "small" : "large";
-            const browShape = Math.min(Number(choice.browShape?.replace("Brow", "")) || 1, 3);
-            const noseShape = Math.min(Number(choice.noseShape?.replace("Nose", "")) || 1, 3);
-            const mouth = {
-                Smile: "mouth_happy.png", Grin: "mouth_teethUpper.png",
-                TeethLower: "mouth_teethLower.png", Surprised: "mouth_oh.png",
-                Tongue: "mouth_glad.png", Sad: "mouth_sad.png",
-                Straight: "mouth_straight.png"
-            }[choice.mouth] || "mouth_happy.png";
-            const shirt = { Navy: "navy", Blue: "blue", Green: "green", Red: "red" }[choice.shirtColour] || "navy";
-            const allowedShirtStyles = presentation === "Woman" ? [4, 8] : [1, 2, 3, 5, 6, 7];
-            const requestedShirtStyle = Number(choice.shirtStyle?.replace("Style", ""));
-            const shirtStyle = allowedShirtStyles.includes(requestedShirtStyle) ? requestedShirtStyle : allowedShirtStyles[0];
-            const pants = { Navy: "pantsNavy", Blue: "pantsBlue1", Green: "pantsGreen", Tan: "pantsTan" }[choice.trouserColour] || "pantsNavy";
-            const trouserStyle = Math.min(Number(choice.trouserStyle?.replace("Style", "")) || 1, 4);
-            const length = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[choice.trouserLength] || "long";
-            const shoeStyle = Math.min(Number(choice.shoeStyle?.replace("Style", "")) || 1, 5);
-            const shoePrefix = { Brown: "brown", Black: "black", Blue: "blue", Red: "red" }[choice.shoeColour] || "brown";
-            const shoe = `${shoePrefix}Shoe${shoeStyle}.png`;
-            const hair = `${hairPrefix}${presentation}${hairStyle}.png`;
-            const shirtFrame = `${shirt}Shirt${shirtStyle}.png`;
+            if (!this.character) return;
+            this.character.render(values(this.form), "full");
+            this.character.play("idle");
+        }
 
-            this.rig.add(this.add.ellipse(0, 523, 250 * bodyWidth, 30, 0x02091f, .42));
-            const bodyParts = [];
-            const addBodyPart = (...args) => {
-                const part = this.addPart(...args);
-                bodyParts.push(part);
-                return part;
-            };
-            addBodyPart(0, 168, "skin", `tint${skin}_neck.png`, .5, 0).setScale(.42, 1);
-            addBodyPart(-58, 218, "shirts", `${shirt}Arm_long.png`, .69, .18).setFlipX(true);
-            addBodyPart(58, 218, "shirts", `${shirt}Arm_long.png`, .31, .18);
-            addBodyPart(-166, 301, "skin", `tint${skin}_hand.png`, .5, .12);
-            addBodyPart(166, 301, "skin", `tint${skin}_hand.png`, .5, .12);
-            addBodyPart(-95.5, 341, "skin", `tint${skin}_leg.png`, 0, 0).setFlipX(true);
-            addBodyPart(95.5, 341, "skin", `tint${skin}_leg.png`, 1, 0);
-            addBodyPart(-95.5, 341, "pants", `${pants}_${length}.png`, 0, 0).setFlipX(true);
-            addBodyPart(95.5, 341, "pants", `${pants}_${length}.png`, 1, 0);
-            addBodyPart(-66, 505, "shoes", shoe).setFlipX(true).setScale(.86);
-            addBodyPart(66, 505, "shoes", shoe).setScale(.86);
-            addBodyPart(0, 200, "shirts", shirtFrame, .5, 0);
-            addBodyPart(0, 341, "pants", `${pants}${trouserStyle}.png`, .5, 0);
-            bodyParts.forEach(part => {
-                part.x *= bodyWidth;
-                part.scaleX *= bodyWidth;
+        scheduleRareFart() {
+            this.fartTimer?.remove(false);
+            if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+            this.fartTimer = this.time.delayedCall(Phaser.Math.Between(30000, 55000), () => {
+                this.character.play("fart", {
+                    resumeIdle: true,
+                    onComplete: () => this.scheduleRareFart()
+                });
             });
-            this.addPart(0, 35, "skin", `tint${skin}_head.png`, .5, 0).setScale(faceWidth, 1);
-            this.addPart(0, 10, "hair", hair, .5, 0);
-            this.addPart(-27 * faceWidth, 110, "face", `eye${eyeColour}_${eyeSize}.png`);
-            this.addPart(27 * faceWidth, 110, "face", `eye${eyeColour}_${eyeSize}.png`);
-            this.addPart(-28 * faceWidth, 90, "face", `${hairPrefix}Brow${browShape}.png`);
-            this.addPart(28 * faceWidth, 90, "face", `${hairPrefix}Brow${browShape}.png`).setFlipX(true);
-            this.addPart(0, 133, "face", `tint${skin}Nose${noseShape}.png`);
-            this.addPart(0, 167, "face", mouth);
         }
     }
 

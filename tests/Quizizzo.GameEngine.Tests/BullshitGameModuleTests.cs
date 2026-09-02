@@ -96,6 +96,7 @@ public sealed class BullshitGameModuleTests
         var display = game.DisplayView();
         var secondPlayer = game.PlayerView(game.PlayerIds[1]);
         Assert.Equal(BullshitGameModule.ResultsPhase, game.State.Phase);
+        Assert.True(display.ShowRoundRanking);
         Assert.Equal(2000, result.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[1]).Points);
         Assert.Equal(1000, result.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[2]).Points);
         Assert.Contains(display.Entries, entry => entry.Label == "TRUTH" && entry.Value.Contains("A tittle"));

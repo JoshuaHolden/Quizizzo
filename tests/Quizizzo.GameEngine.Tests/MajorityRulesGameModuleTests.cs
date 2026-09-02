@@ -85,6 +85,7 @@ public sealed class MajorityRulesGameModuleTests
 
         var display = game.DisplayView();
         Assert.Equal(MajorityRulesGameModule.ResultsPhase, game.State.Phase);
+        Assert.True(display.ShowRoundRanking);
         Assert.Equal(1000, result.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[0]).Points);
         Assert.Equal(500, result.ScoreAwards.Single(award => award.PlayerId == game.PlayerIds[1]).Points);
         Assert.DoesNotContain(result.ScoreAwards, award => award.PlayerId == game.PlayerIds[2]);

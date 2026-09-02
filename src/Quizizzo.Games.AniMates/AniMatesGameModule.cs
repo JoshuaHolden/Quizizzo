@@ -519,7 +519,8 @@ public sealed class AniMatesGameModule(
             Entries(current, state), drawing,
             current.Phase is BriefingPhase or ShowdownBriefingPhase
                 ? DrawingTutorial(state)
-                : null);
+                : null,
+            current.Phase == ResultsPhase && NextSubmittedIndex(state, state.TurnIndex) < 0);
     }
 
     private static TutorialPresentationView DrawingTutorial(AnimateState state) => new(

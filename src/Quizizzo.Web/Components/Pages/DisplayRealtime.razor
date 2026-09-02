@@ -267,6 +267,7 @@
         : connectionStatus == "Reconnecting" ? "text-bg-warning" : "text-bg-secondary";
     private bool ShowEntriesOverCanvas => gameView?.GameKey == "animates"
         && (gameView.Phase is "Choosing" or "Results")
+        && game?.ShowRoundRanking != true
         && game?.Entries.Count > 0;
     private string DisplayPhaseClass => gameView?.Phase switch
     {

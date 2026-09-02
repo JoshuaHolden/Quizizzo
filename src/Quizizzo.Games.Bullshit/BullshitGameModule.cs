@@ -370,7 +370,8 @@ public sealed class BullshitGameModule(
         PhaseMessage(current, state),
         current.Phase == BluffingPhase ? state.Submissions.Count : state.Votes.Count,
         current.Phase == BluffingPhase ? state.Participants.Count : EligibleVoters(state).Length,
-        Entries(current, state));
+        Entries(current, state),
+        ShowRoundRanking: current.Phase == ResultsPhase);
 
     private static IReadOnlyList<GamePresentationEntry> Entries(
         GameModuleState current,

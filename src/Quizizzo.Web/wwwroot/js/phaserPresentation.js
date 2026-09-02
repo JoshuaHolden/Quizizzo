@@ -12,17 +12,8 @@ window.quizizzoPresentation = (() => {
         return Math.min(3, deviceScale * displayScale);
     }
 
-    const characterAssetRoot = "/assets/kenney-presenter/spritesheets/";
-    const characterSheets = ["face", "hair", "pants", "shirts", "shoes", "skin"];
     const displayFont = '"Quizizzo Display", "Arial Rounded MT Bold", sans-serif';
     const bodyFont = '"Quizizzo Sans", "Segoe UI", sans-serif';
-
-    function colour(value, fallback = 0x7c3aed) {
-        if (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value)) {
-            return fallback;
-        }
-        return Number.parseInt(value.slice(1), 16);
-    }
 
     function cloneSnapshot(snapshot) {
         return JSON.parse(JSON.stringify(snapshot));
@@ -45,17 +36,20 @@ window.quizizzoPresentation = (() => {
             this.podiumContainer = null;
             this.podiumSignature = null;
             this.presenterContainer = null;
+            this.presenterRig = null;
             this.presenterMessage = null;
+            this.roundRankingSignature = null;
+            this.roundRankingTimer = null;
+            this.roundRankingScoreTimers = [];
+            this.roundRankingScoreTweens = [];
+            this.roundRankingStartScores = new Map();
             this.tutorialContainer = null;
             this.tutorialSignature = null;
             this.phaseChrome = null;
         }
 
         preload() {
-            characterSheets.forEach(sheet => this.load.atlasXML(
-                `player-${sheet}`,
-                `${characterAssetRoot}sheet_${sheet}.png`,
-                `${characterAssetRoot}sheet_${sheet}.xml`));
+            window.quizizzoCharacterRig.loadAtlases(this, "player-");
         }
 
         create() {
@@ -156,11 +150,10 @@ window.quizizzoPresentation = (() => {
 
             const previousPlayers = playerMap(this.previous);
             const currentIds = new Set((snapshot.players || []).map(player => player.playerId));
-            const characterMode = (snapshot.results || []).some(result => result.rank != null)
-                ? "full"
-                : "portrait";
+            const showRoundRanking = Boolean(snapshot.showRoundRanking && snapshot.results?.length);
+            const characterMode = showRoundRanking ? "full" : "portrait";
             this.drawBackground(snapshot.gameKey, snapshot.phase);
-            if (!initial && this.previous?.phase !== snapshot.phase) {
+            if (!initial && this.previous?.phase !== snapshot.phase && !showRoundRanking) {
                 this.animatePhaseTransition(snapshot.phase);
             }
 
@@ -176,7 +169,7 @@ window.quizizzoPresentation = (() => {
 
                 const previousPlayer = previousPlayers.get(player.playerId);
                 this.updateAvatar(avatar, player, characterMode);
-                if (previousPlayer && previousPlayer.score !== player.score) {
+                if (previousPlayer && previousPlayer.score !== player.score && !showRoundRanking) {
                     this.animateScore(avatar, player.score - previousPlayer.score);
                 }
                 if (previousPlayer && previousPlayer.status !== player.status) {
@@ -190,13 +183,19 @@ window.quizizzoPresentation = (() => {
                 }
             }
 
+            if (showRoundRanking) {
+                this.applyTutorial(null);
+                this.applyDrawing(null);
+                this.startRoundRanking(snapshot, initial);
+                this.previous = cloneSnapshot(snapshot);
+                return;
+            }
+
+            this.stopRoundRanking();
             const podiumChanged = this.renderPodium(snapshot);
             this.applyPresenter(snapshot.presenterMessage);
             this.applyTutorial(snapshot.tutorial);
             this.layoutAvatars(snapshot, initial, podiumChanged);
-            if (!initial && this.isNewResult(snapshot)) {
-                this.animateResults(snapshot.results || [], snapshot);
-            }
             this.applyDrawing(snapshot.drawing);
             this.previous = cloneSnapshot(snapshot);
         }
@@ -228,6 +227,8 @@ window.quizizzoPresentation = (() => {
         applyPresenter(message) {
             if (message === this.presenterMessage) return;
             this.presenterMessage = message;
+            this.presenterRig?.stop();
+            this.presenterRig = null;
             this.presenterContainer?.destroy(true);
             this.presenterContainer = null;
             if (!message) return;
@@ -242,6 +243,7 @@ window.quizizzoPresentation = (() => {
             };
             const host = this.createAvatar({ displayName: "", score: 0 });
             this.drawCharacter(host, hostCharacter, "full");
+            this.presenterRig = host.rig;
             host.name.setVisible(false);
             host.score.setVisible(false);
             host.presence.setVisible(false);
@@ -260,9 +262,7 @@ window.quizizzoPresentation = (() => {
                 this.presenterContainer.x = -500;
                 this.tweens.add({ targets: this.presenterContainer, x: width / 2,
                     duration: 700, ease: "Back.easeOut" });
-                this.tweens.add({ targets: host.character, y: { from: -164, to: -154 },
-                    angle: { from: -1.5, to: 1.5 }, duration: 620, yoyo: true,
-                    repeat: -1, ease: "Sine.easeInOut" });
+                host.rig.play("idle");
             }
         }
 
@@ -542,19 +542,94 @@ window.quizizzoPresentation = (() => {
             this.drawingContainer = this.add.container(width / 2, 138 + grid.cardHeight / 2, items).setDepth(12);
         }
 
-        isNewResult(snapshot) {
-            if (!snapshot.results?.length) {
-                return false;
+        startRoundRanking(snapshot, initial) {
+            const players = playerMap(snapshot);
+            const signature = JSON.stringify({
+                revision: snapshot.revision,
+                results: snapshot.results,
+                scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0)
+            });
+            if (signature === this.roundRankingSignature) return;
+
+            this.stopRoundRanking();
+            this.roundRankingSignature = signature;
+            const previousPlayers = playerMap(this.previous);
+            this.roundRankingStartScores = new Map(snapshot.players.map(player => [
+                player.playerId,
+                Math.min(player.score, previousPlayers.get(player.playerId)?.score ?? player.score)
+            ]));
+            this.renderPodium({ ...snapshot, showRoundRanking: false });
+            this.avatars.forEach(avatar => {
+                avatar.rig?.stop();
+                avatar.container.setVisible(false);
+            });
+            const reveal = () => {
+                if (this.roundRankingSignature !== signature || !this.scene?.isActive()) return;
+                this.roundRankingTimer = null;
+                this.applyPresenter(null);
+                const podiumChanged = this.renderPodium(snapshot);
+                this.layoutAvatars(snapshot, initial || this.controller.reducedMotion, podiumChanged);
+                if (!initial && !this.controller.reducedMotion) {
+                    this.countRoundScores(snapshot, signature);
+                }
+            };
+            if (initial || this.controller.reducedMotion) {
+                reveal();
+                return;
             }
-            if (!this.previous?.results?.length) {
-                return true;
-            }
-            return JSON.stringify(snapshot.results) !== JSON.stringify(this.previous.results);
+            this.applyPresenter("That's another round over — let's see how the scores look!");
+            this.roundRankingTimer = this.time.delayedCall(2800, reveal);
+        }
+
+        stopRoundRanking() {
+            if (!this.roundRankingSignature && !this.roundRankingTimer) return;
+            this.roundRankingTimer?.remove(false);
+            this.roundRankingTimer = null;
+            this.roundRankingScoreTimers.splice(0).forEach(timer => timer.remove(false));
+            this.roundRankingScoreTweens.splice(0).forEach(tween => tween.stop());
+            this.roundRankingStartScores.clear();
+            this.roundRankingSignature = null;
+            this.avatars.forEach(avatar => avatar.rig?.stop());
+        }
+
+        countRoundScores(snapshot, signature) {
+            const players = playerMap(snapshot);
+            const ordered = [...snapshot.results].sort((left, right) => right.rank - left.rank);
+            let delay = 1050;
+            ordered.forEach(result => {
+                const player = players.get(result.playerId);
+                const avatar = this.avatars.get(result.playerId);
+                if (!player || !avatar) return;
+                const start = this.roundRankingStartScores.get(result.playerId) ?? player.score;
+                const difference = Math.max(0, player.score - start);
+                const duration = difference > 0 ? Math.min(1300, 520 + difference * .55) : 420;
+                avatar.score.setText(`${start.toLocaleString()} pts`);
+                const timer = this.time.delayedCall(delay, () => {
+                    if (this.roundRankingSignature !== signature) return;
+                    const counter = { value: start };
+                    const tween = this.tweens.add({
+                        targets: counter,
+                        value: player.score,
+                        duration,
+                        ease: "Cubic.easeOut",
+                        onUpdate: () => avatar.score.setText(
+                            `${Math.round(counter.value).toLocaleString()} pts`),
+                        onComplete: () => {
+                            avatar.score.setText(`${player.score.toLocaleString()} pts`);
+                            this.tweens.add({ targets: avatar.score, scale: 1.45,
+                                duration: 150, yoyo: true, ease: "Back.easeOut" });
+                            if (difference > 0) this.burst(avatar.container.x, avatar.container.y + 25, 18);
+                        }
+                    });
+                    this.roundRankingScoreTweens.push(tween);
+                });
+                this.roundRankingScoreTimers.push(timer);
+                delay += duration + 240;
+            });
         }
 
         renderPodium(snapshot) {
-            const isPodium = snapshot.gameKey === "animates" && snapshot.phase === "Results"
-                && snapshot.results?.length;
+            const isPodium = snapshot.showRoundRanking && snapshot.results?.length;
             const players = playerMap(snapshot);
             const signature = isPodium ? JSON.stringify({
                 results: snapshot.results,
@@ -576,15 +651,27 @@ window.quizizzoPresentation = (() => {
             const maximum = Math.max(1, ...ordered.map(result => players.get(result.playerId)?.score || 0));
             const spacing = Math.min(180, 1080 / ordered.length);
             const widthPerPodium = Math.max(72, spacing - 12);
-            const items = [];
+            const items = [
+                this.add.text(width / 2, 56, "ROUND COMPLETE", {
+                    color: "#fde68a", fontFamily: displayFont, fontSize: "24px", fontStyle: "bold",
+                    letterSpacing: 5
+                }).setOrigin(.5),
+                this.add.text(width / 2, 96, "CURRENT STANDINGS", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "46px", fontStyle: "bold",
+                    stroke: "#24123f", strokeThickness: 7
+                }).setOrigin(.5)
+            ];
             ordered.forEach((result, index) => {
                 const score = players.get(result.playerId)?.score || 0;
                 const podiumHeight = 70 + (score / maximum) * 145;
                 const x = width / 2 + (index - (ordered.length - 1) / 2) * spacing;
+                const podiumColour = result.rank === 1 ? 0xfacc15
+                    : result.rank === 2 ? 0xcbd5e1
+                        : result.rank === 3 ? 0xc08457 : 0x7c3aed;
                 const block = this.add.rectangle(x, 660 - podiumHeight / 2, widthPerPodium, podiumHeight,
-                    result.rank === 1 ? 0xfacc15 : result.rank === 2 ? 0xcbd5e1 : 0xc08457, .92)
+                    podiumColour, .92)
                     .setStrokeStyle(4, 0x24123f, 1);
-                const rank = this.add.text(x, 650 - podiumHeight, `#${result.rank}`, {
+                const rank = this.add.text(x, 638, `#${result.rank}`, {
                     color: "#24123f", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
                 }).setOrigin(.5);
                 items.push(block, rank);
@@ -672,7 +759,7 @@ window.quizizzoPresentation = (() => {
             container.add([cardShadow, card, shadow, character, presence, name, score, activity, remove]);
             container.setDepth(20);
             return { container, cardShadow, card, character, shadow, presence, name, score, activity, remove,
-                signature: null, mode: null };
+                signature: null, mode: null, rig: null };
         }
 
         updateAvatar(avatar, player, mode) {
@@ -702,47 +789,11 @@ window.quizizzoPresentation = (() => {
         }
 
         drawCharacter(avatar, character, mode = "portrait") {
-            avatar.character.removeAll(true);
-            const variants = this.characterFrames(character);
-            const add = (x, y, atlas, frame, originX = .5, originY = .5) => {
-                const image = this.add.image(x, y, `player-${atlas}`, frame).setOrigin(originX, originY);
-                avatar.character.add(image);
-                return image;
-            };
-            if (mode === "full") {
-                const bodyParts = [];
-                const addBodyPart = (...args) => {
-                    const part = add(...args);
-                    bodyParts.push(part);
-                    return part;
-                };
-                addBodyPart(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.42, 1);
-                addBodyPart(-58, 218, "shirts", `${variants.shirt}Arm_long.png`, .69, .18).setFlipX(true);
-                addBodyPart(58, 218, "shirts", `${variants.shirt}Arm_long.png`, .31, .18);
-                addBodyPart(-166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
-                addBodyPart(166, 301, "skin", `tint${variants.skin}_hand.png`, .5, .12);
-                addBodyPart(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
-                addBodyPart(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
-                addBodyPart(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
-                addBodyPart(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
-                addBodyPart(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
-                addBodyPart(66, 505, "shoes", variants.shoe).setScale(.86);
-                addBodyPart(0, 200, "shirts", `${variants.shirt}Shirt${variants.shirtStyle}.png`, .5, 0);
-                addBodyPart(0, 341, "pants", `${variants.pants}${variants.trouserStyle}.png`, .5, 0);
-                bodyParts.forEach(part => {
-                    part.x *= variants.bodyWidth;
-                    part.scaleX *= variants.bodyWidth;
-                });
-            }
-
-            add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0).setScale(variants.faceWidth, 1);
-            add(0, -25, "hair", variants.hair, .5, 0);
-            add(-27 * variants.faceWidth, 75, "face", variants.eye);
-            add(27 * variants.faceWidth, 75, "face", variants.eye);
-            add(-28 * variants.faceWidth, 55, "face", variants.brow);
-            add(28 * variants.faceWidth, 55, "face", variants.brow).setFlipX(true);
-            add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
-            add(0, 132, "face", variants.mouth);
+            avatar.rig ??= window.quizizzoCharacterRig.create(this, {
+                container: avatar.character,
+                atlasPrefix: "player-"
+            });
+            const variants = avatar.rig.render(character, mode);
 
             avatar.character.setScale(mode === "full" ? .31 : .4);
             avatar.character.setPosition(0, mode === "full" ? -160 : -54);
@@ -752,156 +803,6 @@ window.quizizzoPresentation = (() => {
             avatar.cardShadow.setVisible(mode === "portrait");
             avatar.shadow.setScale(variants.bodyWidth, 1);
             avatar.mode = mode;
-        }
-
-        characterFrames(character) {
-            const body = { Bean: 1, Blob: 3, Round: 5, Square: 7 };
-            const skin = [1, 3, 5, 7].includes(character.skinTone)
-                ? character.skinTone
-                : body[character.bodyType] || 1;
-            const presentation = character.presentation ||
-                (["Blob", "Square"].includes(character.bodyType) ? "Woman" : "Man");
-            const bodyWidth = { Thin: .84, Normal: 1, Thick: 1.16 }[character.bodySize] || 1;
-            const legacyHair = {
-                Bright: `blonde${presentation}1.png`,
-                Sleepy: `brown1${presentation}${presentation === "Man" ? 5 : 3}.png`,
-                Starry: `red${presentation}${presentation === "Man" ? 1 : 4}.png`,
-                Googly: `black${presentation}${presentation === "Man" ? 2 : 1}.png`
-            }[character.eyes];
-            const hairPrefix = { Brown: "brown1", Black: "black", Blonde: "blonde", Red: "red" }[character.hairColour];
-            const maximumHairStyle = presentation === "Woman" ? 6 : 8;
-            const hairStyle = Math.min(Math.max(Number(character.hairStyle) || 1, 1), maximumHairStyle);
-            const hair = hairPrefix
-                ? `${hairPrefix}${presentation}${hairStyle}.png`
-                : legacyHair;
-            const eyeColour = ["Black", "Blue", "Brown", "Green", "Pine"].includes(character.eyeColour)
-                ? character.eyeColour : character.eyes === "Sleepy" ? "Brown" : "Blue";
-            const eyeSize = character.eyeSize === "Small" ? "small" : "large";
-            const eye = `eye${eyeColour}_${eyeSize}.png`;
-            const browPrefix = character.eyes === "Googly" ? "black" : character.eyes === "Starry" ? "red" : character.eyes === "Bright" ? "blonde" : "brown1";
-            const browShape = Math.min(Math.max(Number(character.browShape) || 1, 1), 3);
-            const noseShape = Math.min(Math.max(Number(character.noseShape) || 1, 1), 3);
-            const faceWidth = { Oval: .92, Round: 1, Wide: 1.1 }[character.faceShape] || 1;
-            const mouth = {
-                Smile: "mouth_happy.png", Grin: "mouth_teethUpper.png",
-                TeethLower: "mouth_teethLower.png", Surprised: "mouth_oh.png",
-                Tongue: "mouth_glad.png", Sad: "mouth_sad.png",
-                Straight: "mouth_straight.png"
-            }[character.mouth] || "mouth_happy.png";
-            const colourValue = colour(character.primaryColour);
-            const paletteIndex = colourValue % 4;
-            const shirt = { Navy: "navy", Blue: "blue", Green: "green", Red: "red" }[character.shirtColour];
-            const pants = { Navy: "pantsNavy", Blue: "pantsBlue1", Green: "pantsGreen", Tan: "pantsTan" }[character.trouserColour];
-            const shoeStyle = Math.min(Math.max(Number(character.shoeStyle) || 1, 1), 5);
-            const shoePrefix = { Brown: "brown", Black: "black", Blue: "blue", Red: "red" }[character.shoeColour];
-            const shoe = shoePrefix ? `${shoePrefix}Shoe${shoeStyle}.png` : null;
-            const trouserLength = { FullLength: "long", Cropped: "short", Shorts: "shorter" }[character.trouserLength];
-            const allowedShirtStyles = presentation === "Woman" ? [4, 8] : [1, 2, 3, 5, 6, 7];
-            const requestedShirtStyle = Number(character.shirtStyle);
-            const shirtStyle = allowedShirtStyles.includes(requestedShirtStyle)
-                ? requestedShirtStyle : allowedShirtStyles[0];
-            const trouserStyle = Math.min(Math.max(Number(character.trouserStyle) || 1, 1), 4);
-            return {
-                skin,
-                presentation,
-                bodyWidth,
-                hair,
-                eye,
-                brow: `${hairPrefix || browPrefix}Brow${browShape}.png`,
-                mouth,
-                faceWidth,
-                noseShape,
-                shirt: shirt || ["navy", "blue", "green", "red"][paletteIndex],
-                shirtStyle,
-                pants: pants || ["pantsNavy", "pantsBlue1", "pantsGreen", "pantsTan"][paletteIndex],
-                trouserStyle,
-                trouserLength: trouserLength || "long",
-                shoe: shoe || ["brownShoe1.png", "blackShoe1.png", "blueShoe1.png", "redShoe1.png"][paletteIndex]
-            };
-        }
-
-        drawEyes(graphic, eyes) {
-            if (eyes === "Sleepy") {
-                graphic.lineStyle(5, 0x190d27, 1);
-                graphic.lineBetween(-32, -10, -10, -7);
-                graphic.lineBetween(10, -7, 32, -10);
-                return;
-            }
-
-            if (eyes === "Starry") {
-                graphic.fillStyle(0xfff5a5, 1);
-                graphic.fillStar(-22, -11, 5, 5, 12);
-                graphic.fillStar(22, -11, 5, 5, 12);
-                return;
-            }
-
-            graphic.fillStyle(0xffffff, 1);
-            graphic.fillCircle(-22, -10, eyes === "Googly" ? 16 : 13);
-            graphic.fillCircle(22, -10, eyes === "Googly" ? 12 : 13);
-            graphic.fillStyle(0x190d27, 1);
-            graphic.fillCircle(eyes === "Googly" ? -17 : -22, -8, 6);
-            graphic.fillCircle(eyes === "Googly" ? 18 : 22, -12, 6);
-        }
-
-        drawMouth(graphic, mouth) {
-            graphic.lineStyle(5, 0x190d27, 1);
-            if (mouth === "Grin") {
-                graphic.fillStyle(0xffffff, 1);
-                graphic.fillRoundedRect(-23, 20, 46, 20, 8);
-                graphic.strokeRoundedRect(-23, 20, 46, 20, 8);
-            } else if (mouth === "Surprised") {
-                graphic.fillStyle(0x190d27, 1);
-                graphic.fillCircle(0, 29, 12);
-            } else if (mouth === "Tongue") {
-                graphic.fillStyle(0x190d27, 1);
-                graphic.fillRoundedRect(-19, 18, 38, 27, 12);
-                graphic.fillStyle(0xff6b9d, 1);
-                graphic.fillEllipse(0, 41, 24, 15);
-            } else {
-                graphic.beginPath();
-                graphic.arc(0, 19, 23, 0.15, Math.PI - 0.15, false);
-                graphic.strokePath();
-            }
-        }
-
-        drawAccessory(graphic, accessory) {
-            graphic.lineStyle(4, 0x190d27, 0.7);
-            if (accessory === "Crown") {
-                graphic.fillStyle(0xfacc15, 1);
-                graphic.fillPoints([
-                    new Phaser.Geom.Point(-36, -52),
-                    new Phaser.Geom.Point(-28, -82),
-                    new Phaser.Geom.Point(-8, -61),
-                    new Phaser.Geom.Point(5, -88),
-                    new Phaser.Geom.Point(20, -60),
-                    new Phaser.Geom.Point(39, -80),
-                    new Phaser.Geom.Point(34, -49)
-                ], true);
-                graphic.strokePoints([
-                    new Phaser.Geom.Point(-36, -52),
-                    new Phaser.Geom.Point(-28, -82),
-                    new Phaser.Geom.Point(-8, -61),
-                    new Phaser.Geom.Point(5, -88),
-                    new Phaser.Geom.Point(20, -60),
-                    new Phaser.Geom.Point(39, -80),
-                    new Phaser.Geom.Point(34, -49)
-                ], true);
-            } else if (accessory === "BowTie") {
-                graphic.fillStyle(0xff4d8d, 1);
-                graphic.fillTriangle(-5, 48, -36, 34, -34, 60);
-                graphic.fillTriangle(5, 48, 36, 34, 34, 60);
-                graphic.fillCircle(0, 48, 9);
-            } else if (accessory === "PartyHat") {
-                graphic.fillStyle(0x22d3ee, 1);
-                graphic.fillTriangle(-31, -52, 13, -102, 34, -50);
-                graphic.fillStyle(0xffd43b, 1);
-                graphic.fillCircle(14, -103, 9);
-            } else if (accessory === "Glasses") {
-                graphic.lineStyle(6, 0x24123f, 1);
-                graphic.strokeCircle(-23, -10, 20);
-                graphic.strokeCircle(23, -10, 20);
-                graphic.lineBetween(-3, -10, 3, -10);
-            }
         }
 
         layoutAvatars(snapshot, immediate, podiumChanged = true) {
@@ -921,10 +822,13 @@ window.quizizzoPresentation = (() => {
             const rowSpacing = rows > 1 ? 165 : 0;
             const scale = compactShowdown ? 0.58 : players.length > 8 ? 0.62 : players.length > 6 ? 0.68 : 0.76;
 
-            const podiumResults = snapshot.gameKey === "animates" && snapshot.phase === "Results"
+            const podiumResults = snapshot.showRoundRanking
                 ? [...(snapshot.results || [])].sort((left, right) => left.rank - right.rank)
                 : null;
             const maximumScore = Math.max(1, ...players.map(player => player.score));
+            const lastRank = podiumResults?.length
+                ? Math.max(...podiumResults.map(result => result.rank))
+                : null;
             players.forEach((player, index) => {
                 const avatar = this.avatars.get(player.playerId);
                 if (avatar) {
@@ -935,20 +839,38 @@ window.quizizzoPresentation = (() => {
                         return;
                     }
                     const podiumIndex = podiumResults.findIndex(result => result.playerId === player.playerId);
+                    if (podiumIndex < 0) {
+                        avatar?.container.setVisible(false);
+                        return;
+                    }
+                    const podiumResult = podiumResults[podiumIndex];
                     const spacing = Math.min(180, 1080 / podiumResults.length);
                     const x = width / 2 + (podiumIndex - (podiumResults.length - 1) / 2) * spacing;
                     const podiumHeight = 70 + (player.score / maximumScore) * 145;
-                    // Full-body rigs use their container origin as the shoe baseline.
-                    // Ground them on the podium instead of leaving them hovering above it.
-                    const y = 658 - podiumHeight;
+                    const podiumTop = 660 - podiumHeight;
+                    // The avatar container is the shoe baseline. Only the rig animates,
+                    // so layout and expression tweens can never pull it inside a podium.
+                    const y = podiumTop - 1;
                     if (avatar) {
                         this.tweens.killTweensOf(avatar.container);
                         avatar.container.setDepth(20);
                         if (immediate || this.controller.reducedMotion) {
-                            avatar.container.setPosition(x, y).setScale(.62);
+                            avatar.container.setVisible(true).setAlpha(player.status === "Disconnected" ? .42 : 1)
+                                .setPosition(x, y).setScale(.62);
+                            avatar.rig?.stop();
                         } else {
-                            this.tweens.add({ targets: avatar.container, x, y, scale: .62,
-                                duration: 700, ease: "Back.easeOut" });
+                            avatar.container.setVisible(true).setAlpha(0)
+                                .setPosition(width / 2, 345).setScale(1.08);
+                            this.tweens.add({
+                                targets: avatar.container, x, y, scale: .62,
+                                alpha: player.status === "Disconnected" ? .42 : 1,
+                                delay: Math.max(0, podiumIndex) * 85,
+                                duration: 850, ease: "Cubic.easeOut",
+                                onComplete: () => avatar.rig?.play(
+                                    podiumResult.rank === 1 ? "laugh"
+                                        : podiumResult.rank === lastRank && lastRank !== 1
+                                            ? "cry" : "idle")
+                            });
                         }
                     }
                     return;
@@ -1040,47 +962,6 @@ window.quizizzoPresentation = (() => {
             if (difference > 0) {
                 this.burst(avatar.container.x, avatar.container.y - 25, 22);
             }
-        }
-
-        animateResults(results, snapshot) {
-            if (this.controller.reducedMotion) {
-                return;
-            }
-            const winners = results.filter(result => result.rank === 1);
-            winners.forEach(result => {
-                const avatar = this.avatars.get(result.playerId);
-                if (!avatar) {
-                    return;
-                }
-                if (snapshot?.gameKey === "animates" && snapshot?.phase === "ShowdownResults") {
-                    const destinationX = avatar.container.x;
-                    avatar.container.x = -160;
-                    this.tweens.add({ targets: avatar.container, x: destinationX,
-                        duration: 850, ease: "Cubic.easeOut" });
-                }
-                this.tweens.add({
-                    targets: avatar.container,
-                    y: avatar.container.y - 42,
-                    duration: 260,
-                    yoyo: true,
-                    repeat: 2,
-                    ease: "Quad.easeOut"
-                });
-                this.burst(avatar.container.x, avatar.container.y - 50, 54);
-            });
-            const lastRank = Math.max(...results.map(result => result.rank));
-            results.filter(result => result.rank === lastRank && result.rank !== 1).forEach(result => {
-                const avatar = this.avatars.get(result.playerId);
-                if (!avatar) return;
-                const tears = this.add.text(avatar.container.x + 38, avatar.container.y - 115, "😭", {
-                    fontFamily: displayFont, fontSize: "42px"
-                }).setOrigin(.5).setDepth(80);
-                this.tweens.add({ targets: avatar.character, angle: { from: -4, to: 4 }, duration: 130,
-                    yoyo: true, repeat: 5, onComplete: () => avatar.character.setAngle(0) });
-                this.tweens.add({ targets: tears, y: tears.y + 35, alpha: 0, duration: 1500,
-                    onComplete: () => tears.destroy() });
-            });
-            this.cameras.main.flash(260, 255, 235, 135, false);
         }
 
         react(playerId, reaction) {

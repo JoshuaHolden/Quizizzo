@@ -46,14 +46,19 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
     public async Task Phaser_runtime_and_semantic_presentation_bridge_are_served_locally()
     {
         using var phaserResponse = await client.GetAsync("/vendor/phaser.min.js");
+        using var rigResponse = await client.GetAsync("/js/playerCharacterRig.js");
         using var bridgeResponse = await client.GetAsync("/js/phaserPresentation.js");
 
         phaserResponse.EnsureSuccessStatusCode();
+        rigResponse.EnsureSuccessStatusCode();
         bridgeResponse.EnsureSuccessStatusCode();
         var phaser = await phaserResponse.Content.ReadAsStringAsync();
+        var rig = await rigResponse.Content.ReadAsStringAsync();
         var bridge = await bridgeResponse.Content.ReadAsStringAsync();
         Assert.True(phaser.Length > 1_000_000);
         Assert.Contains("Phaser", phaser);
+        Assert.Contains("window.quizizzoCharacterRig", rig);
+        Assert.Contains("loadAtlases", rig);
         Assert.Contains("window.quizizzoPresentation", bridge);
         Assert.Contains("Phaser.Scale.ENVELOP", bridge);
         Assert.Contains("prefers-reduced-motion", bridge);
@@ -82,11 +87,13 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
         response.EnsureSuccessStatusCode();
         var html = await response.Content.ReadAsStringAsync();
         var phaserIndex = html.IndexOf("src=\"vendor/phaser.min", StringComparison.Ordinal);
+        var rigIndex = html.IndexOf("src=\"js/playerCharacterRig", StringComparison.Ordinal);
         var bridgeIndex = html.IndexOf("src=\"js/phaserPresentation", StringComparison.Ordinal);
         var blazorIndex = html.IndexOf("src=\"_framework/blazor.web", StringComparison.Ordinal);
 
         Assert.True(phaserIndex >= 0);
-        Assert.True(bridgeIndex > phaserIndex);
+        Assert.True(rigIndex > phaserIndex);
+        Assert.True(bridgeIndex > rigIndex);
         Assert.True(blazorIndex > bridgeIndex);
     }
 

@@ -126,6 +126,7 @@ public sealed class AniMatesGameModuleTests
         for (var turn = 0; turn < game.PlayerIds.Length; turn++)
         {
             game.CompleteTurnWithoutChoices();
+            Assert.Equal(turn == game.PlayerIds.Length - 1, game.DisplayView().ShowRoundRanking);
             game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
             if (turn < game.PlayerIds.Length - 1)
             {

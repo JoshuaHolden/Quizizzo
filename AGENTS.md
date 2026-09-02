@@ -435,6 +435,16 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Ground full-body shoes on their stage shadow and results podium, lower the reveal row toward the bottom of the display, and separate player-name and score baselines inside the card.
 - [x] Validate all three JavaScript entry points and cover the production/designer neck proportion with a presentation contract test.
 
+### Round-ranking interstitial and shared character rig (completed 2026-09-02)
+
+- [x] Mark real round-result boundaries in the server-owned display payload and suppress podium motion during ordinary answer and creator reveals.
+- [x] Give the round interstitial the full stage: presenter introduction, current standings, exact podium-top placement, and sequential player entrances.
+- [x] Count each player's authoritative score up from the prior snapshot one player at a time, revealing first place last for suspense.
+- [x] Run winner laugh, last-place cry, and remaining-player idle animations without moving avatar shoe baselines off their podiums.
+- [x] Consolidate Kenney atlas resolution, full-body/portrait assembly, and idle/laugh/cry/fart animation behavior into one character rig shared by the designer and display.
+- [x] Keep the designer avatar idling and trigger only an occasional one-second fart after a long delay while respecting reduced-motion preferences.
+- [x] Validate JavaScript syntax, pass all 9 client tests, pass the focused presentation/game contracts, and pass all 191 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
