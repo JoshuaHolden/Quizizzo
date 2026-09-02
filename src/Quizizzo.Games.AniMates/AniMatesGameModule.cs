@@ -11,7 +11,8 @@ public sealed class AniMatesGameModule(
     TimeSpan? showdownVotingDuration = null,
     TimeSpan? briefingDuration = null,
     TimeSpan? resultsDuration = null,
-    TimeSpan? showdownResultsDuration = null) : IGameModule
+    TimeSpan? showdownResultsDuration = null,
+    TimeSpan? celebrationDuration = null) : IGameModule
 {
     public const string GameKey = "animates";
     public const string BriefingPhase = "Briefing";
@@ -23,8 +24,9 @@ public sealed class AniMatesGameModule(
     public const string ShowdownPlaybackPhase = "ShowdownPlayback";
     public const string ShowdownVotingPhase = "ShowdownVoting";
     public const string ShowdownResultsPhase = "ShowdownResults";
+    public const string FinalCelebrationPhase = "FinalCelebration";
     public const string CompletedPhase = "Completed";
-    public const int StateSchemaVersion = 3;
+    public const int StateSchemaVersion = 4;
     public const int RoundOneFrameCount = 3;
     public const int RoundTwoFrameCount = 5;
     public const int MaximumFrameCount = RoundTwoFrameCount;
@@ -53,6 +55,7 @@ public sealed class AniMatesGameModule(
     private readonly TimeSpan briefingDuration = briefingDuration ?? TimeSpan.FromSeconds(12);
     private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
     private readonly TimeSpan showdownResultsDuration = showdownResultsDuration ?? TimeSpan.FromSeconds(12);
+    private readonly TimeSpan celebrationDuration = celebrationDuration ?? TimeSpan.FromSeconds(15);
 
     public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, MaximumPlayers);
 
@@ -70,7 +73,9 @@ public sealed class AniMatesGameModule(
                 new Dictionary<Guid, AnimationSubmission>(),
                 new Dictionary<Guid, string>(), [], new Dictionary<Guid, Guid>(), [],
                 new Dictionary<Guid, Guid>(), [], roundOnePrompts,
-                selectedPrompts[^1].DrawingPrompt));
+                selectedPrompts[^1].DrawingPrompt,
+                new Dictionary<Guid, long>(), new Dictionary<Guid, int>(),
+                new Dictionary<Guid, int>()));
     }
 
     public GameTransition Apply(GameModuleState state, GameActionContext context, IGameAction action)
@@ -141,7 +146,19 @@ public sealed class AniMatesGameModule(
         }
         var submissions = state.Submissions.ToDictionary();
         submissions.Add(playerId, new AnimationSubmission(playerId, frames));
-        var updated = state with { Submissions = submissions };
+        var drawingMilliseconds = state.DrawingMilliseconds?.ToDictionary() ?? [];
+        var drawingCounts = state.DrawingCounts?.ToDictionary() ?? [];
+        var phaseStartedAt = current.PhaseEndsAtUtc.GetValueOrDefault(context.ReceivedAtUtc) -
+            DrawingDuration(state);
+        var elapsed = Math.Max(0, (long)(context.ReceivedAtUtc - phaseStartedAt).TotalMilliseconds);
+        drawingMilliseconds[playerId] = drawingMilliseconds.GetValueOrDefault(playerId) + elapsed;
+        drawingCounts[playerId] = drawingCounts.GetValueOrDefault(playerId) + 1;
+        var updated = state with
+        {
+            Submissions = submissions,
+            DrawingMilliseconds = drawingMilliseconds,
+            DrawingCounts = drawingCounts
+        };
         return submissions.Count == state.Participants.Count
             ? state.RoundNumber == 1
                 ? BeginGuessing(updated, context.ReceivedAtUtc)
@@ -254,7 +271,8 @@ public sealed class AniMatesGameModule(
             GuessingPhase => BeginChoosing(state, context.ReceivedAtUtc),
             ChoosingPhase => Reveal(state, context.ReceivedAtUtc),
             ShowdownVotingPhase => RevealShowdown(state, context.ReceivedAtUtc),
-            BriefingPhase or ShowdownBriefingPhase or ResultsPhase or ShowdownResultsPhase =>
+            BriefingPhase or ShowdownBriefingPhase or ResultsPhase or ShowdownResultsPhase or
+                FinalCelebrationPhase =>
                 Progress(current, state, context.ReceivedAtUtc),
             _ => throw new GameRuleViolationException("wrong-phase", "This phase has no active deadline.")
         };
@@ -305,10 +323,19 @@ public sealed class AniMatesGameModule(
                 points[authorId] += GuessChosenPoints;
             }
         }
+        var bluffPicks = state.BluffPicks?.ToDictionary() ?? [];
+        foreach (var choice in state.Choices.Values)
+        {
+            var option = state.Options.Single(candidate => candidate.OptionId == choice);
+            if (option.AuthorPlayerId is { } authorId)
+            {
+                bluffPicks[authorId] = bluffPicks.GetValueOrDefault(authorId) + 1;
+            }
+        }
         var awards = points.Where(item => item.Value > 0)
             .Select(item => new AnimationAward(item.Key, item.Value))
             .OrderByDescending(item => item.Points).ThenBy(item => item.PlayerId).ToArray();
-        var revealed = state with { Awards = awards };
+        var revealed = state with { Awards = awards, BluffPicks = bluffPicks };
         return new GameTransition(
             ModuleState(ResultsPhase, now.Add(resultsDuration), false, revealed),
             awards.Select(award => new ScoreAward(
@@ -379,6 +406,12 @@ public sealed class AniMatesGameModule(
             return StartDrawing(state, now);
         }
         if (current.Phase == ShowdownResultsPhase)
+        {
+            return new GameTransition(
+                ModuleState(FinalCelebrationPhase, now.Add(celebrationDuration), false, state), [],
+                [new GameEvent("AniMatesFinalCelebrationStarted", GameJson.Empty)]);
+        }
+        if (current.Phase == FinalCelebrationPhase)
         {
             return new GameTransition(ModuleState(CompletedPhase, null, true, state), [],
                 [new GameEvent("GameCompleted", GameJson.Empty)]);
@@ -506,19 +539,26 @@ public sealed class AniMatesGameModule(
             ShowdownResultsPhase => ShowdownResultFor(state, playerId) is { } result
                 ? $"Your animation received {result.Votes} vote(s): +{result.Points:N0} points."
                 : "Watch the winner reveal on the main screen.",
+            FinalCelebrationPhase => "The final standings are celebrating on the main screen.",
             _ => "AniMates complete."
         };
-        return Waiting(current.Phase is ResultsPhase or ShowdownResultsPhase ? "Results" : "Please wait", instructions);
+        return Waiting(
+            current.Phase is ResultsPhase or ShowdownResultsPhase or FinalCelebrationPhase
+                ? "Results"
+                : "Please wait",
+            instructions);
     }
 
     private static HostGameViewPayload HostView(GameModuleState current, AnimateState state)
     {
         var canAdvance = current.Phase is BriefingPhase or ShowdownBriefingPhase or ResultsPhase or
-            ShowdownResultsPhase;
+            ShowdownResultsPhase or FinalCelebrationPhase;
         var advanceLabel = current.Phase switch
         {
             BriefingPhase or ShowdownBriefingPhase => "Start now",
-            ResultsPhase or ShowdownResultsPhase => "Continue now",
+            ResultsPhase => "Continue now",
+            ShowdownResultsPhase => "Show final standings now",
+            FinalCelebrationPhase => "Finish now",
             _ => null
         };
         return new HostGameViewPayload(
@@ -555,7 +595,9 @@ public sealed class AniMatesGameModule(
             current.Phase is BriefingPhase or ShowdownBriefingPhase
                 ? DrawingTutorial(state)
                 : null,
-            current.Phase == ResultsPhase && NextSubmittedIndex(state, state.TurnIndex) < 0);
+            current.Phase == FinalCelebrationPhase ||
+            current.Phase == ResultsPhase && NextSubmittedIndex(state, state.TurnIndex) < 0,
+            Statistics: current.Phase == FinalCelebrationPhase ? FinalStatistics(state) : null);
     }
 
     private static TutorialPresentationView DrawingTutorial(AnimateState state) => new(
@@ -614,7 +656,7 @@ public sealed class AniMatesGameModule(
         {
             return [];
         }
-        if (current.Phase == ShowdownResultsPhase)
+        if (current.Phase is ShowdownResultsPhase or FinalCelebrationPhase)
         {
             return state.Submissions.Values.OrderBy(submission => submission.PlayerId).Select((submission, index) =>
             {
@@ -637,6 +679,7 @@ public sealed class AniMatesGameModule(
         ShowdownPlaybackPhase => "SAME PROMPT SHOWDOWN",
         ShowdownVotingPhase => "VOTE FOR YOUR FAVOURITE",
         ShowdownResultsPhase => "CREATORS REVEALED!",
+        FinalCelebrationPhase => "ANIMATES — FINAL RESULTS",
         _ => $"ANIMATES — {Animator(state).DisplayName.ToUpperInvariant()}'S ANIMATION"
     };
 
@@ -652,6 +695,7 @@ public sealed class AniMatesGameModule(
         ShowdownPlaybackPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt(state)}",
         ShowdownVotingPhase => $"EVERYONE WAS ASKED TO ANIMATE… {ShowdownPrompt(state)}",
         ShowdownResultsPhase => ShowdownPrompt(state),
+        FinalCelebrationPhase => "THE FINAL SCORES ARE IN",
         _ => "The answer is..."
     };
 
@@ -663,6 +707,7 @@ public sealed class AniMatesGameModule(
         ResultsPhase => Prompt(state),
         ShowdownVotingPhase => "Players have 90 seconds to choose their favourite",
         ShowdownResultsPhase => "Showdown creators and winner revealed",
+        FinalCelebrationPhase => "Final standings and winner celebration",
         _ => $"{Animator(state).DisplayName}'s animation"
     };
 
@@ -676,6 +721,7 @@ public sealed class AniMatesGameModule(
         ShowdownBriefingPhase => "Presenter briefing — one prompt, five frames",
         ShowdownVotingPhase => $"{state.ShowdownVotes.Count}/{ShowdownVoters(state).Length} votes locked in",
         ShowdownResultsPhase => "Votes counted and creators revealed!",
+        FinalCelebrationPhase => "Winner celebrating — final standings",
         _ => "AniMates complete"
     };
 
@@ -720,6 +766,55 @@ public sealed class AniMatesGameModule(
 
     private static ShowdownResult? ShowdownResultFor(AnimateState state, Guid playerId) =>
         state.ShowdownResults.SingleOrDefault(result => result.PlayerId == playerId);
+
+    private static GameStatisticView[] FinalStatistics(AnimateState state)
+    {
+        var drawingTimes = state.DrawingMilliseconds ?? [];
+        var drawingCounts = state.DrawingCounts ?? [];
+        var completedDrawings = drawingCounts.Count == 0 ? 0 : drawingCounts.Values.Max();
+        var fastestMilliseconds = state.Participants
+            .Where(player => completedDrawings > 0 &&
+                drawingCounts.GetValueOrDefault(player.PlayerId) == completedDrawings)
+            .Select(player => drawingTimes.GetValueOrDefault(player.PlayerId) / completedDrawings)
+            .DefaultIfEmpty(0).Min();
+        var fastest = state.Participants
+            .Where(player => completedDrawings > 0 &&
+                drawingCounts.GetValueOrDefault(player.PlayerId) == completedDrawings &&
+                drawingTimes.GetValueOrDefault(player.PlayerId) / completedDrawings == fastestMilliseconds)
+            .Select(player => player.DisplayName).ToArray();
+
+        var mostVotes = state.ShowdownResults.Count == 0
+            ? 0
+            : state.ShowdownResults.Max(result => result.Votes);
+        var favourites = state.ShowdownResults
+            .Where(result => result.Votes == mostVotes)
+            .Select(result => RequiredParticipant(state, result.PlayerId).DisplayName).ToArray();
+
+        var bluffPicks = state.BluffPicks ?? [];
+        var mostBluffs = bluffPicks.Count == 0 ? 0 : bluffPicks.Values.Max();
+        var bluffers = state.Participants
+            .Where(player => mostBluffs > 0 && bluffPicks.GetValueOrDefault(player.PlayerId) == mostBluffs)
+            .Select(player => player.DisplayName).ToArray();
+
+        return
+        [
+            new GameStatisticView(
+                "FASTEST ANIMATOR",
+                $"{Names(fastest)} · {TimeSpan.FromMilliseconds(fastestMilliseconds).TotalSeconds:0.#}s average"),
+            new GameStatisticView(
+                "MOST LOVED ANIMATION",
+                $"{Names(favourites)} · {mostVotes} vote{(mostVotes == 1 ? string.Empty : "s")}"),
+            new GameStatisticView(
+                "BEST BLUFFER",
+                mostBluffs > 0
+                    ? $"{Names(bluffers)} · fooled {mostBluffs} player{(mostBluffs == 1 ? string.Empty : "s")}"
+                    : "Nobody fell for a bluff")
+        ];
+    }
+
+    private static string Names(string[] names) => names.Length == 0
+        ? "Nobody"
+        : string.Join(" & ", names);
 
     private static int FrameCount(AnimateState state) =>
         state.RoundNumber == 1 ? RoundOneFrameCount : RoundTwoFrameCount;
@@ -976,9 +1071,12 @@ public sealed class AniMatesGameModule(
         IReadOnlyDictionary<Guid, Guid> Choices,
         IReadOnlyList<AnimationAward> Awards,
         IReadOnlyDictionary<Guid, Guid> ShowdownVotes,
-        IReadOnlyList<ShowdownResult> ShowdownResults,
+        List<ShowdownResult> ShowdownResults,
         Dictionary<Guid, DrawingPromptPair>? RoundOnePrompts = null,
-        string? ShowdownDrawingPrompt = null);
+        string? ShowdownDrawingPrompt = null,
+        Dictionary<Guid, long>? DrawingMilliseconds = null,
+        Dictionary<Guid, int>? BluffPicks = null,
+        Dictionary<Guid, int>? DrawingCounts = null);
 
     private sealed record AnimateParticipant(Guid PlayerId, string DisplayName);
     private sealed record AnimationSubmission(Guid PlayerId, IReadOnlyList<Guid> FrameAssetIds);

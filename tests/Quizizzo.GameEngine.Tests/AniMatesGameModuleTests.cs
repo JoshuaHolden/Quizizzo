@@ -262,7 +262,38 @@ public sealed class AniMatesGameModuleTests
         Assert.All(revealedDrawing.Animations, animation => Assert.NotNull(animation.CreatorName));
         Assert.True(revealedDrawing.Animations.Single(animation =>
             animation.SubmissionPlayerId == game.PlayerIds[0]).Rank == 1);
-        Assert.True(game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction()).State.IsComplete);
+        game.Deadline();
+
+        Assert.Equal(AniMatesGameModule.FinalCelebrationPhase, game.State.Phase);
+        Assert.False(game.State.IsComplete);
+        Assert.Equal(TimeSpan.FromSeconds(15), game.State.PhaseEndsAtUtc - game.CurrentTime);
+        var finalDisplay = game.DisplayView();
+        Assert.True(finalDisplay.ShowRoundRanking);
+        Assert.Null(finalDisplay.Drawing);
+        Assert.All(finalDisplay.Entries, entry => Assert.NotNull(entry.Rank));
+        Assert.Collection(
+            finalDisplay.Statistics!,
+            statistic =>
+            {
+                Assert.Equal("FASTEST ANIMATOR", statistic.Label);
+                Assert.Contains("Player 1", statistic.Value, StringComparison.Ordinal);
+                Assert.Contains("average", statistic.Value, StringComparison.Ordinal);
+            },
+            statistic =>
+            {
+                Assert.Equal("MOST LOVED ANIMATION", statistic.Label);
+                Assert.Contains("Player 1", statistic.Value, StringComparison.Ordinal);
+                Assert.Contains("2 votes", statistic.Value, StringComparison.Ordinal);
+            },
+            statistic =>
+            {
+                Assert.Equal("BEST BLUFFER", statistic.Label);
+                Assert.Equal("Nobody fell for a bluff", statistic.Value);
+            });
+
+        game.Deadline();
+
+        Assert.True(game.State.IsComplete);
     }
 
     [Fact]
@@ -278,6 +309,36 @@ public sealed class AniMatesGameModuleTests
 
         Assert.Equal(AniMatesGameModule.ShowdownResultsPhase, game.State.Phase);
         Assert.Equal(300, game.LastTransition.ScoreAwards.Single().Points);
+    }
+
+    [Fact]
+    public void Final_statistics_retain_the_best_round_one_bluffer()
+    {
+        var game = new Fixture();
+        game.SubmitAllAnimations();
+        game.Guess(game.PlayerIds[1], "A suspicious banana");
+        game.Guess(game.PlayerIds[2], "A dancing pineapple");
+        var correct = game.ChoiceView(game.PlayerIds[1]).Options.Single(option =>
+            option.Detail == game.AssignedPrompt(game.PlayerIds[0]).DrawingPrompt);
+        var bluff = game.ChoiceView(game.PlayerIds[2]).Options.Single(option =>
+            option.Detail == "A suspicious banana");
+        game.Choose(game.PlayerIds[1], correct.Id);
+        game.Choose(game.PlayerIds[2], bluff.Id);
+
+        for (var turn = 1; turn < game.PlayerIds.Length; turn++)
+        {
+            game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+            game.CompleteTurnWithoutChoices();
+        }
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        game.Apply(GameActor.Host("host"), new AdvanceAniMatesAction());
+        game.SubmitAllAnimations(5);
+        game.Deadline();
+        game.Deadline();
+
+        var statistic = game.DisplayView().Statistics!.Single(item => item.Label == "BEST BLUFFER");
+        Assert.Contains("Player 2", statistic.Value, StringComparison.Ordinal);
+        Assert.Contains("fooled 1 player", statistic.Value, StringComparison.Ordinal);
     }
 
     [Fact]

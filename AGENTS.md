@@ -512,7 +512,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add each supplied distractor to its Round 1 choice set alongside the true prompt and human guesses.
 - [x] Award no player or animator points when a built-in distractor is selected and identify it only during the result reveal.
 - [x] Use catalogue prompts in Round 2 without exposing or using their paired distractors.
-- [x] Preserve recovery of version-2 AniMates snapshots through legacy prompt fallbacks and emit version-3 snapshots for new games.
+- [x] Preserve recovery of older AniMates snapshots through legacy prompt/stat fallbacks and emit version-4 snapshots for new games.
 - [x] Cover the embedded catalogue, private assignments, neutral distractor scoring, dynamic showdown prompts, and asset-backed submission recovery; pass all 203 .NET tests with no build warnings.
 
 ### Slop Machine (completed 2026-09-02)
@@ -553,6 +553,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Preserve early progression when every eligible player submits and retain host controls only as clearly labelled “Continue now” skip controls.
 - [x] Show the authoritative countdown on AniMates briefing displays and inside the host-controls panel as well as on existing display and phone phases.
 - [x] Cover automatic results, briefing, intro, reveal, and next-round transitions; validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 239 .NET tests.
+
+### AniMates final celebration (completed 2026-09-02)
+
+- [x] Insert a dedicated, reconstructable final-results phase after the Round 2 creator reveal instead of returning directly to the lobby.
+- [x] Present cumulative scores on the shared full-body character podium with winner celebration, loser crying, other-player idle animations, and tied-winner confetti.
+- [x] Persist drawing time and successful human-bluff picks, then reveal animated Fastest Animator, Most Loved Animation, and Best Bluffer award cards above the final podium.
+- [x] Give the finale its own presenter introduction, headings, player waiting state, host skip action, and 15-second server-owned deadline before completion.
+- [x] Preserve reduced-motion behavior and automatic return to the lobby; validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 240 .NET tests.
 
 ## Verification requirements
 

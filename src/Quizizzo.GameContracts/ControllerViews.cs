@@ -104,6 +104,10 @@ public sealed record GamePresentationEntry(
     int? Rank,
     int PointsAwarded);
 
+public sealed record GameStatisticView(
+    string Label,
+    string Value);
+
 public sealed record HostGameViewPayload(
     string Title,
     string Prompt,
@@ -126,4 +130,5 @@ public sealed record DisplayGameViewPayload(
     TutorialPresentationView? Tutorial = null,
     bool ShowRoundRanking = false,
     GameMediaPresentationView? Media = null,
-    string ScoreUnit = "pts");
+    string ScoreUnit = "pts",
+    IReadOnlyList<GameStatisticView>? Statistics = null);

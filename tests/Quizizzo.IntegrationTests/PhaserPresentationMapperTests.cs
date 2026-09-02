@@ -179,7 +179,12 @@ public sealed class PhaserPresentationMapperTests
                 new GamePresentationEntry(firstId, "First", "Thinking", null, 0),
                 new GamePresentationEntry(secondId, "Second", "Idle", null, 0)
             ],
-            ShowRoundRanking: true);
+            ShowRoundRanking: true,
+            Statistics:
+            [
+                new GameStatisticView("FASTEST ANIMATOR", "First · 12.4s average"),
+                new GameStatisticView("MOST LOVED ANIMATION", "Second · 3 votes")
+            ]);
         var game = new PartyGameView(
             partyId, Guid.NewGuid(), "animates", GameAudienceRole.Display, "Results", 3, null, false,
             GameJson.From(payload), new Dictionary<Guid, int> { [firstId] = 150, [secondId] = 50 });
@@ -190,6 +195,8 @@ public sealed class PhaserPresentationMapperTests
         Assert.Equal("Thinking", snapshot.Players.Single(player => player.PlayerId == firstId.ToString("N")).Activity);
         Assert.Equal(1, snapshot.Results.Single(result => result.PlayerId == firstId.ToString("N")).Rank);
         Assert.Equal(2, snapshot.Results.Single(result => result.PlayerId == secondId.ToString("N")).Rank);
+        Assert.Equal("FASTEST ANIMATOR", snapshot.Statistics![0].Label);
+        Assert.Equal("Second · 3 votes", snapshot.Statistics[1].Value);
     }
 
     [Fact]

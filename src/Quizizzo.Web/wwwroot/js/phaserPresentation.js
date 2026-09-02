@@ -102,7 +102,8 @@ window.quizizzoPresentation = (() => {
             const showdown = gameKey === "animates" && phase?.startsWith("Showdown");
             const drawing = gameKey === "animates" && phase === "Drawing";
             const choosing = gameKey === "animates" && ["Choosing", "ShowdownVoting"].includes(phase);
-            const results = gameKey === "animates" && ["Results", "ShowdownResults"].includes(phase);
+            const results = gameKey === "animates"
+                && ["Results", "ShowdownResults", "FinalCelebration"].includes(phase);
             const slop = gameKey === "slop-machine";
             const palette = slop
                 ? phase?.includes("ScoreReview") || phase === "WinnerCelebration"
@@ -533,7 +534,7 @@ window.quizizzoPresentation = (() => {
             const labels = {
                 Drawing: "DRAW!", Guessing: "WHAT IS IT?", Choosing: "PICK AN ANSWER",
                 Results: "REVEAL!", ShowdownPlayback: "SHOWDOWN", ShowdownVoting: "VOTE NOW",
-                ShowdownResults: "THE WINNER"
+                ShowdownResults: "THE WINNER", FinalCelebration: "FINAL RESULTS"
             };
             const label = labels[phase];
             if (!label) return;
@@ -1049,7 +1050,8 @@ window.quizizzoPresentation = (() => {
                 phase: snapshot.phase,
                 revision: snapshot.revision,
                 results: snapshot.results,
-                scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0)
+                scores: snapshot.results.map(result => players.get(result.playerId)?.score || 0),
+                statistics: snapshot.statistics
             });
             if (signature === this.roundRankingSignature) return;
 
@@ -1080,7 +1082,11 @@ window.quizizzoPresentation = (() => {
                 reveal();
                 return;
             }
-            this.applyPresenter("That's another round over — let's see how the scores look!");
+            const presenterLine = snapshot.gameKey === "animates"
+                && snapshot.phase === "FinalCelebration"
+                ? "That's AniMates! Let's crown our animation champions!"
+                : "That's another round over — let's see how the scores look!";
+            this.applyPresenter(presenterLine);
             this.roundRankingTimer = this.time.delayedCall(2800, reveal);
         }
 
@@ -1154,7 +1160,10 @@ window.quizizzoPresentation = (() => {
             const maximum = Math.max(1, ...ordered.map(result => players.get(result.playerId)?.score || 0));
             const spacing = Math.min(180, 1080 / ordered.length);
             const widthPerPodium = Math.max(72, spacing - 12);
-            const celebration = snapshot.phase === "WinnerCelebration";
+            const slopCelebration = snapshot.phase === "WinnerCelebration";
+            const aniMatesCelebration = snapshot.gameKey === "animates"
+                && snapshot.phase === "FinalCelebration";
+            const celebration = slopCelebration || aniMatesCelebration;
             const previousOrder = ordered.map(result => ({
                 playerId: result.playerId,
                 score: Math.max(0, (players.get(result.playerId)?.score || 0) -
@@ -1178,18 +1187,22 @@ window.quizizzoPresentation = (() => {
                 .filter(Boolean);
             const items = [
                 this.add.text(width / 2, 56,
-                    celebration ? "FINAL CHANNEL RANK" : "ROUND COMPLETE", {
+                    aniMatesCelebration ? "FINAL RESULTS"
+                        : slopCelebration ? "FINAL CHANNEL RANK" : "ROUND COMPLETE", {
                     color: "#fde68a", fontFamily: displayFont, fontSize: "24px", fontStyle: "bold",
                     letterSpacing: 5
                 }).setOrigin(.5),
                 this.add.text(width / 2, 96,
-                    celebration ? "THE ALGORITHM HAS CHOSEN ITS HUMAN" : "CURRENT STANDINGS", {
+                    aniMatesCelebration ? "ANIMATES CHAMPIONS"
+                        : slopCelebration ? "THE ALGORITHM HAS CHOSEN ITS HUMAN" : "CURRENT STANDINGS", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "46px", fontStyle: "bold",
                     stroke: "#24123f", strokeThickness: 7
                 }).setOrigin(.5)
             ];
-            const subheading = celebration
-                ? snapshot.prompt
+            const subheading = aniMatesCelebration
+                ? "THE FINAL SCORES ARE IN"
+                : slopCelebration
+                    ? snapshot.prompt
                 : biggestGainers.length
                     ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
                     : "THE FEED REFRESHED WITHOUT MERCY";
@@ -1201,6 +1214,9 @@ window.quizizzoPresentation = (() => {
                 align: "center",
                 wordWrap: { width: 1080 }
             }).setOrigin(.5));
+            if (aniMatesCelebration) {
+                this.addFinalStatistics(snapshot.statistics || [], items);
+            }
             ordered.forEach((result, index) => {
                 const score = players.get(result.playerId)?.score || 0;
                 const podiumHeight = 70 + (score / maximum) * 145;
@@ -1231,6 +1247,41 @@ window.quizizzoPresentation = (() => {
             });
             this.podiumContainer = this.add.container(0, 0, items).setDepth(15);
             return true;
+        }
+
+        addFinalStatistics(statistics, items) {
+            const visible = statistics.slice(0, 3);
+            if (visible.length === 0) return;
+            const cardWidth = 300;
+            const gap = 18;
+            visible.forEach((statistic, index) => {
+                const x = width / 2 + (index - (visible.length - 1) / 2) * (cardWidth + gap);
+                const y = 202;
+                const shadow = this.add.graphics();
+                shadow.fillStyle(0x090516, .32);
+                shadow.fillRoundedRect(x - cardWidth / 2 + 6, y - 38 + 7, cardWidth, 76, 15);
+                const panel = this.add.graphics();
+                panel.fillStyle(0x24123f, .9);
+                panel.fillRoundedRect(x - cardWidth / 2, y - 38, cardWidth, 76, 15);
+                panel.lineStyle(3, 0x67e8f9, .75);
+                panel.strokeRoundedRect(x - cardWidth / 2, y - 38, cardWidth, 76, 15);
+                const label = this.add.text(x, y - 21, statistic.label || "BONUS AWARD", {
+                    color: "#fde68a", fontFamily: displayFont, fontSize: "14px", fontStyle: "bold",
+                    letterSpacing: 2, align: "center", wordWrap: { width: cardWidth - 24 }
+                }).setOrigin(.5);
+                const value = this.add.text(x, y + 13, statistic.value || "", {
+                    color: "#ffffff", fontFamily: bodyFont, fontSize: "16px", fontStyle: "bold",
+                    align: "center", wordWrap: { width: cardWidth - 24 }
+                }).setOrigin(.5);
+                items.push(shadow, panel, label, value);
+                if (!this.controller.reducedMotion) {
+                    [shadow, panel, label, value].forEach(item => item.setAlpha(0).setScale(.86));
+                    this.tweens.add({
+                        targets: [shadow, panel, label, value], alpha: 1, scale: 1,
+                        duration: 360, delay: 250 + index * 170, ease: "Cubic.easeOut"
+                    });
+                }
+            });
         }
 
         createAvatar(player) {
@@ -1381,6 +1432,8 @@ window.quizizzoPresentation = (() => {
             const lastRank = podiumResults?.length
                 ? Math.max(...podiumResults.map(result => result.rank))
                 : null;
+            const aniMatesFinal = snapshot.gameKey === "animates"
+                && snapshot.phase === "FinalCelebration";
             players.forEach((player, index) => {
                 const avatar = this.avatars.get(player.playerId);
                 if (avatar) {
@@ -1416,6 +1469,9 @@ window.quizizzoPresentation = (() => {
                                     podiumResult.rank === 1 ? "celebrate"
                                         : podiumResult.rank === lastRank && lastRank !== 1
                                             ? "cry" : "idle");
+                                if (aniMatesFinal && podiumResult.rank === 1) {
+                                    this.burst(x, y - 90, 42);
+                                }
                             }
                         } else {
                             avatar.container.setVisible(true).setAlpha(0)
@@ -1425,10 +1481,15 @@ window.quizizzoPresentation = (() => {
                                 alpha: player.status === "Disconnected" ? .42 : 1,
                                 delay: Math.max(0, podiumIndex) * 85,
                                 duration: 850, ease: "Cubic.easeOut",
-                                onComplete: () => avatar.rig?.play(
-                                    podiumResult.rank === 1 ? "celebrate"
-                                        : podiumResult.rank === lastRank && lastRank !== 1
-                                            ? "cry" : "idle")
+                                onComplete: () => {
+                                    avatar.rig?.play(
+                                        podiumResult.rank === 1 ? "celebrate"
+                                            : podiumResult.rank === lastRank && lastRank !== 1
+                                                ? "cry" : "idle");
+                                    if (aniMatesFinal && podiumResult.rank === 1) {
+                                        this.burst(x, y - 90, 42);
+                                    }
+                                }
                             });
                         }
                     }

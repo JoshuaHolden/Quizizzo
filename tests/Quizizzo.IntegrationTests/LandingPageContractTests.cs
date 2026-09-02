@@ -252,6 +252,15 @@ public sealed class LandingPageContractTests
         Assert.Contains("showRoundRanking", presentation, StringComparison.Ordinal);
         Assert.Contains("That's another round over — let's see how the scores look!",
             presentation, StringComparison.Ordinal);
+        Assert.Contains("That's AniMates! Let's crown our animation champions!",
+            presentation, StringComparison.Ordinal);
+        Assert.Contains("snapshot.phase === \"FinalCelebration\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("ANIMATES CHAMPIONS", presentation, StringComparison.Ordinal);
+        Assert.Contains("addFinalStatistics(snapshot.statistics || [], items)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("FASTEST ANIMATOR", ReadRepositoryFile(
+            "src/Quizizzo.Games.AniMates/AniMatesGameModule.cs"), StringComparison.Ordinal);
         Assert.Contains("CURRENT STANDINGS", presentation, StringComparison.Ordinal);
         Assert.Contains("countRoundScores(snapshot, signature)", presentation,
             StringComparison.Ordinal);

@@ -26,13 +26,18 @@ public sealed record PhaserPresentationSnapshot(
     string? PresenterMessage,
     PhaserTutorialPresentationSnapshot? Tutorial,
     PhaserMediaPresentationSnapshot? Media = null,
-    string ScoreUnit = "pts");
+    string ScoreUnit = "pts",
+    IReadOnlyList<PhaserStatisticSnapshot>? Statistics = null);
 
 public sealed record PhaserEntrySnapshot(
     string Label,
     string Value,
     int? Rank,
     int PointsAwarded);
+
+public sealed record PhaserStatisticSnapshot(
+    string Label,
+    string Value);
 
 public sealed record PhaserTutorialPresentationSnapshot(
     string Title,
@@ -216,7 +221,9 @@ public static class PhaserPresentationMapper
                         item.Id, item.ImageUrl, item.AlternativeText,
                         item.Heading, item.Body, item.Badge)).ToArray())
                 : null,
-            game?.ScoreUnit ?? "pts");
+            game?.ScoreUnit ?? "pts",
+            game?.Statistics?.Select(statistic => new PhaserStatisticSnapshot(
+                statistic.Label, statistic.Value)).ToArray());
     }
 
     private static PhaserResultSnapshot[] RankedScores(
