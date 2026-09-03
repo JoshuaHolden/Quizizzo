@@ -166,7 +166,7 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
             .List().Single(item => item.Key == SlopMachineGameModule.GameKey);
 
         Assert.Equal("Slop Machine", descriptor.DisplayName);
-        Assert.Equal(2, descriptor.MinimumPlayers);
+        Assert.Equal(3, descriptor.MinimumPlayers);
         Assert.Equal(12, descriptor.MaximumPlayers);
     }
 }

@@ -8,30 +8,13 @@ public sealed record SlopThumbnail(
     string Composition,
     IReadOnlyList<string> AiTitles);
 
-public enum SlopValidationKind
-{
-    Informational,
-    RequiredWord,
-    MinimumWords,
-    MaximumWords,
-    ExactWords,
-    MustContainNumber
-}
-
-public sealed record SlopConstraint(
-    string Text,
-    SlopValidationKind ValidationKind,
-    int? WordCount = null,
-    string? RequiredWord = null);
-
 public sealed record SlopParticipant(Guid PlayerId, string DisplayName, int StartingScore);
 
 public sealed record SlopAssignment(
     string ThumbnailId,
     string Format,
-    SlopConstraint Curveball,
+    string? CommentType = null,
     bool RespinUsed = false,
-    string? RespinnedReel = null,
     Guid? SourceSubmissionId = null);
 
 public sealed record SlopSubmission(
@@ -39,11 +22,12 @@ public sealed record SlopSubmission(
     Guid AuthorId,
     string ThumbnailId,
     string Text,
-    string Kind,
     Guid? PartnerId = null,
     int Votes = 0,
     int PointsAwarded = 0,
-    bool WonBonus = false);
+    bool WonBonus = false,
+    Guid? ParentSubmissionId = null,
+    string? CommentType = null);
 
 public sealed record TelephoneMatch(
     Guid MatcherId,
@@ -79,7 +63,8 @@ public sealed record SlopMachineState(
     IReadOnlyList<SlopBonus> Bonuses,
     IReadOnlyDictionary<Guid, int> EarnedViews,
     IReadOnlyDictionary<Guid, int> ScoreReviewStart,
-    int RouletteHeat,
-    IReadOnlyList<IReadOnlyList<Guid>> RouletteHeats,
     bool MachineWonFinal,
-    string Message);
+    string Message,
+    int VoteHeat = 0,
+    IReadOnlyList<IReadOnlyList<Guid>>? VoteHeats = null,
+    IReadOnlyDictionary<Guid, int>? VotingOpportunities = null);

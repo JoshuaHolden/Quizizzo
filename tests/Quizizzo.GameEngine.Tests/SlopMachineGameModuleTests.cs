@@ -32,7 +32,7 @@ public sealed class SlopMachineGameModuleTests
     }
 
     [Fact]
-    public void Intro_and_reveal_screens_advance_on_server_owned_deadlines()
+    public void Intro_and_writing_advance_directly_into_voting_on_server_owned_deadlines()
     {
         var game = new Fixture(3);
 
@@ -47,11 +47,24 @@ public sealed class SlopMachineGameModuleTests
         Assert.Equal(PlayerControllerKind.Text, playerView.Controller.Kind);
         Assert.Equal(SubmitSlopTextAction.ActionKind, playerView.Controller.ActionKind);
         game.SubmitAllText();
-        Assert.Equal(SlopMachineGameModule.FreshRevealPhase, game.State.Phase);
+        Assert.Equal(SlopMachineGameModule.FreshVotingPhase, game.State.Phase);
         Assert.NotNull(game.State.PhaseEndsAtUtc);
+    }
+
+    [Fact]
+    public void Revised_default_deadlines_are_applied_to_intro_writing_voting_and_results()
+    {
+        var game = new Fixture(3, useDefaultDurations: true);
+        Assert.Equal(TimeSpan.FromSeconds(6), game.State.PhaseEndsAtUtc - game.LastActionAt);
 
         game.Deadline();
-        Assert.Equal(SlopMachineGameModule.FreshVotingPhase, game.State.Phase);
+        Assert.Equal(TimeSpan.FromSeconds(6), game.State.PhaseEndsAtUtc - game.LastActionAt);
+        game.Deadline();
+        Assert.Equal(TimeSpan.FromSeconds(40), game.State.PhaseEndsAtUtc - game.LastActionAt);
+        game.SubmitAllText();
+        Assert.Equal(TimeSpan.FromSeconds(15), game.State.PhaseEndsAtUtc - game.LastActionAt);
+        game.VoteAll();
+        Assert.Equal(TimeSpan.FromSeconds(6), game.State.PhaseEndsAtUtc - game.LastActionAt);
     }
 
     [Theory]
@@ -73,7 +86,12 @@ public sealed class SlopMachineGameModuleTests
         Assert.All(voteConfiguration.Options, option =>
         {
             Assert.Null(option.FrameAssetIds);
-            Assert.False(string.IsNullOrWhiteSpace(option.ImageUrl));
+            if (phase is SlopMachineGameModule.RouletteVotingPhase or
+                SlopMachineGameModule.TelephoneVotingPhase or
+                SlopMachineGameModule.CommentsVotingPhase)
+            {
+                Assert.False(string.IsNullOrWhiteSpace(option.ImageUrl));
+            }
         });
     }
 
@@ -84,7 +102,6 @@ public sealed class SlopMachineGameModuleTests
         game.Advance();
         game.Advance();
         game.SubmitAllText();
-        game.Advance();
         var firstPlayer = game.PlayerIds[0];
         var own = game.StateData.Options.Single(option => option.AuthorId == firstPlayer);
 
@@ -121,7 +138,6 @@ public sealed class SlopMachineGameModuleTests
         Assert.Equal("already-submitted", duplicate.Code);
 
         game.SubmitAllText();
-        game.Advance();
         var option = game.StateData.Options.First(candidate => candidate.AuthorId != playerId);
         game.Apply(GameActor.Player(playerId), new VoteForSlopAction(option.OptionId));
         var duplicateVote = Assert.Throws<GameRuleViolationException>(() =>
@@ -137,21 +153,22 @@ public sealed class SlopMachineGameModuleTests
         game.Advance();
 
         game.Deadline();
-        Assert.Equal(SlopMachineGameModule.FreshRevealPhase, game.State.Phase);
-        Assert.Empty(game.StateData.Options);
-
-        game.Advance();
         Assert.Equal(SlopMachineGameModule.FreshResultsPhase, game.State.Phase);
+        Assert.Empty(game.StateData.Options);
         Assert.Empty(game.LastTransition.ScoreAwards);
     }
 
     [Fact]
-    public void Roulette_allows_one_server_owned_single_reel_respin_and_enforces_constraints()
+    public void Roulette_allows_one_two_reel_respin_and_server_constructs_the_assigned_format()
     {
         var game = new Fixture(3);
         game.ReachRouletteSpinning();
         var playerId = game.PlayerIds[0];
         var before = game.StateData.Assignments[playerId];
+
+        var invalidReel = Assert.Throws<GameRuleViolationException>(() =>
+            game.Apply(GameActor.Player(playerId), new RespinSlopReelAction("not-a-reel")));
+        Assert.Equal("invalid-reel", invalidReel.Code);
 
         game.Apply(GameActor.Player(playerId), new RespinSlopReelAction("format"));
 
@@ -159,15 +176,20 @@ public sealed class SlopMachineGameModuleTests
         Assert.True(after.RespinUsed);
         Assert.NotEqual(before.Format, after.Format);
         var repeated = Assert.Throws<GameRuleViolationException>(() =>
-            game.Apply(GameActor.Player(playerId), new RespinSlopReelAction("curveball")));
+            game.Apply(GameActor.Player(playerId), new RespinSlopReelAction("thumbnail")));
         Assert.Equal("respin-used", repeated.Code);
 
-        game.ForceCurveball(playerId, new SlopConstraint(
-            "Exactly five words", SlopValidationKind.ExactWords, 5));
         game.Advance();
         var invalid = Assert.Throws<GameRuleViolationException>(() =>
             game.Apply(GameActor.Player(playerId), new SubmitSlopTextAction("Too short")));
-        Assert.Equal("constraint-not-met", invalid.Code);
+        Assert.Equal("invalid-format", invalid.Code);
+
+        var blankCount = game.StateData.Assignments[playerId].Format.Split("___").Length - 1;
+        game.Apply(GameActor.Player(playerId), new SubmitSlopTextAction(
+            "This forged complete title is ignored",
+            Enumerable.Range(1, blankCount).Select(index => $"answer {index}").ToArray()));
+        Assert.DoesNotContain("___", game.StateData.TextSubmissions[playerId], StringComparison.Ordinal);
+        Assert.DoesNotContain("forged", game.StateData.TextSubmissions[playerId], StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -191,27 +213,112 @@ public sealed class SlopMachineGameModuleTests
             game.Apply(GameActor.Player(playerId), new MatchTelephoneThumbnailAction(intended));
         }
 
-        Assert.Equal(SlopMachineGameModule.TelephoneRevealPhase, game.State.Phase);
+        Assert.Equal(SlopMachineGameModule.TelephoneVotingPhase, game.State.Phase);
         Assert.Equal(8, game.LastTransition.ScoreAwards.Count);
         Assert.All(game.LastTransition.ScoreAwards, award => Assert.Equal(1500, award.Points));
     }
 
     [Fact]
-    public void Two_player_telephone_swaps_writers_and_skips_subjective_vote()
+    public void Slop_machine_rejects_two_players_and_supports_three_to_twelve()
     {
-        var game = new Fixture(2);
+        Assert.Throws<GameRuleViolationException>(() => new Fixture(2));
+        Assert.Equal(3, new Fixture(3).StateData.Participants.Count);
+        Assert.Equal(12, new Fixture(12).StateData.Participants.Count);
+    }
+
+    [Theory]
+    [InlineData(3, 3)]
+    [InlineData(6, 6)]
+    [InlineData(7, 4)]
+    [InlineData(12, 4)]
+    public void Voting_uses_all_entries_up_to_six_then_balanced_four_entry_heats(
+        int playerCount,
+        int expectedFirstHeatSize)
+    {
+        var game = new Fixture(playerCount);
+        game.Advance();
+        game.Advance();
+        game.SubmitAllText();
+
+        Assert.Equal(expectedFirstHeatSize, game.StateData.Options.Count);
+        if (playerCount >= 7)
+        {
+            Assert.All(game.StateData.VoteHeats!, heat => Assert.InRange(heat.Count, 3, 4));
+        }
+        else
+        {
+            Assert.Single(game.StateData.VoteHeats!);
+        }
+        Assert.All(game.StateData.VotingOpportunities!, opportunity =>
+            Assert.Equal(playerCount - 1, opportunity.Value));
+    }
+
+    [Fact]
+    public void Final_always_shows_every_human_title_plus_two_machine_titles()
+    {
+        var game = new Fixture(12);
+
+        game.ReachFinalVoting();
+
+        Assert.Equal(14, game.StateData.Options.Count);
+        Assert.Single(game.StateData.VoteHeats!);
+    }
+
+    [Fact]
+    public void Roulette_uses_a_five_second_growth_overlay_instead_of_a_scoreboard()
+    {
+        var game = new Fixture(3);
+
+        game.ReachRouletteGrowthReview();
+        var display = game.DisplayView();
+
+        Assert.Equal(SlopMachineGameModule.ScoreReview2Phase, game.State.Phase);
+        Assert.False(display.ShowRoundRanking);
+        Assert.Contains("GAINED", display.Prompt, StringComparison.Ordinal);
+        Assert.Contains("NOW TRENDING AT #", display.PhaseMessage, StringComparison.Ordinal);
+        Assert.Equal(TimeSpan.FromSeconds(5), game.State.PhaseEndsAtUtc - game.LastActionAt);
+    }
+
+    [Fact]
+    public void Telephone_matcher_may_vote_for_the_pairing_they_matched()
+    {
+        var game = new Fixture(3);
         game.ReachTelephoneWriting();
         game.SubmitAllText();
-        Assert.All(game.StateData.TelephoneMatches, pair => Assert.NotEqual(pair.Key, pair.Value.WriterId));
-        foreach (var playerId in game.StateData.TelephoneMatches.Keys.ToArray())
+        game.SubmitAllTelephoneMatches();
+        var matcher = game.PlayerIds[0];
+        var pairing = game.StateData.Options.Single(option => option.PartnerId == matcher);
+
+        game.Apply(GameActor.Player(matcher), new VoteForSlopAction(pairing.OptionId));
+
+        Assert.Equal(pairing.OptionId, game.StateData.Votes[matcher]);
+    }
+
+    [Fact]
+    public void Telephone_popularity_points_go_only_to_the_title_writer()
+    {
+        var game = new Fixture(3);
+        game.ReachTelephoneWriting();
+        game.SubmitAllText();
+        game.SubmitAllTelephoneMatches();
+        var target = game.StateData.Options[0];
+        var writer = Assert.IsType<Guid>(target.AuthorId);
+        var matcher = Assert.IsType<Guid>(target.PartnerId);
+
+        foreach (var playerId in game.PlayerIds)
         {
-            var match = game.StateData.TelephoneMatches[playerId];
-            game.Apply(GameActor.Player(playerId), new MatchTelephoneThumbnailAction(match.IntendedThumbnailId));
+            var option = playerId == writer
+                ? game.StateData.Options.First(candidate =>
+                    candidate.AuthorId != playerId && candidate.AuthorId != matcher)
+                : target;
+            game.Apply(GameActor.Player(playerId), new VoteForSlopAction(option.OptionId));
         }
 
-        game.Advance();
-
-        Assert.Equal(SlopMachineGameModule.TelephoneResultsPhase, game.State.Phase);
+        Assert.Contains(game.LastTransition.ScoreAwards, award =>
+            award.PlayerId == writer && award.Reason == "Telephone pairing votes");
+        Assert.DoesNotContain(game.LastTransition.ScoreAwards, award =>
+            award.PlayerId == matcher &&
+            award.Reason is "Telephone pairing votes" or "Telephone Disaster Bonus");
     }
 
     [Fact]
@@ -232,6 +339,25 @@ public sealed class SlopMachineGameModuleTests
                 Assert.NotEqual(assignment.Key, upload.AuthorId);
             });
         }
+    }
+
+    [Fact]
+    public void Comments_reveal_keeps_video_title_comment_type_and_comment_together()
+    {
+        var game = new Fixture(4);
+        game.ReachCommentsWriting();
+        game.SubmitAllText();
+
+        var display = game.DisplayView();
+
+        Assert.Equal(SlopMachineGameModule.CommentsVotingPhase, game.State.Phase);
+        Assert.Equal("comment-feed", display.Media!.Mode);
+        Assert.All(display.Media.Items, item =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(item.Heading));
+            Assert.False(string.IsNullOrWhiteSpace(item.Body));
+            Assert.False(string.IsNullOrWhiteSpace(item.Badge));
+        });
     }
 
     [Fact]
@@ -264,7 +390,7 @@ public sealed class SlopMachineGameModuleTests
     }
 
     [Theory]
-    [InlineData(2)]
+    [InlineData(3)]
     [InlineData(12)]
     public void Complete_game_supports_minimum_and_platform_maximum_player_counts(int playerCount)
     {
@@ -395,24 +521,20 @@ public sealed class SlopMachineGameModuleTests
                 game.Advance();
                 game.Advance();
                 game.SubmitAllText();
-                game.Advance();
                 break;
             case SlopMachineGameModule.RouletteVotingPhase:
                 game.ReachRouletteSpinning();
                 game.Advance();
                 game.SubmitAllText();
-                game.Advance();
                 break;
             case SlopMachineGameModule.TelephoneVotingPhase:
                 game.ReachTelephoneWriting();
                 game.SubmitAllText();
                 game.SubmitAllTelephoneMatches();
-                game.Advance();
                 break;
             case SlopMachineGameModule.CommentsVotingPhase:
                 game.ReachCommentsWriting();
                 game.SubmitAllText();
-                game.Advance();
                 break;
             case SlopMachineGameModule.FinalVotingPhase:
                 game.ReachFinalVoting();
@@ -430,13 +552,16 @@ public sealed class SlopMachineGameModuleTests
         private readonly Guid partyId = Guid.NewGuid();
         private DateTimeOffset now = Now;
 
-        public Fixture(int playerCount)
+        public Fixture(int playerCount, bool useDefaultDurations = false)
         {
-            module = new SlopMachineGameModule(
-                TestCatalogue(), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2),
-                TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
-                TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            module = useDefaultDurations
+                ? new SlopMachineGameModule(TestCatalogue())
+                : new SlopMachineGameModule(
+                    TestCatalogue(), TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(2),
+                    TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10),
+                    TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
             PlayerIds = Enumerable.Range(0, playerCount).Select(_ => Guid.NewGuid()).ToArray();
+            LastActionAt = now;
             State = module.Start(new GameStartContext(new GameInstanceId(instanceId), partyId, "host",
                 PlayerIds.Select((id, index) => new GameParticipant(id, $"Player {index + 1}"))
                     .ToArray(), now));
@@ -445,10 +570,12 @@ public sealed class SlopMachineGameModuleTests
         public Guid[] PlayerIds { get; }
         public GameModuleState State { get; private set; }
         public GameTransition LastTransition { get; private set; } = default!;
+        public DateTimeOffset LastActionAt { get; private set; }
         public SlopMachineState StateData => State.Data.Deserialize<SlopMachineState>()!;
 
         public void Apply(GameActor actor, IGameAction action)
         {
+            LastActionAt = now;
             LastTransition = module.Apply(State,
                 new GameActionContext(new GameInstanceId(instanceId), partyId, actor, now), action);
             State = LastTransition.State;
@@ -456,14 +583,6 @@ public sealed class SlopMachineGameModuleTests
         }
 
         public void Advance() => Apply(GameActor.Host("host"), new AdvanceSlopMachineAction());
-
-        public void ForceCurveball(Guid playerId, SlopConstraint curveball)
-        {
-            var state = StateData;
-            var assignments = state.Assignments.ToDictionary();
-            assignments[playerId] = assignments[playerId] with { Curveball = curveball };
-            State = State with { Data = GameJson.From(state with { Assignments = assignments }) };
-        }
 
         public void Deadline()
         {
@@ -475,15 +594,20 @@ public sealed class SlopMachineGameModuleTests
         {
             foreach (var playerId in PlayerIds.Where(id => !StateData.TextSubmissions.ContainsKey(id)))
             {
-                var assignment = StateData.Assignments[playerId];
-                var text = assignment.Curveball.ValidationKind switch
+                if (State.Phase == SlopMachineGameModule.RouletteWritingPhase)
                 {
-                    SlopValidationKind.ExactWords => "One two three four five",
-                    SlopValidationKind.MustContainNumber => "I tried this 7 times",
-                    SlopValidationKind.RequiredWord => $"A title with {assignment.Curveball.RequiredWord}",
-                    _ => $"A funny upload from {PlayerIds.ToList().IndexOf(playerId) + 1}"
-                };
-                Apply(GameActor.Player(playerId), new SubmitSlopTextAction(text));
+                    var assignment = StateData.Assignments[playerId];
+                    var blankCount = assignment.Format.Split("___").Length - 1;
+                    var values = Enumerable.Range(1, blankCount)
+                        .Select(index => $"answer {PlayerIds.ToList().IndexOf(playerId) + 1}-{index}")
+                        .ToArray();
+                    Apply(GameActor.Player(playerId), new SubmitSlopTextAction(string.Empty, values));
+                }
+                else
+                {
+                    Apply(GameActor.Player(playerId), new SubmitSlopTextAction(
+                        $"A funny upload from {PlayerIds.ToList().IndexOf(playerId) + 1}"));
+                }
             }
         }
 
@@ -492,7 +616,7 @@ public sealed class SlopMachineGameModuleTests
             foreach (var playerId in PlayerIds)
             {
                 var options = StateData.Options.Where(option =>
-                    option.AuthorId != playerId && option.PartnerId != playerId).ToArray();
+                    option.AuthorId != playerId).ToArray();
                 if (options.Length > 0 && !StateData.Votes.ContainsKey(playerId))
                 {
                     Apply(GameActor.Player(playerId), new VoteForSlopAction(options[0].OptionId));
@@ -522,20 +646,18 @@ public sealed class SlopMachineGameModuleTests
 
         public void ReachTelephoneWriting()
         {
+            ReachRouletteGrowthReview();
+            Advance();
+            Advance();
+        }
+
+        public void ReachRouletteGrowthReview()
+        {
             ReachRouletteSpinning();
             Advance();
             SubmitAllText();
-            Advance();
             VoteAll();
-            while (State.Phase == SlopMachineGameModule.RouletteResultsPhase &&
-                StateData.RouletteHeat + 1 < StateData.RouletteHeats.Count)
-            {
-                Advance();
-                Advance();
-                VoteAll();
-            }
-            Advance();
-            Advance();
+            CompleteRemainingVoteHeats(SlopMachineGameModule.RouletteResultsPhase);
             Advance();
         }
 
@@ -548,11 +670,8 @@ public sealed class SlopMachineGameModuleTests
                 var match = StateData.TelephoneMatches[playerId];
                 Apply(GameActor.Player(playerId), new MatchTelephoneThumbnailAction(match.IntendedThumbnailId));
             }
-            Advance();
-            if (State.Phase == SlopMachineGameModule.TelephoneVotingPhase)
-            {
-                VoteAll();
-            }
+            VoteAll();
+            CompleteRemainingVoteHeats(SlopMachineGameModule.TelephoneResultsPhase);
             Advance();
             Advance();
             Advance();
@@ -588,13 +707,12 @@ public sealed class SlopMachineGameModuleTests
         {
             ReachCommentsWriting();
             SubmitAllText();
-            Advance();
             VoteAll();
+            CompleteRemainingVoteHeats(SlopMachineGameModule.CommentsResultsPhase);
             Advance();
             Advance();
             Advance();
             SubmitAllText();
-            Advance();
         }
 
         private void PlayFresh()
@@ -602,13 +720,25 @@ public sealed class SlopMachineGameModuleTests
             Advance();
             Advance();
             SubmitAllText();
-            Advance();
             VoteAll();
+            CompleteRemainingVoteHeats(SlopMachineGameModule.FreshResultsPhase);
             Advance();
             SubmitAllText();
-            Advance();
             VoteAll();
+            CompleteRemainingVoteHeats(SlopMachineGameModule.FreshResultsPhase);
             Advance();
+        }
+
+        private bool HasNextVoteHeat() => StateData.VoteHeats is { Count: > 0 } &&
+            StateData.VoteHeat + 1 < StateData.VoteHeats.Count;
+
+        private void CompleteRemainingVoteHeats(string resultPhase)
+        {
+            while (State.Phase == resultPhase && HasNextVoteHeat())
+            {
+                Advance();
+                VoteAll();
+            }
         }
 
         public static SlopThumbnail[] TestCatalogue() => Enumerable.Range(1, 160).Select(index =>

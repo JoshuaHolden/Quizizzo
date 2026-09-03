@@ -517,16 +517,16 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 
 ### Slop Machine (completed 2026-09-02)
 
-- [x] Add a discoverable 2–12 player Slop Machine module using the existing serialized game actor, durable snapshots, generic phone controllers, SignalR hints, host controls, and return-to-lobby flow.
+- [x] Add a discoverable 3–12 player Slop Machine module using the existing serialized game actor, durable snapshots, generic phone controllers, SignalR hints, host controls, and return-to-lobby flow.
 - [x] Implement the complete Game Intro → two-heat Fresh Slop → Algorithm Roulette → Thumbnail Telephone → Comments Section → Beat the Machine → final review → joint-winner celebration state machine.
-- [x] Keep server authority over UTC deadlines, assignments, one-reel re-spins, objective constraint validation, derangements, decoys, anonymous options, self-vote restrictions, scoring, tied bonuses, machine titles, and machine-identification awards.
+- [x] Keep server authority over UTC deadlines, assignments, one-reel re-spins, structured blank formats, derangements, decoys, anonymous options, self-vote restrictions, scoring, tied bonuses, machine titles, and machine-identification awards.
 - [x] Import and validate all 996 generated WebP thumbnails plus their embedded manifest and two stored machine titles, prevent within-session repetition, and serve immutable media with Cloudflare-ready cache headers.
 - [x] Add reconstructable thumbnail/title media contracts to reusable Choice, Vote, player, display, and Phaser snapshots without coupling the shared controller layer to a game name.
 - [x] Give the shared display a dedicated unstable content-factory treatment, hero/feed and gallery compositions, view-labelled sequential score counts, movement and biggest-gainer highlights, full-body podium characters, and a ridiculous final channel rank.
 - [x] Add FAKE, UNSUBSCRIBE, and REPORT THIS SLOP to the existing authenticated per-player reaction limiter and transient phone reaction surface.
 - [x] Keep the phone controller within one visual viewport with bounded thumbnails, large touch targets, locked submissions, authoritative countdowns, and safely rendered normalized title/comment data.
 - [x] Document scoring, recovery, media schema, static caching, presentation hooks, and the validated repeatable thumbnail import command.
-- [x] Exercise complete 2-, 3-, 4-, and 12-player games plus illegal actions, timeouts, scoring ties, Telephone behavior, final human/machine outcomes, recovery, assets, reactions, and responsive contracts; pass JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 224 .NET tests.
+- [x] Exercise complete 3-, 4-, and 12-player games plus illegal actions, timeouts, scoring ties, Telephone behavior, final human/machine outcomes, recovery, assets, reactions, and responsive contracts; pass JavaScript syntax, all 12 client tests, a zero-warning strict Release build, and all 224 .NET tests.
 
 ### Slop Machine display soundtrack (completed 2026-09-02)
 
@@ -588,7 +588,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Key every stateful phone controller to its game instance, phase, action, and visible task so an AniMates review card cannot survive into Slop Machine writing.
 - [x] Preserve controller-local input during ordinary refreshes while replacing it at real game/task boundaries.
 - [x] Make animation review data-driven so ordinary Slop Machine and Majority Rules votes render image/text choices instead of fake animation controls.
-- [x] Prove Fresh Slop, Roulette, Telephone, Comments, and final voting all expose static thumbnail choices with no animation-frame payload.
+- [x] Prove Fresh Slop, Roulette, Telephone, Comments, and final voting expose only static image/text choices with no animation-frame payload.
 - [x] Preserve generated thumbnail aspect ratios on both phone controllers and the Phaser display instead of stretching or aggressively cropping them.
 
 ### Production database-pool containment hotfix (completed 2026-09-02)
@@ -602,6 +602,18 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Select each player's highest-ranked returning uploads from the complete eligible pool so a creator never receives their own upload while another player's upload exists.
 - [x] Persist the exact source submission on comment assignments so duplicate thumbnail/title combinations retain unambiguous ownership across refresh and recovery.
 - [x] Stress the assignment rule across 100 independently seeded four-player games.
+
+### Slop Machine tightened five-act format (completed 2026-09-03)
+
+- [x] Remove Curveballs and two-player support completely, enforce a 3–12 player range, and preserve one server-authoritative five-act game flow.
+- [x] Make Roulette expose only a thumbnail plus a one- or two-blank format, construct the submitted title from bounded blank values on the server, and keep the optional re-spin to those two reels.
+- [x] Combine each vote, reveal, and result into one reconstructable scene with automatic early progression, revised act timings, exact narrative interstitials, and full scoreboards only after Fresh Slop, Telephone, and the final.
+- [x] Keep every 3–6 player eligible in one heat, split 7–12 players into balanced heats of at most four entries, and normalize only heat-winner comparisons by votes received per voting opportunity while retaining raw scores.
+- [x] Award Telephone matching points to both writer and matcher, allow the matcher to vote for the pairing they matched, and award its subjective vote and winner points only to the title writer.
+- [x] Assign Comments from another creator's highly viewed current-game uploads, retain the source upload and creative comment type, render a pinned YouTube-style result feed, and keep non-winning comments visible in history.
+- [x] Prevent stale asynchronous phone-state loads from restoring a previous controller after a phase/game change, and keep all Slop Machine voting free of animation-review controls.
+- [x] Animate in-scene view awards and winner emphasis without overlapping cards, validate JavaScript, pass all 21 client tests, pass formatting for every modified C# file, and pass all 261 .NET tests.
+- [x] Delete the unreachable legacy reveal phases and timer, their obsolete display/audio mappings, the unused vote-reset helper, and write-only submission/re-spin model fields.
 
 ## Verification requirements
 

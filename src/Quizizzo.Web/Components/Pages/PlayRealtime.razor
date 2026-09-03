@@ -152,7 +152,8 @@
                                         Configuration="textConfiguration"
                                         SubmitLabel="@game.Controller.SubmitLabel"
                                         Disabled="@(submitting || connectionStatus != "Connected" || !game.Controller.IsEnabled)"
-                                        Submitted="value => SubmitPlayerActionAsync(game.Controller.ActionKind, new { value })" />
+                                        Submitted="submission => SubmitPlayerActionAsync(game.Controller.ActionKind,
+                                            new { value = submission.Value, values = submission.Values })" />
                     }
                     break;
                 case PlayerControllerKind.Vote:
@@ -210,6 +211,7 @@
     private bool submitting;
     private bool focusHeadingAfterRender;
     private bool reactionsOpen;
+    private long loadVersion;
     private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
         ? score
         : player.Score;
@@ -338,8 +340,13 @@
 
     private async Task LoadAsync()
     {
+        var requestedVersion = Interlocked.Increment(ref loadVersion);
         var previousControllerKind = game?.Controller.Kind;
         var state = await StateLoader.LoadAsync(player.PlayerId);
+        if (requestedVersion != Volatile.Read(ref loadVersion))
+        {
+            return;
+        }
         player = state.Player;
         gameView = state.Game;
         game = gameView?.Data.Deserialize<PlayerGameViewPayload>();

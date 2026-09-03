@@ -541,12 +541,35 @@ public sealed class LandingPageContractTests
         Assert.Contains("overflow: hidden", styles, StringComparison.Ordinal);
         Assert.Contains("snapshot.gameKey === \"slop-machine\"", presentation, StringComparison.Ordinal);
         Assert.Contains("addSlopSideEntries", presentation, StringComparison.Ordinal);
+        Assert.Contains("addSlopCommentFeed", presentation, StringComparison.Ordinal);
+        Assert.Contains("snapshot.media.mode === \"comment-feed\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("this.tweens.addCounter", presentation, StringComparison.Ordinal);
         Assert.Contains("loadMediaTexture", presentation, StringComparison.Ordinal);
         Assert.Contains("fitImageWithin(image, cardWidth - 24, imageHeight)", presentation,
             StringComparison.Ordinal);
         Assert.DoesNotContain("setDisplaySize(cardWidth - 24, imageHeight)", presentation,
             StringComparison.Ordinal);
         Assert.Contains("object-fit: contain", styles, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Slop_machine_roulette_uses_structured_blanks_and_player_refreshes_cannot_regress()
+    {
+        var player = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+        var textController = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/TextController.razor");
+        var options = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/OptionController.razor");
+
+        Assert.Contains("Configuration.FormatSegments", textController, StringComparison.Ordinal);
+        Assert.Contains("format-answer-input", textController, StringComparison.Ordinal);
+        Assert.Contains("new TextControllerSubmission(CompletedValue, blankValues)", textController,
+            StringComparison.Ordinal);
+        Assert.Contains("Interlocked.Increment(ref loadVersion)", player, StringComparison.Ordinal);
+        Assert.Contains("Volatile.Read(ref loadVersion)", player, StringComparison.Ordinal);
+        Assert.Contains("reviewedOption = null", options, StringComparison.Ordinal);
     }
 
     [Fact]

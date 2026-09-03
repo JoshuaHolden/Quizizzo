@@ -735,6 +735,10 @@ window.quizizzoPresentation = (() => {
         addGameMedia(snapshot, items, expectedSignature) {
             const mediaItems = snapshot.media?.items || [];
             if (!mediaItems.length) return;
+            if (snapshot.media.mode === "comment-feed") {
+                this.addSlopCommentFeed(snapshot, mediaItems.slice(0, 4), items, expectedSignature);
+                return;
+            }
             const gallery = snapshot.media.mode === "gallery";
             const shown = mediaItems.slice(0, gallery ? 6 : 1);
             const columns = gallery ? Math.min(3, shown.length) : 1;
@@ -756,6 +760,14 @@ window.quizizzoPresentation = (() => {
                 const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, 1)
                     .setStrokeStyle(6, snapshot.gameKey === "slop-machine" ? 0xffd400 : 0x24123f, 1);
                 items.push(shadow, panel);
+                if (snapshot.gameKey === "slop-machine" && snapshot.phase.endsWith("Results") &&
+                    !this.controller.reducedMotion) {
+                    panel.setScale(.92);
+                    this.tweens.add({
+                        targets: panel, scaleX: 1, scaleY: 1,
+                        duration: 420, delay: index * 90, ease: "Back.easeOut"
+                    });
+                }
                 if (media.imageUrl) {
                     const key = `game-media-${media.id}`;
                     if (this.textures.exists(key)) {
@@ -793,6 +805,59 @@ window.quizizzoPresentation = (() => {
             });
         }
 
+        addSlopCommentFeed(snapshot, mediaItems, items, expectedSignature) {
+            const columns = mediaItems.length === 1 ? 1 : 2;
+            const rows = Math.ceil(mediaItems.length / columns);
+            const cardWidth = columns === 1 ? 700 : 500;
+            const cardHeight = rows === 1 ? 390 : 226;
+            const imageHeight = rows === 1 ? 210 : 112;
+            const startY = rows === 1 ? 345 : 245;
+            mediaItems.forEach((media, index) => {
+                const row = Math.floor(index / columns);
+                const column = index % columns;
+                const inRow = Math.min(columns, mediaItems.length - row * columns);
+                const x = width / 2 + (column - (inRow - 1) / 2) * (cardWidth + 18);
+                const y = startY + row * (cardHeight + 16);
+                const shadow = this.add.rectangle(x + 7, y + 9, cardWidth, cardHeight, 0x05020f, .42);
+                const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0x18122f, .98)
+                    .setStrokeStyle(media.badge === "PINNED COMMENT" ? 5 : 3,
+                        media.badge === "PINNED COMMENT" ? 0xffd400 : 0x7c3aed, 1);
+                items.push(shadow, panel);
+                const key = `game-media-${media.id}`;
+                if (media.imageUrl && this.textures.exists(key)) {
+                    const image = this.add.image(x, y - cardHeight / 2 + imageHeight / 2 + 10, key);
+                    this.fitImageWithin(image, cardWidth - 20, imageHeight);
+                    items.push(image);
+                } else if (media.imageUrl) {
+                    this.loadMediaTexture(key, media.imageUrl, expectedSignature);
+                }
+                const titleY = y - cardHeight / 2 + imageHeight + 24;
+                items.push(this.add.text(x - cardWidth / 2 + 18, titleY, media.heading || "", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: rows === 1 ? "19px" : "15px",
+                    fontStyle: "bold", wordWrap: { width: cardWidth - 36 }
+                }).setOrigin(0, 0));
+                const bubbleY = y + cardHeight / 2 - (rows === 1 ? 64 : 48);
+                const bubble = this.add.rectangle(x, bubbleY, cardWidth - 32,
+                    rows === 1 ? 82 : 64, 0xffffff, .1).setStrokeStyle(2, 0xffffff, .16);
+                const comment = this.add.text(x - cardWidth / 2 + 30, bubbleY,
+                    media.body || "", {
+                        color: "#f8fafc", fontFamily: bodyFont,
+                        fontSize: rows === 1 ? "18px" : "14px", fontStyle: "bold",
+                        wordWrap: { width: cardWidth - 60 }
+                    }).setOrigin(0, .5);
+                items.push(bubble, comment);
+                if (media.badge) {
+                    items.push(this.add.text(x + cardWidth / 2 - 18, y - cardHeight / 2 + 14,
+                        media.badge, {
+                            color: media.badge === "PINNED COMMENT" ? "#24123f" : "#ffffff",
+                            backgroundColor: media.badge === "PINNED COMMENT" ? "#ffd400" : "#ef2b6e",
+                            padding: { x: 8, y: 4 }, fontFamily: displayFont,
+                            fontSize: "11px", fontStyle: "bold"
+                        }).setOrigin(1, 0));
+                }
+            });
+        }
+
         fitImageWithin(image, maximumWidth, maximumHeight) {
             const sourceWidth = Math.max(1, image.width);
             const sourceHeight = Math.max(1, image.height);
@@ -816,8 +881,8 @@ window.quizizzoPresentation = (() => {
         addEntryCards(snapshot, items) {
             const phasesWithEntries = [
                 "Choosing", "Results", "Voting", "ShowdownVoting", "ShowdownResults",
-                "FreshSlopReveal", "FreshSlopVoting", "FreshSlopResults",
-                "FinalReveal", "FinalVoting", "FinalMachineGuess", "FinalResults"
+                "FreshSlopVoting", "FreshSlopResults",
+                "FinalVoting", "FinalMachineGuess", "FinalResults"
             ];
             const entries = snapshot.entries || [];
             if (!phasesWithEntries.includes(snapshot.phase) || entries.length === 0) return;
@@ -975,6 +1040,17 @@ window.quizizzoPresentation = (() => {
                 const y = top + 58 + row * (cardHeight + gap) + cardHeight / 2;
                 const panel = this.add.rectangle(x, y, cardWidth, cardHeight, 0xfffbeb, 1)
                     .setStrokeStyle(2, index % 2 ? 0xef2b6e : 0xffd400, 1);
+                const winner = snapshot.phase.endsWith("Results") && entry.rank === 1;
+                if (winner) {
+                    panel.setStrokeStyle(4, 0xffd400, 1);
+                    if (!this.controller.reducedMotion) {
+                        panel.setScale(.94);
+                        this.tweens.add({
+                            targets: panel, scaleX: 1.025, scaleY: 1.025,
+                            duration: 520, ease: "Back.easeOut"
+                        });
+                    }
+                }
                 const label = this.add.text(x - cardWidth / 2 + 12, y, entry.label || "", {
                     color: "#ef2b6e", fontFamily: displayFont,
                     fontSize: columns === 1 ? "17px" : "14px", fontStyle: "bold"
@@ -985,6 +1061,25 @@ window.quizizzoPresentation = (() => {
                     wordWrap: { width: cardWidth - 62 }
                 }).setOrigin(0, .5);
                 items.push(panel, label, value);
+                if (snapshot.phase.endsWith("Results")) {
+                    const views = this.add.text(x + cardWidth / 2 - 10,
+                        y + cardHeight / 2 - 7, `+${this.scoreLabel(0, snapshot)}`, {
+                            color: winner ? "#9a3412" : "#7c2d92",
+                            fontFamily: displayFont, fontSize: columns === 1 ? "13px" : "11px",
+                            fontStyle: "bold"
+                        }).setOrigin(1, 1);
+                    items.push(views);
+                    if (this.controller.reducedMotion) {
+                        views.setText(`+${this.scoreLabel(entry.pointsAwarded || 0, snapshot)}`);
+                    } else {
+                        this.tweens.addCounter({
+                            from: 0, to: entry.pointsAwarded || 0, duration: 700,
+                            delay: 180 + index * 90, ease: "Cubic.easeOut",
+                            onUpdate: tween => views.setText(
+                                `+${this.scoreLabel(Math.round(tween.getValue()), snapshot)}`)
+                        });
+                    }
+                }
             });
         }
 

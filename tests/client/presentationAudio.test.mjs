@@ -100,20 +100,20 @@ test.beforeEach(() => {
 test("every Slop Machine phase maps to its intended background track", () => {
     const expected = new Map([
         ["GameIntro", "lobby"], ["FreshSlopIntro", null],
-        ["FreshSlopWriting", "slopWriting"], ["FreshSlopReveal", "slopVoting"],
-        ["FreshSlopVoting", "slopVoting"], ["FreshSlopResults", null],
+        ["FreshSlopWriting", "slopWriting"], ["FreshSlopVoting", "slopVoting"],
+        ["FreshSlopResults", null],
         ["AlgorithmRouletteIntro", null], ["AlgorithmRouletteSpinning", "slopSpinner"],
-        ["AlgorithmRouletteWriting", "slopWriting"], ["AlgorithmRouletteReveal", "slopVoting"],
-        ["AlgorithmRouletteVoting", "slopVoting"], ["AlgorithmRouletteResults", null],
+        ["AlgorithmRouletteWriting", "slopWriting"], ["AlgorithmRouletteVoting", "slopVoting"],
+        ["AlgorithmRouletteResults", null],
         ["ThumbnailTelephoneIntro", "slopTelephone"], ["TelephoneWriting", "slopTelephone"],
-        ["TelephoneMatching", "slopTelephone"], ["TelephoneReveal", "slopTelephone"],
+        ["TelephoneMatching", "slopTelephone"],
         ["TelephoneVoting", "slopTelephone"], ["TelephoneResults", "slopTelephone"],
         ["CommentsIntro", "slopComments"], ["CommentsWriting", "slopComments"],
-        ["CommentsReveal", "slopComments"], ["CommentsVoting", "slopComments"],
+        ["CommentsVoting", "slopComments"],
         ["CommentsResults", "slopComments"], ["ScoreReview1", "slopScoreboard"],
         ["ScoreReview2", "slopScoreboard"], ["ScoreReview3", "slopScoreboard"],
         ["ScoreReview4", "slopScoreboard"], ["FinalIntro", "slopFinal"],
-        ["FinalWriting", "slopFinal"], ["FinalReveal", "slopFinal"],
+        ["FinalWriting", "slopFinal"],
         ["FinalVoting", "slopFinal"], ["FinalMachineGuess", "slopFinal"],
         ["FinalResults", "slopFinal"], ["FinalScoreReview", "slopScoreboard"],
         ["WinnerCelebration", null], ["Completed", null]
@@ -170,9 +170,9 @@ test("early writing completion stops countdown and matching never starts it", as
     controller.destroy();
 });
 
-test("reveal music continues into voting without restarting", async () => {
+test("voting music survives reconstructable snapshot refreshes", async () => {
     const controller = createController();
-    controller.update(slopSnapshot("FreshSlopReveal"));
+    controller.update(slopSnapshot("FreshSlopVoting"));
     await nextTurn();
     const voting = controller.activeBackground;
     controller.update(slopSnapshot("FreshSlopVoting", { revision: 2 }));
@@ -193,7 +193,7 @@ test("score reviews and final phases transition through scoreboard, final and co
     controller.update(slopSnapshot("FinalWriting", { revision: 3, phaseEndsAtUtc: futureDeadline(10) }));
     await nextTurn();
     assert.equal(controller.activeTrackKey, "slopCountdown");
-    controller.update(slopSnapshot("FinalReveal", { revision: 4 }));
+    controller.update(slopSnapshot("FinalVoting", { revision: 4 }));
     await nextTurn();
     assert.equal(controller.activeTrackKey, "slopFinal");
     controller.destroy();
@@ -291,7 +291,7 @@ test("background transitions and one-shot cues never leave two long-form tracks 
     const controller = createController();
     controller.update(slopSnapshot("FreshSlopWriting"));
     await nextTurn();
-    controller.update(slopSnapshot("FreshSlopReveal", { revision: 2 }));
+    controller.update(slopSnapshot("FreshSlopVoting", { revision: 2 }));
     await nextTurn();
     assert.equal(controller.backgrounds.filter(track => !track.paused).length, 1);
     controller.update(slopSnapshot("WinnerCelebration", { revision: 3 }));

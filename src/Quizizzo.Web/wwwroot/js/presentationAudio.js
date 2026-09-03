@@ -126,30 +126,28 @@ window.quizizzoPresentationAudio = (() => {
         if (phase === "AlgorithmRouletteSpinning") {
             return { trackKey: "slopSpinner", sessionKey: phase, reset: true };
         }
-        if (["FreshSlopReveal", "FreshSlopVoting"].includes(phase)) {
+        if (phase === "FreshSlopVoting") {
             return {
                 trackKey: "slopVoting",
                 sessionKey: "fresh-slop-voting",
-                reset: phase === "FreshSlopReveal",
-                resume: phase === "FreshSlopVoting"
+                reset: true
             };
         }
-        if (["AlgorithmRouletteReveal", "AlgorithmRouletteVoting"].includes(phase)) {
+        if (phase === "AlgorithmRouletteVoting") {
             return {
                 trackKey: "slopVoting",
                 sessionKey: "roulette-voting",
-                reset: phase === "AlgorithmRouletteReveal",
-                resume: phase === "AlgorithmRouletteVoting"
+                reset: true
             };
         }
         if ([
             "ThumbnailTelephoneIntro", "TelephoneWriting", "TelephoneMatching",
-            "TelephoneReveal", "TelephoneVoting", "TelephoneResults"
+            "TelephoneVoting", "TelephoneResults"
         ].includes(phase)) {
             return { trackKey: "slopTelephone", sessionKey: "slop-telephone", resume: true };
         }
         if ([
-            "CommentsIntro", "CommentsWriting", "CommentsReveal", "CommentsVoting", "CommentsResults"
+            "CommentsIntro", "CommentsWriting", "CommentsVoting", "CommentsResults"
         ].includes(phase)) {
             return { trackKey: "slopComments", sessionKey: "slop-comments", resume: true };
         }
@@ -157,13 +155,13 @@ window.quizizzoPresentationAudio = (() => {
             .includes(phase)) {
             return { trackKey: "slopScoreboard", sessionKey: phase, reset: true };
         }
-        if (["FinalIntro", "FinalWriting", "FinalReveal", "FinalVoting", "FinalMachineGuess", "FinalResults"]
+        if (["FinalIntro", "FinalWriting", "FinalVoting", "FinalMachineGuess", "FinalResults"]
             .includes(phase)) {
             return {
                 trackKey: "slopFinal",
                 sessionKey: "slop-final",
-                reset: phase === "FinalIntro" || phase === "FinalReveal",
-                resume: phase !== "FinalIntro" && phase !== "FinalReveal"
+                reset: phase === "FinalIntro",
+                resume: phase !== "FinalIntro"
             };
         }
         return null;

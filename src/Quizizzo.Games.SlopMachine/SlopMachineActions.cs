@@ -2,7 +2,9 @@ using Quizizzo.GameContracts;
 
 namespace Quizizzo.Games.SlopMachine;
 
-public sealed record SubmitSlopTextAction(string Value) : IGameAction
+public sealed record SubmitSlopTextAction(
+    string Value,
+    IReadOnlyList<string>? Values = null) : IGameAction
 {
     public const string ActionKind = "slop-machine.submit-text";
     public string Kind => ActionKind;

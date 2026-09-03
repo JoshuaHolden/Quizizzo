@@ -4,15 +4,17 @@ Slop Machine is a server-authoritative party game in which every player runs a f
 
 ## Flow
 
-The module is `Quizizzo.Games.SlopMachine.SlopMachineGameModule` and supports 2–12 players. Every timed phase stores a UTC deadline in the game snapshot. Assignments, submissions, option IDs, votes, pairings, machine guesses, awards, and used thumbnail IDs are also snapshot state, so refreshing or replacing a connection reconstructs the same private view.
+The module is `Quizizzo.Games.SlopMachine.SlopMachineGameModule` and supports 3–12 players. Every timed phase stores a UTC deadline in the game snapshot. Assignments, submissions, option IDs, votes, pairings, machine guesses, awards, voting opportunities, heat membership, and used thumbnail IDs are also snapshot state, so refreshing or replacing a connection reconstructs the same private view.
 
 1. **Fresh Slop** has two heats. Everyone captions one shared image. A vote is worth 1,000 views and every tied heat winner receives a 1,000-view Viral Bonus.
-2. **Algorithm Roulette** assigns a server-selected thumbnail, data-backed title format, and curveball. Each player may re-spin exactly one reel once. Objective curveballs are validated on the server. Entries are split into balanced heats above six players. A vote is worth 1,000 views and tied heat winners receive a 1,000-view Algorithm Bonus.
-3. **Thumbnail Telephone** assigns unique images, then deranges titles to different matchers. Choices contain one intended image and three unique, metadata-related decoys. A correct match awards 1,500 views to both participants. With at least three players, pairing votes award 500 views to each contributor and tied winners receive a 1,000-view Telephone Disaster Bonus each. The two-player game uses the objective score and skips this vote.
-4. **Comments Section** returns strong earlier uploads and avoids self-assignment where possible. A vote is worth 1,000 views and tied winners receive a 1,000-view Engagement Bonus.
+2. **Algorithm Roulette** assigns a server-selected thumbnail and a title format containing one or two blanks. Each player may re-spin either the thumbnail or format exactly once. The phone renders each blank as a separate field and the server constructs the complete title. A vote is worth 1,000 views and tied heat winners receive a 1,000-view Algorithm Bonus.
+3. **Thumbnail Telephone** assigns unique images, then deranges titles to different matchers. Choices contain one intended image and three unique, metadata-related decoys. A correct match awards 1,500 views to both participants. Pairing votes award 500 views to the title writer only and tied winning writers receive a 1,000-view Telephone Disaster Bonus. A matcher may vote for the pairing they matched, but nobody may vote for a title they wrote.
+4. **Comments Section** returns highly viewed earlier uploads, avoids self-assignment, and balances assignments across channels. Each comment retains its source upload and creative comment type. A vote is worth 1,000 views and tied winners receive a 1,000-view Engagement Bonus; winning comments remain pinned in channel history.
 5. **Beat the Machine** mixes every human title with two stored machine titles. Human votes earn 2,000 views each. If no machine title is a public winner, every tied best human receives a 3,000-view Humanity Bonus. Each correctly identified machine title then earns 1,000 views.
 
-Score updates are locked before each score-review phase. The shared score presentation counts earned views into the total and supports tied positions and joint final winners. The dedicated winner phase uses the shared full-body character and celebration animation. Text is whitespace-normalized and length-limited to 90 characters for titles and 140 for comments; markup is retained only as plain data and safely rendered by Blazor/Phaser.
+Players 3–6 see every eligible entry. Players 7–12 vote in balanced heats of no more than four entries. Actual votes retain their advertised value; heat bonuses use votes divided by eligible opportunities so unequal exposure cannot decide a winner. The final always shows every human and machine title.
+
+Only Fresh Slop, Thumbnail Telephone, and the final use full scoreboards. Roulette and Comments instead show a five-second growth overlay. Writing advances directly into voting; the same display scene then reveals vote counts, creators, bonuses, and the winner without a separate reveal scene. Score updates are locked before each review. The shared presentation supports tied positions and joint final winners, and the dedicated winner phase uses the shared full-body character and celebration animation. Text is whitespace-normalized and length-limited to 90 characters for titles and 140 for comments; markup is retained only as plain data and safely rendered by Blazor/Phaser.
 
 ## Thumbnail manifest
 
@@ -53,10 +55,10 @@ Assets live in `src/Quizizzo.Web/wwwroot/media/audio/games/slop-machine/`:
 | `slop-writing.mp3` | Fresh Slop and Algorithm Roulette writing |
 | `slop-countdown.mp3` | Authoritative final 20 seconds of every Slop Machine writing phase |
 | `slop-spinner.mp3` | Algorithm Roulette reel spinning |
-| `slop-voting.mp3` | Fresh Slop and Roulette reveal/voting |
+| `slop-voting.mp3` | Fresh Slop and Roulette voting/results |
 | `slop-telephone.mp3` | Telephone introduction through results, except its writing countdown |
 | `slop-comments.mp3` | Comments introduction through results, except its writing countdown |
-| `slop-scoreboard.mp3` | All four round reviews and the final score review |
+| `slop-scoreboard.mp3` | Fresh, Telephone, and final score reviews plus short growth overlays |
 | `slop-final.mp3` | Beat the Machine introduction through results, except its writing countdown |
 | `slop-machine-victory.mp3` | One-shot cue only when machine titles alone hold first place |
 | `slop-human-victory.mp3` | One-shot overall winner celebration, including joint winners |

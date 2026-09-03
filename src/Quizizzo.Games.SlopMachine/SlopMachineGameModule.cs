@@ -15,33 +15,28 @@ public sealed partial class SlopMachineGameModule : IGameModule
     public const string GameIntroPhase = "GameIntro";
     public const string FreshIntroPhase = "FreshSlopIntro";
     public const string FreshWritingPhase = "FreshSlopWriting";
-    public const string FreshRevealPhase = "FreshSlopReveal";
     public const string FreshVotingPhase = "FreshSlopVoting";
     public const string FreshResultsPhase = "FreshSlopResults";
     public const string ScoreReview1Phase = "ScoreReview1";
     public const string RouletteIntroPhase = "AlgorithmRouletteIntro";
     public const string RouletteSpinningPhase = "AlgorithmRouletteSpinning";
     public const string RouletteWritingPhase = "AlgorithmRouletteWriting";
-    public const string RouletteRevealPhase = "AlgorithmRouletteReveal";
     public const string RouletteVotingPhase = "AlgorithmRouletteVoting";
     public const string RouletteResultsPhase = "AlgorithmRouletteResults";
     public const string ScoreReview2Phase = "ScoreReview2";
     public const string TelephoneIntroPhase = "ThumbnailTelephoneIntro";
     public const string TelephoneWritingPhase = "TelephoneWriting";
     public const string TelephoneMatchingPhase = "TelephoneMatching";
-    public const string TelephoneRevealPhase = "TelephoneReveal";
     public const string TelephoneVotingPhase = "TelephoneVoting";
     public const string TelephoneResultsPhase = "TelephoneResults";
     public const string ScoreReview3Phase = "ScoreReview3";
     public const string CommentsIntroPhase = "CommentsIntro";
     public const string CommentsWritingPhase = "CommentsWriting";
-    public const string CommentsRevealPhase = "CommentsReveal";
     public const string CommentsVotingPhase = "CommentsVoting";
     public const string CommentsResultsPhase = "CommentsResults";
     public const string ScoreReview4Phase = "ScoreReview4";
     public const string FinalIntroPhase = "FinalIntro";
     public const string FinalWritingPhase = "FinalWriting";
-    public const string FinalRevealPhase = "FinalReveal";
     public const string FinalVotingPhase = "FinalVoting";
     public const string FinalMachineGuessPhase = "FinalMachineGuess";
     public const string FinalResultsPhase = "FinalResults";
@@ -54,33 +49,20 @@ public sealed partial class SlopMachineGameModule : IGameModule
 
     private static readonly string[] Formats =
     [
-        "I tried ___ for 24 hours", "You've been using ___ wrong", "This changes everything",
-        "Before this gets deleted", "We need to talk", "The truth about ___",
-        "I spent £10,000 on ___", "Never do this at home",
-        "What happened next shocked everyone", "My apology", "Is this even legal?",
-        "Day 37 of ___", "Nobody believed me", "I wish I had never opened this"
-    ];
-
-    private static readonly SlopConstraint[] Curveballs =
-    [
-        new("Exactly five words", SlopValidationKind.ExactWords, 5),
-        new("Include a number", SlopValidationKind.MustContainNumber),
-        new("Include one dramatically capitalised word", SlopValidationKind.Informational),
-        new("Make it sound illegal", SlopValidationKind.Informational),
-        new("Make it a terrible life hack", SlopValidationKind.Informational),
-        new("Make it sound educational", SlopValidationKind.Informational),
-        new("Make it sound like local news", SlopValidationKind.Informational),
-        new("Include an emotional confession", SlopValidationKind.Informational),
-        new("Make it sound like a conspiracy", SlopValidationKind.Informational),
-        new("Pretend the creator is extremely wealthy", SlopValidationKind.Informational),
-        new("Pretend everything went disastrously wrong", SlopValidationKind.Informational),
-        new("Make it sound aimed at pensioners", SlopValidationKind.Informational)
+        "I tried ___ for 24 hours",
+        "The truth about ___",
+        "We found ___ inside ___",
+        "___ has gone too far",
+        "I spent £10,000 on ___",
+        "Why nobody talks about ___",
+        "Do not ___ at 3 a.m.",
+        "I let my children ___"
     ];
 
     private static readonly string[] CommentTypes =
     [
-        "A top comment", "A furious reply", "A pinned correction", "A community note",
-        "The creator's excuse", "A fake expert warning"
+        "Top comment", "Furious reply", "Pinned correction", "Community note",
+        "Creator's excuse", "Fake expert warning"
     ];
 
     private readonly IReadOnlyList<SlopThumbnail> catalogue;
@@ -92,10 +74,10 @@ public sealed partial class SlopMachineGameModule : IGameModule
     private readonly TimeSpan votingDuration;
     private readonly TimeSpan machineGuessDuration;
     private readonly TimeSpan introDuration;
-    private readonly TimeSpan revealDuration;
     private readonly TimeSpan resultsDuration;
     private readonly TimeSpan scoreReviewDuration;
     private readonly TimeSpan winnerDuration;
+    private readonly TimeSpan rouletteWritingDuration;
 
     public SlopMachineGameModule(
         IReadOnlyList<SlopThumbnail>? thumbnails = null,
@@ -107,31 +89,36 @@ public sealed partial class SlopMachineGameModule : IGameModule
         TimeSpan? votingDuration = null,
         TimeSpan? machineGuessDuration = null,
         TimeSpan? introDuration = null,
-        TimeSpan? revealDuration = null,
         TimeSpan? resultsDuration = null,
         TimeSpan? scoreReviewDuration = null,
-        TimeSpan? winnerDuration = null)
+        TimeSpan? winnerDuration = null,
+        TimeSpan? rouletteWritingDuration = null)
     {
         catalogue = thumbnails ?? LoadCatalogue();
         ValidateCatalogue(catalogue);
-        this.titleDuration = titleDuration ?? TimeSpan.FromSeconds(60);
-        this.rouletteDuration = rouletteDuration ?? TimeSpan.FromSeconds(15);
-        this.telephoneWritingDuration = telephoneWritingDuration ?? TimeSpan.FromSeconds(45);
-        this.telephoneMatchingDuration = telephoneMatchingDuration ?? TimeSpan.FromSeconds(20);
-        this.commentDuration = commentDuration ?? TimeSpan.FromSeconds(45);
-        this.votingDuration = votingDuration ?? TimeSpan.FromSeconds(20);
-        this.machineGuessDuration = machineGuessDuration ?? TimeSpan.FromSeconds(15);
-        this.introDuration = introDuration ?? TimeSpan.FromSeconds(10);
-        this.revealDuration = revealDuration ?? TimeSpan.FromSeconds(6);
-        this.resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(8);
-        this.scoreReviewDuration = scoreReviewDuration ?? TimeSpan.FromSeconds(10);
+        this.titleDuration = titleDuration ?? TimeSpan.FromSeconds(40);
+        this.rouletteDuration = rouletteDuration ?? TimeSpan.FromSeconds(8);
+        this.telephoneWritingDuration = telephoneWritingDuration ?? TimeSpan.FromSeconds(35);
+        this.telephoneMatchingDuration = telephoneMatchingDuration ?? TimeSpan.FromSeconds(15);
+        this.commentDuration = commentDuration ?? TimeSpan.FromSeconds(30);
+        this.votingDuration = votingDuration ?? TimeSpan.FromSeconds(15);
+        this.machineGuessDuration = machineGuessDuration ?? TimeSpan.FromSeconds(12);
+        this.introDuration = introDuration ?? TimeSpan.FromSeconds(6);
+        this.resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(6);
+        this.scoreReviewDuration = scoreReviewDuration ?? TimeSpan.FromSeconds(8);
         this.winnerDuration = winnerDuration ?? TimeSpan.FromSeconds(12);
+        this.rouletteWritingDuration = rouletteWritingDuration ?? TimeSpan.FromSeconds(35);
     }
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "Slop Machine", 2, 12);
+    public GameDescriptor Descriptor { get; } = new(GameKey, "Slop Machine", 3, 12);
 
     public GameModuleState Start(GameStartContext context)
     {
+        if (context.Participants.Count is < 3 or > 12)
+        {
+            throw new GameRuleViolationException(
+                "invalid-player-count", "Slop Machine requires between 3 and 12 players.");
+        }
         var participants = context.Participants.Select(participant =>
             new SlopParticipant(participant.PlayerId, participant.DisplayName, participant.StartingScore)).ToArray();
         var state = new SlopMachineState(
@@ -140,7 +127,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             new Dictionary<Guid, TelephoneMatch>(), new Dictionary<Guid, IReadOnlyList<Guid>>(), [],
             participants.ToDictionary(item => item.PlayerId, _ => 0),
             participants.ToDictionary(item => item.PlayerId, item => item.StartingScore),
-            0, [], false, "Feed the algorithm. Harvest the views.");
+            false, "Feed the algorithm. Harvest the views.");
         return ModuleState(GameIntroPhase, context.StartedAtUtc.Add(this.introDuration), false, state);
     }
 
@@ -176,7 +163,8 @@ public sealed partial class SlopMachineGameModule : IGameModule
 
     public IGameAction DecodeAction(string actionKind, JsonElement payload) => actionKind switch
     {
-        SubmitSlopTextAction.ActionKind => new SubmitSlopTextAction(ReadString(payload, "value")),
+        SubmitSlopTextAction.ActionKind => new SubmitSlopTextAction(
+            ReadString(payload, "value"), ReadOptionalStrings(payload, "values")),
         VoteForSlopAction.ActionKind => new VoteForSlopAction(ReadGuid(payload, "optionId")),
         RespinSlopReelAction.ActionKind => new RespinSlopReelAction(ReadString(payload, "reel")),
         MatchTelephoneThumbnailAction.ActionKind =>
@@ -226,44 +214,38 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             GameIntroPhase => Transition(FreshIntroPhase, state with
             {
-                Message = "The machine is hungry. First: make fresh slop."
+                Message = "Your channels are live."
             }),
             FreshIntroPhase => BeginFreshWriting(state, now, 0),
-            FreshRevealPhase => BeginVoting(state, now, FreshVotingPhase),
+            FreshResultsPhase when HasNextVoteHeat(state) =>
+                BeginNextVotingHeat(state, now, FreshVotingPhase),
             FreshResultsPhase when state.FreshHeat == 0 =>
                 BeginFreshWriting(ClearRoundInput(state), now, 1),
             FreshResultsPhase => ScoreReview(state, ScoreReview1Phase,
                 "The algorithm has chosen its favourites."),
             ScoreReview1Phase => Transition(RouletteIntroPhase, ResetReview(state,
-                "Pull the reels. Regret the upload.")),
+                "The algorithm demands more content.")),
             RouletteIntroPhase => BeginRoulette(state, now),
             RouletteSpinningPhase => BeginRouletteWriting(state, now),
-            RouletteRevealPhase => BeginVoting(state, now, RouletteVotingPhase),
-            RouletteResultsPhase when state.RouletteHeat + 1 < state.RouletteHeats.Count =>
-                Transition(RouletteRevealPhase, ClearVotes(state) with
-                {
-                    RouletteHeat = state.RouletteHeat + 1,
-                    Options = RouletteOptions(state, state.RouletteHeat + 1),
-                    Message = "Another balanced batch has reached the feed."
-                }),
-            RouletteResultsPhase => ScoreReview(state, ScoreReview2Phase,
-                "Quality is down. Engagement is up."),
+            RouletteResultsPhase when HasNextVoteHeat(state) =>
+                BeginNextVotingHeat(state, now, RouletteVotingPhase),
+            RouletteResultsPhase => GrowthReview(state, ScoreReview2Phase),
             ScoreReview2Phase => Transition(TelephoneIntroPhase, ResetReview(state,
-                "The algorithm is about to misunderstand everybody.")),
+                "Creators have started stealing each other's ideas.")),
             TelephoneIntroPhase => BeginTelephoneWriting(state, now),
-            TelephoneRevealPhase => BeginTelephoneVoteOrResults(state, now),
+            TelephoneResultsPhase when HasNextVoteHeat(state) =>
+                BeginNextVotingHeat(state, now, TelephoneVotingPhase),
             TelephoneResultsPhase => ScoreReview(state, ScoreReview3Phase,
                 "Several viewers have already complained."),
             ScoreReview3Phase => Transition(CommentsIntroPhase, ResetReview(state,
-                "Never read the comments. Write them instead.")),
+                "Unfortunately, people watched your videos.")),
             CommentsIntroPhase => BeginCommentsWriting(state, now),
-            CommentsRevealPhase => BeginVoting(state, now, CommentsVotingPhase),
-            CommentsResultsPhase => ScoreReview(state, ScoreReview4Phase,
-                "Your content has been consumed."),
+            CommentsResultsPhase when HasNextVoteHeat(state) =>
+                BeginNextVotingHeat(state, now, CommentsVotingPhase),
+            CommentsResultsPhase => GrowthReview(state, ScoreReview4Phase),
             ScoreReview4Phase => Transition(FinalIntroPhase, ResetReview(state,
-                "Human creativity remains barely detectable.")),
+                "The machine wants its platform back.")),
             FinalIntroPhase => BeginFinalWriting(state, now),
-            FinalRevealPhase => BeginVoting(state, now, FinalVotingPhase),
             FinalResultsPhase => Transition(FinalScoreReviewPhase, state with
             {
                 Message = state.MachineWonFinal
@@ -287,20 +269,20 @@ public sealed partial class SlopMachineGameModule : IGameModule
         SlopMachineState state,
         GameActionContext context) => current.Phase switch
         {
-            FreshWritingPhase => BeginTextReveal(state, FreshRevealPhase, "title"),
+            FreshWritingPhase => BeginTextVoting(state, FreshVotingPhase, context.ReceivedAtUtc),
             FreshVotingPhase => CompletePopularityVote(state, FreshResultsPhase, 1000, 1000,
                 "Viral Bonus"),
             RouletteSpinningPhase => BeginRouletteWriting(state, context.ReceivedAtUtc),
-            RouletteWritingPhase => BeginRouletteReveal(state),
+            RouletteWritingPhase => BeginRouletteVoting(state, context.ReceivedAtUtc),
             RouletteVotingPhase => CompletePopularityVote(state, RouletteResultsPhase, 1000, 1000,
                 "Algorithm Bonus"),
             TelephoneWritingPhase => BeginTelephoneMatching(state, context.ReceivedAtUtc),
-            TelephoneMatchingPhase => CompleteTelephoneMatching(state),
+            TelephoneMatchingPhase => CompleteTelephoneMatching(state, context.ReceivedAtUtc),
             TelephoneVotingPhase => CompleteTelephoneVote(state),
-            CommentsWritingPhase => BeginCommentsReveal(state),
+            CommentsWritingPhase => BeginCommentsVoting(state, context.ReceivedAtUtc),
             CommentsVotingPhase => CompletePopularityVote(state, CommentsResultsPhase, 1000, 1000,
                 "Engagement Bonus"),
-            FinalWritingPhase => BeginFinalReveal(state),
+            FinalWritingPhase => BeginFinalVoting(state, context.ReceivedAtUtc),
             FinalVotingPhase => CompleteFinalVote(state, context.ReceivedAtUtc),
             FinalMachineGuessPhase => CompleteMachineGuess(state),
             _ when HostCanAdvance(current.Phase) => Progress(current, state, context.ReceivedAtUtc),
@@ -328,12 +310,10 @@ public sealed partial class SlopMachineGameModule : IGameModule
     {
         GameIntroPhase or FreshIntroPhase or RouletteIntroPhase or TelephoneIntroPhase or
             CommentsIntroPhase or FinalIntroPhase => introDuration,
-        FreshRevealPhase or RouletteRevealPhase or TelephoneRevealPhase or CommentsRevealPhase or
-            FinalRevealPhase => revealDuration,
         FreshResultsPhase or RouletteResultsPhase or TelephoneResultsPhase or CommentsResultsPhase or
             FinalResultsPhase => resultsDuration,
-        ScoreReview1Phase or ScoreReview2Phase or ScoreReview3Phase or ScoreReview4Phase or
-            FinalScoreReviewPhase => scoreReviewDuration,
+        ScoreReview1Phase or ScoreReview3Phase or FinalScoreReviewPhase => scoreReviewDuration,
+        ScoreReview2Phase or ScoreReview4Phase => TimeSpan.FromSeconds(5),
         WinnerCelebrationPhase => winnerDuration,
         _ => null
     };
@@ -345,21 +325,19 @@ public sealed partial class SlopMachineGameModule : IGameModule
         SubmitSlopTextAction action)
     {
         var playerId = RequiredPlayer(state, context);
-        var maxLength = current.Phase == CommentsWritingPhase ? MaximumCommentLength : MaximumTitleLength;
-        var text = NormalizeText(action.Value, maxLength);
-        if (state.TextSubmissions.ContainsKey(playerId))
-        {
-            throw new GameRuleViolationException("already-submitted", "Your upload is already locked in.");
-        }
-        if (current.Phase == RouletteWritingPhase)
-        {
-            ValidateConstraint(text, state.Assignments[playerId].Curveball);
-        }
         if (current.Phase is not (FreshWritingPhase or RouletteWritingPhase or TelephoneWritingPhase or
             CommentsWritingPhase or FinalWritingPhase))
         {
             throw new GameRuleViolationException("wrong-phase", "Text submissions are not open right now.");
         }
+        if (state.TextSubmissions.ContainsKey(playerId))
+        {
+            throw new GameRuleViolationException("already-submitted", "Your upload is already locked in.");
+        }
+        var maxLength = current.Phase == CommentsWritingPhase ? MaximumCommentLength : MaximumTitleLength;
+        var text = current.Phase == RouletteWritingPhase
+            ? CompleteFormat(state.Assignments[playerId].Format, action.Values)
+            : NormalizeText(action.Value, maxLength);
 
         var submissions = state.TextSubmissions.ToDictionary();
         submissions.Add(playerId, text);
@@ -368,11 +346,11 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             return current.Phase switch
             {
-                FreshWritingPhase => BeginTextReveal(updated, FreshRevealPhase, "title"),
-                RouletteWritingPhase => BeginRouletteReveal(updated),
+                FreshWritingPhase => BeginTextVoting(updated, FreshVotingPhase, context.ReceivedAtUtc),
+                RouletteWritingPhase => BeginRouletteVoting(updated, context.ReceivedAtUtc),
                 TelephoneWritingPhase => BeginTelephoneMatching(updated, context.ReceivedAtUtc),
-                CommentsWritingPhase => BeginCommentsReveal(updated),
-                FinalWritingPhase => BeginFinalReveal(updated),
+                CommentsWritingPhase => BeginCommentsVoting(updated, context.ReceivedAtUtc),
+                FinalWritingPhase => BeginFinalVoting(updated, context.ReceivedAtUtc),
                 _ => GameTransition.To(current with { Data = GameJson.From(updated) })
             };
         }
@@ -396,7 +374,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             throw new GameRuleViolationException("respin-used", "Your one free re-spin is already used.");
         }
         var reel = action.Reel.Trim().ToLowerInvariant();
-        if (reel is not ("thumbnail" or "format" or "curveball"))
+        if (reel is not ("thumbnail" or "format"))
         {
             throw new GameRuleViolationException("invalid-reel", "Choose exactly one valid reel.");
         }
@@ -407,16 +385,12 @@ public sealed partial class SlopMachineGameModule : IGameModule
             {
                 ThumbnailId = PickUnusedThumbnail(state, random, [assignment.ThumbnailId]).Id
             },
-            "format" => assignment with
-            {
-                Format = PickDifferent(Formats, assignment.Format, random)
-            },
             _ => assignment with
             {
-                Curveball = PickDifferent(Curveballs, assignment.Curveball, random)
+                Format = PickDifferent(Formats, assignment.Format, random)
             }
         };
-        updatedAssignment = updatedAssignment with { RespinUsed = true, RespinnedReel = reel };
+        updatedAssignment = updatedAssignment with { RespinUsed = true };
         var assignments = state.Assignments.ToDictionary();
         assignments[playerId] = updatedAssignment;
         var used = reel == "thumbnail"
@@ -447,7 +421,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             throw new GameRuleViolationException("invalid-choice", "That upload is not available.");
         }
-        if (option.AuthorId == playerId || option.PartnerId == playerId)
+        if (option.AuthorId == playerId)
         {
             throw new GameRuleViolationException("self-vote", "You cannot vote for content you helped create.");
         }
@@ -477,7 +451,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         return Changed(current, updated, "SlopVoteSubmitted", playerId);
     }
 
-    private static GameTransition MatchTelephone(
+    private GameTransition MatchTelephone(
         GameModuleState current,
         SlopMachineState state,
         GameActionContext context,
@@ -508,7 +482,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         };
         var updated = state with { TelephoneMatches = matches };
         return matches.Values.All(item => item.SelectedThumbnailId is not null)
-            ? CompleteTelephoneMatching(updated)
+            ? CompleteTelephoneMatching(updated, context.ReceivedAtUtc)
             : Changed(current, updated, "TelephoneMatchSubmitted", playerId);
     }
 
@@ -552,8 +526,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         var used = state.UsedThumbnailIds.Append(thumbnail.Id).ToArray();
         var assignments = state.Participants.ToDictionary(
             participant => participant.PlayerId,
-            _ => new SlopAssignment(thumbnail.Id, string.Empty,
-                new SlopConstraint("Make it impossible not to click", SlopValidationKind.Informational)));
+            _ => new SlopAssignment(thumbnail.Id, string.Empty));
         var updated = ClearRoundInput(state) with
         {
             FreshHeat = heat,
@@ -565,20 +538,21 @@ public sealed partial class SlopMachineGameModule : IGameModule
         return Transition(FreshWritingPhase, updated, now.Add(titleDuration));
     }
 
-    private static GameTransition BeginTextReveal(SlopMachineState state, string phase, string kind)
+    private GameTransition BeginTextVoting(
+        SlopMachineState state,
+        string phase,
+        DateTimeOffset now)
     {
         var uploads = state.TextSubmissions.Select(item => new SlopSubmission(
-            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value, kind)).ToArray();
+            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value)).ToArray();
         var options = uploads.Select(upload => new SlopOption(
             upload.SubmissionId, upload.Text, upload.AuthorId, false, upload.ThumbnailId)).ToList();
         Shuffle(options, RandomFor(state, $"reveal-{phase}-{state.FreshHeat}"));
-        return Transition(phase, state with
+        return BeginVotingHeats(state with
         {
             Uploads = [.. state.Uploads, .. uploads],
-            Options = options,
-            Votes = new Dictionary<Guid, Guid>(),
             Message = "Anonymous uploads are entering the feed."
-        });
+        }, options, phase, now);
     }
 
     private GameTransition BeginRoulette(SlopMachineState state, DateTimeOffset now)
@@ -592,16 +566,13 @@ public sealed partial class SlopMachineGameModule : IGameModule
             used.Add(thumbnail.Id);
             assignments[participant.PlayerId] = new SlopAssignment(
                 thumbnail.Id,
-                Formats[random.Next(Formats.Length)],
-                Curveballs[random.Next(Curveballs.Length)]);
+                Formats[random.Next(Formats.Length)]);
         }
         return Transition(RouletteSpinningPhase, ClearRoundInput(state) with
         {
             UsedThumbnailIds = used,
             Assignments = assignments,
             ActiveThumbnailId = null,
-            RouletteHeat = 0,
-            RouletteHeats = [],
             Message = "The reels are choosing your fate. One re-spin, one reel."
         }, now.Add(rouletteDuration));
     }
@@ -611,41 +582,20 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             TextSubmissions = new Dictionary<Guid, string>(),
             Message = "Package the chaos into one irresistible upload."
-        }, now.Add(titleDuration));
+        }, now.Add(rouletteWritingDuration));
 
-    private static GameTransition BeginRouletteReveal(SlopMachineState state)
+    private GameTransition BeginRouletteVoting(SlopMachineState state, DateTimeOffset now)
     {
         var uploads = state.TextSubmissions.Select(item => new SlopSubmission(
-            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value, "roulette")).ToArray();
-        var random = RandomFor(state, "roulette-heats");
-        var ids = uploads.Select(upload => upload.SubmissionId).ToList();
-        Shuffle(ids, random);
-        var heatCount = (int)Math.Ceiling(ids.Count / 6d);
-        var heats = heatCount == 0
-            ? Array.Empty<IReadOnlyList<Guid>>()
-            : Enumerable.Range(0, heatCount)
-                .Select(index => (IReadOnlyList<Guid>)ids.Where((_, itemIndex) =>
-                    itemIndex % heatCount == index).ToArray()).ToArray();
-        var updated = state with
+            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value)).ToArray();
+        var options = uploads.Select(upload => new SlopOption(
+            upload.SubmissionId, upload.Text, upload.AuthorId, false, upload.ThumbnailId)).ToArray();
+        return BeginVotingHeats(state with
         {
             Uploads = [.. state.Uploads, .. uploads],
-            RouletteHeat = 0,
-            RouletteHeats = heats,
-            Votes = new Dictionary<Guid, Guid>(),
-            Options = heats.Length == 0 ? [] : uploads
-                .Where(upload => heats[0].Contains(upload.SubmissionId))
-                .Select(upload => new SlopOption(upload.SubmissionId, upload.Text, upload.AuthorId,
-                    false, upload.ThumbnailId)).ToArray(),
-            Message = heats.Length > 1 ? $"Upload heat 1 of {heats.Length}" : "Uploads complete."
-        };
-        return Transition(RouletteRevealPhase, updated);
+            Message = "Uploads complete."
+        }, options, RouletteVotingPhase, now);
     }
-
-    private static SlopOption[] RouletteOptions(SlopMachineState state, int heat) =>
-        state.Uploads.Where(upload => upload.Kind == "roulette" &&
-                state.RouletteHeats[heat].Contains(upload.SubmissionId))
-            .Select(upload => new SlopOption(upload.SubmissionId, upload.Text, upload.AuthorId,
-                false, upload.ThumbnailId)).ToArray();
 
     private GameTransition BeginTelephoneWriting(SlopMachineState state, DateTimeOffset now)
     {
@@ -657,8 +607,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             var thumbnail = PickUnusedThumbnail(state with { UsedThumbnailIds = used }, random);
             used.Add(thumbnail.Id);
             assignments[participant.PlayerId] = new SlopAssignment(
-                thumbnail.Id, string.Empty,
-                new SlopConstraint("Funny, but recognisable", SlopValidationKind.Informational));
+                thumbnail.Id, string.Empty);
         }
         return Transition(TelephoneWritingPhase, ClearRoundInput(state) with
         {
@@ -673,7 +622,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         var writers = state.TextSubmissions.Keys.ToList();
         if (writers.Count < 2)
         {
-            return Transition(TelephoneRevealPhase, state with
+            return Transition(TelephoneResultsPhase, state with
             {
                 TelephoneMatches = new Dictionary<Guid, TelephoneMatch>(),
                 Message = "Not enough uploads survived the telephone line."
@@ -710,7 +659,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         }, now.Add(telephoneMatchingDuration));
     }
 
-    private static GameTransition CompleteTelephoneMatching(SlopMachineState state)
+    private GameTransition CompleteTelephoneMatching(SlopMachineState state, DateTimeOffset now)
     {
         var awards = new List<ScoreAward>();
         var bonuses = new List<SlopBonus>();
@@ -720,7 +669,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             var text = state.TextSubmissions[match.WriterId];
             var thumbnailId = match.SelectedThumbnailId ?? match.IntendedThumbnailId;
             uploads.Add(new SlopSubmission(match.SubmissionId, match.WriterId, thumbnailId, text,
-                "telephone", match.MatcherId));
+                match.MatcherId));
             if (!match.IsCorrect)
             {
                 continue;
@@ -734,64 +683,43 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             Uploads = [.. state.Uploads, .. uploads],
             Bonuses = bonuses,
-            Message = "The wires have stopped smoking. Results incoming."
+            Message = "Vote for the funniest mangled upload."
         }, awards);
-        return new GameTransition(ModuleState(TelephoneRevealPhase, null, false, updated), awards,
-            [new GameEvent("TelephoneMatchesRevealed", GameJson.From(new { count = uploads.Count }))]);
-    }
-
-    private GameTransition BeginTelephoneVoteOrResults(SlopMachineState state, DateTimeOffset now)
-    {
-        if (state.Participants.Count < 3)
-        {
-            return Transition(TelephoneResultsPhase, state with
-            {
-                Message = "Two-player telephone uses objective matching only."
-            });
-        }
-        var options = state.Uploads.Where(upload => upload.Kind == "telephone")
+        var options = uploads
             .Select(upload => new SlopOption(upload.SubmissionId, upload.Text, upload.AuthorId,
                 false, upload.ThumbnailId, upload.PartnerId)).ToArray();
-        var updated = state with
-        {
-            Options = options,
-            Votes = new Dictionary<Guid, Guid>(),
-            Message = "Vote for the funniest mangled upload."
-        };
-        return EligibleVoters(updated).Length == 0
-            ? Transition(TelephoneResultsPhase, updated)
-            : Transition(TelephoneVotingPhase, updated, now.Add(votingDuration));
+        var voting = BeginVotingHeats(updated, options, TelephoneVotingPhase, now);
+        return new GameTransition(voting.State, awards,
+            [new GameEvent("TelephoneMatchesRevealed", GameJson.From(new { count = uploads.Count }))]);
     }
 
     private static GameTransition CompleteTelephoneVote(SlopMachineState state)
     {
         var counts = VoteCounts(state);
-        var max = counts.Values.DefaultIfEmpty().Max();
-        var winners = max == 0 ? [] : counts.Where(item => item.Value == max).Select(item => item.Key).ToArray();
+        var winners = AdjustedVoteWinners(state, counts);
         var awards = new List<ScoreAward>();
         var bonuses = state.Bonuses.ToList();
         foreach (var option in state.Options)
         {
             var votes = counts.GetValueOrDefault(option.OptionId);
-            if (option.AuthorId is not { } writer || option.PartnerId is not { } matcher)
+            if (option.AuthorId is not { } writer)
             {
                 continue;
             }
             if (votes > 0)
             {
                 awards.Add(new ScoreAward(writer, votes * 500, "Telephone pairing votes"));
-                awards.Add(new ScoreAward(matcher, votes * 500, "Telephone pairing votes"));
             }
             if (winners.Contains(option.OptionId))
             {
                 awards.Add(new ScoreAward(writer, 1000, "Telephone Disaster Bonus"));
-                awards.Add(new ScoreAward(matcher, 1000, "Telephone Disaster Bonus"));
                 bonuses.Add(new SlopBonus(writer, "Telephone Disaster Bonus", 1000));
-                bonuses.Add(new SlopBonus(matcher, "Telephone Disaster Bonus", 1000));
             }
         }
+        var uploadUpdates = UpdateUploads(state, counts, winners, 500, 1000);
         var updated = ApplyAwards(state with
         {
+            Uploads = uploadUpdates,
             Bonuses = bonuses,
             Message = "The funniest misunderstanding has gone viral."
         }, awards);
@@ -812,23 +740,29 @@ public sealed partial class SlopMachineGameModule : IGameModule
             rankedCandidates =
             [
                 new SlopSubmission(Guid.NewGuid(), Guid.Empty, fallbackThumbnailId,
-                    "The algorithm uploaded this by itself", "system")
+                    "The algorithm uploaded this by itself")
             ];
         }
         var random = RandomFor(state, "comments");
         var assignments = new Dictionary<Guid, SlopAssignment>();
+        var assignmentCounts = new Dictionary<Guid, int>();
         for (var index = 0; index < state.Participants.Count; index++)
         {
             var participant = state.Participants[index];
             var available = rankedCandidates.Where(upload => upload.AuthorId != participant.PlayerId)
                 .Take(3).ToArray();
             var eligible = available.Length > 0 ? available : rankedCandidates.Take(3).ToArray();
-            var selected = eligible[index % eligible.Length];
+            var selected = eligible
+                .OrderBy(upload => assignmentCounts.GetValueOrDefault(upload.SubmissionId))
+                .ThenByDescending(upload => upload.Votes)
+                .ThenByDescending(upload => upload.PointsAwarded)
+                .First();
+            assignmentCounts[selected.SubmissionId] =
+                assignmentCounts.GetValueOrDefault(selected.SubmissionId) + 1;
             assignments[participant.PlayerId] = new SlopAssignment(
                 selected.ThumbnailId,
                 selected.Text,
-                new SlopConstraint(CommentTypes[random.Next(CommentTypes.Length)],
-                    SlopValidationKind.Informational),
+                CommentTypes[random.Next(CommentTypes.Length)],
                 SourceSubmissionId: selected.SubmissionId);
         }
         return Transition(CommentsWritingPhase, ClearRoundInput(state) with
@@ -838,20 +772,20 @@ public sealed partial class SlopMachineGameModule : IGameModule
         }, now.Add(commentDuration));
     }
 
-    private static GameTransition BeginCommentsReveal(SlopMachineState state)
+    private GameTransition BeginCommentsVoting(SlopMachineState state, DateTimeOffset now)
     {
         var uploads = state.TextSubmissions.Select(item => new SlopSubmission(
-            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value, "comment")).ToArray();
+            Guid.NewGuid(), item.Key, state.Assignments[item.Key].ThumbnailId, item.Value,
+            ParentSubmissionId: state.Assignments[item.Key].SourceSubmissionId,
+            CommentType: state.Assignments[item.Key].CommentType)).ToArray();
         var options = uploads.Select(upload => new SlopOption(
             upload.SubmissionId, upload.Text, upload.AuthorId, false, upload.ThumbnailId)).ToList();
         Shuffle(options, RandomFor(state, "comment-reveal"));
-        return Transition(CommentsRevealPhase, state with
+        return BeginVotingHeats(state with
         {
             Uploads = [.. state.Uploads, .. uploads],
-            Options = options,
-            Votes = new Dictionary<Guid, Guid>(),
             Message = "A completely healthy comments section."
-        });
+        }, options, CommentsVotingPhase, now);
     }
 
     private GameTransition BeginFinalWriting(SlopMachineState state, DateTimeOffset now)
@@ -860,8 +794,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         var thumbnail = PickUnusedThumbnail(state, random, requireMachineTitles: true);
         var assignments = state.Participants.ToDictionary(
             participant => participant.PlayerId,
-            _ => new SlopAssignment(thumbnail.Id, string.Empty,
-                new SlopConstraint("Beat the machine", SlopValidationKind.Informational)));
+            _ => new SlopAssignment(thumbnail.Id, string.Empty));
         return Transition(FinalWritingPhase, ClearRoundInput(state) with
         {
             ActiveThumbnailId = thumbnail.Id,
@@ -871,7 +804,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         }, now.Add(titleDuration));
     }
 
-    private GameTransition BeginFinalReveal(SlopMachineState state)
+    private GameTransition BeginFinalVoting(SlopMachineState state, DateTimeOffset now)
     {
         var thumbnail = Thumbnail(state.ActiveThumbnailId!);
         var options = state.TextSubmissions.Select(item => new SlopOption(
@@ -881,14 +814,18 @@ public sealed partial class SlopMachineGameModule : IGameModule
         Shuffle(options, RandomFor(state, "final-options"));
         var uploads = state.TextSubmissions.Select(item => new SlopSubmission(
             options.Single(option => option.AuthorId == item.Key).OptionId,
-            item.Key, thumbnail.Id, item.Value, "final")).ToArray();
-        return Transition(FinalRevealPhase, state with
+            item.Key, thumbnail.Id, item.Value)).ToArray();
+        var updated = state with
         {
             Uploads = [.. state.Uploads, .. uploads],
             Options = options,
             Votes = new Dictionary<Guid, Guid>(),
+            VoteHeat = 0,
+            VoteHeats = [options.Select(option => option.OptionId).ToArray()],
+            VotingOpportunities = VotingOpportunities(state, options),
             Message = "Human and machine titles are now indistinguishable. Perfect."
-        });
+        };
+        return Transition(FinalVotingPhase, updated, now.Add(votingDuration));
     }
 
     private GameTransition CompleteFinalVote(SlopMachineState state, DateTimeOffset now)
@@ -920,10 +857,10 @@ public sealed partial class SlopMachineGameModule : IGameModule
         }
         var updated = ApplyAwards(state with
         {
+            Uploads = UpdateUploads(state, counts, humanWinners, 2000, 3000),
             MachineWonFinal = machineWon,
             Bonuses = bonuses,
             MachineGuesses = new Dictionary<Guid, IReadOnlyList<Guid>>(),
-            Votes = new Dictionary<Guid, Guid>(),
             Message = machineWon
                 ? "THE MACHINE WON. It has already posted an apology video."
                 : "Humanity wins the feed. Now spot both machine titles."
@@ -958,13 +895,36 @@ public sealed partial class SlopMachineGameModule : IGameModule
             [new GameEvent("MachineTitlesRevealed", GameJson.Empty)]);
     }
 
-    private GameTransition BeginVoting(SlopMachineState state, DateTimeOffset now, string phase)
+    private GameTransition BeginVotingHeats(
+        SlopMachineState state,
+        IReadOnlyList<SlopOption> options,
+        string phase,
+        DateTimeOffset now)
     {
-        var updated = state with
+        if (options.Count == 0)
         {
-            Votes = new Dictionary<Guid, Guid>(),
-            Message = "Vote with your heart. The machine prefers rage."
-        };
+            return Transition(ResultPhaseForVoting(phase), state with
+            {
+                Options = [],
+                Votes = new Dictionary<Guid, Guid>(),
+                VoteHeat = 0,
+                VoteHeats = [],
+                VotingOpportunities = new Dictionary<Guid, int>()
+            });
+        }
+        var heatCount = state.Participants.Count >= 7 && phase != FinalVotingPhase
+            ? (int)Math.Ceiling(options.Count / 4d)
+            : 1;
+        var heats = Enumerable.Range(0, heatCount)
+            .Select(index => (IReadOnlyList<Guid>)options.Where((_, optionIndex) =>
+                optionIndex % heatCount == index).Select(option => option.OptionId).ToArray())
+            .ToArray();
+        var firstOptions = options.Where(option => heats[0].Contains(option.OptionId)).ToArray();
+        var updated = OpenVoteHeat(state with
+        {
+            VoteHeat = 0,
+            VoteHeats = heats
+        }, firstOptions);
         return EligibleVoters(updated).Length == 0
             ? phase switch
             {
@@ -980,6 +940,41 @@ public sealed partial class SlopMachineGameModule : IGameModule
             : Transition(phase, updated, now.Add(votingDuration));
     }
 
+    private GameTransition BeginNextVotingHeat(SlopMachineState state, DateTimeOffset now, string phase)
+    {
+        var nextHeat = state.VoteHeat + 1;
+        var heatIds = state.VoteHeats![nextHeat];
+        var options = state.Uploads.Where(upload => heatIds.Contains(upload.SubmissionId))
+            .Select(upload => new SlopOption(upload.SubmissionId, upload.Text, upload.AuthorId,
+                false, upload.ThumbnailId, upload.PartnerId)).ToArray();
+        var updated = OpenVoteHeat(state with { VoteHeat = nextHeat }, options);
+        return Transition(phase, updated, now.Add(votingDuration));
+    }
+
+    private static SlopMachineState OpenVoteHeat(
+        SlopMachineState state,
+        IReadOnlyList<SlopOption> options) => state with
+        {
+            Options = options,
+            Votes = new Dictionary<Guid, Guid>(),
+            VotingOpportunities = VotingOpportunities(state, options),
+            Bonuses = [],
+            Message = "Vote with your heart. The machine prefers rage."
+        };
+
+    private static bool HasNextVoteHeat(SlopMachineState state) =>
+        state.VoteHeats is { Count: > 0 } && state.VoteHeat + 1 < state.VoteHeats.Count;
+
+    private static string ResultPhaseForVoting(string phase) => phase switch
+    {
+        FreshVotingPhase => FreshResultsPhase,
+        RouletteVotingPhase => RouletteResultsPhase,
+        TelephoneVotingPhase => TelephoneResultsPhase,
+        CommentsVotingPhase => CommentsResultsPhase,
+        FinalVotingPhase => FinalResultsPhase,
+        _ => throw new InvalidOperationException("Unexpected Slop Machine voting phase.")
+    };
+
     private static GameTransition CompletePopularityVote(
         SlopMachineState state,
         string resultPhase,
@@ -988,8 +983,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
         string bonusName)
     {
         var counts = VoteCounts(state);
-        var max = counts.Values.DefaultIfEmpty().Max();
-        var winners = max == 0 ? [] : counts.Where(item => item.Value == max).Select(item => item.Key).ToArray();
+        var winners = AdjustedVoteWinners(state, counts);
         var awards = new List<ScoreAward>();
         var bonuses = new List<SlopBonus>();
         foreach (var option in state.Options.Where(option => option.AuthorId.HasValue))
@@ -1006,21 +1000,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
                 bonuses.Add(new SlopBonus(option.AuthorId.Value, bonusName, winnerBonus));
             }
         }
-        var uploadUpdates = state.Uploads.Select(upload =>
-        {
-            var matching = state.Options.SingleOrDefault(option => option.OptionId == upload.SubmissionId);
-            if (matching is null)
-            {
-                return upload;
-            }
-            var votes = counts.GetValueOrDefault(upload.SubmissionId);
-            return upload with
-            {
-                Votes = votes,
-                PointsAwarded = votes * pointsPerVote + (winners.Contains(upload.SubmissionId) ? winnerBonus : 0),
-                WonBonus = winners.Contains(upload.SubmissionId)
-            };
-        }).ToArray();
+        var uploadUpdates = UpdateUploads(state, counts, winners, pointsPerVote, winnerBonus);
         var updated = ApplyAwards(state with
         {
             Uploads = uploadUpdates,
@@ -1048,7 +1028,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
                 CommentsWritingPhase or FinalWritingPhase => TextController(current, state, playerId),
             RouletteSpinningPhase => RespinController(state, playerId),
             FreshVotingPhase or RouletteVotingPhase or TelephoneVotingPhase or
-                CommentsVotingPhase or FinalVotingPhase => VoteController(state, playerId),
+                CommentsVotingPhase or FinalVotingPhase => VoteController(current, state, playerId),
             TelephoneMatchingPhase => TelephoneMatchController(state, playerId),
             FinalMachineGuessPhase => MachineGuessController(state, playerId),
             _ => waiting
@@ -1128,7 +1108,10 @@ public sealed partial class SlopMachineGameModule : IGameModule
             GameJson.From(new TextControllerConfiguration(
                 isComment ? MaximumCommentLength : MaximumTitleLength,
                 isComment ? "Type something the creator will regret…" : "Make it impossible not to click…",
-                submitted)));
+                submitted,
+                current.Phase == RouletteWritingPhase
+                    ? FormatSegments(state.Assignments[playerId].Format)
+                    : null)));
     }
 
     private static PlayerControllerView RespinController(SlopMachineState state, Guid playerId)
@@ -1147,19 +1130,24 @@ public sealed partial class SlopMachineGameModule : IGameModule
             [
                 new ControllerOption("thumbnail", "Thumbnail", "Get a different image",
                     ImageUrl: null),
-                new ControllerOption("format", "Format", assignment.Format),
-                new ControllerOption("curveball", "Curveball", assignment.Curveball.Text)
+                new ControllerOption("format", "Format", assignment.Format)
             ], SelectionProperty: "reel", SelectionScope: "roulette-respin")));
     }
 
-    private PlayerControllerView VoteController(SlopMachineState state, Guid playerId)
+    private PlayerControllerView VoteController(
+        GameModuleState current,
+        SlopMachineState state,
+        Guid playerId)
     {
         var options = OptionsForPlayer(state, playerId).Select((option, index) =>
             new ControllerOption(
                 option.OptionId.ToString("N"),
                 ((char)('A' + index)).ToString(),
                 option.Text,
-                ImageUrl: option.ThumbnailId is null ? null : Thumbnail(option.ThumbnailId).ImageUrl))
+                ImageUrl: current.Phase is FreshVotingPhase or FinalVotingPhase
+                    || option.ThumbnailId is null
+                        ? null
+                        : Thumbnail(option.ThumbnailId).ImageUrl))
             .ToArray();
         var submitted = state.Votes.GetValueOrDefault(playerId);
         return new PlayerControllerView(
@@ -1240,8 +1228,8 @@ public sealed partial class SlopMachineGameModule : IGameModule
             var body = current.Phase switch
             {
                 RouletteSpinningPhase or RouletteWritingPhase =>
-                    $"{assignment.Format} · {assignment.Curveball.Text}",
-                CommentsWritingPhase => $"{assignment.Curveball.Text}: {assignment.Format}",
+                    assignment.Format,
+                CommentsWritingPhase => $"{assignment.CommentType}: {assignment.Format}",
                 _ => null
             };
             return new GameMediaPresentationView("single",
@@ -1252,7 +1240,7 @@ public sealed partial class SlopMachineGameModule : IGameModule
             ]);
         }
         if (current.Phase is FreshVotingPhase or RouletteVotingPhase or TelephoneVotingPhase or
-            CommentsVotingPhase or FinalVotingPhase or FinalMachineGuessPhase)
+            CommentsVotingPhase)
         {
             return new GameMediaPresentationView("single",
                 state.ActiveThumbnailId is { } id
@@ -1268,37 +1256,60 @@ public sealed partial class SlopMachineGameModule : IGameModule
         {
             return null;
         }
-        if (current.Phase is FreshIntroPhase or FreshWritingPhase or FreshRevealPhase or FreshVotingPhase or
-            FreshResultsPhase or FinalIntroPhase or FinalWritingPhase or FinalRevealPhase or FinalVotingPhase or
+        if (current.Phase is FreshIntroPhase or FreshWritingPhase or FreshVotingPhase or FreshResultsPhase or
+            FinalIntroPhase or FinalWritingPhase or FinalVotingPhase or
             FinalMachineGuessPhase or FinalResultsPhase)
         {
             return state.ActiveThumbnailId is { } id
                 ? new GameMediaPresentationView("hero", [MediaItem(Thumbnail(id))])
                 : null;
         }
-        if (current.Phase is RouletteRevealPhase or RouletteVotingPhase or RouletteResultsPhase or
-            CommentsRevealPhase or CommentsVotingPhase or CommentsResultsPhase)
+        if (current.Phase is CommentsVotingPhase or CommentsResultsPhase)
+        {
+            return new GameMediaPresentationView("comment-feed", state.Options.Select(option =>
+            {
+                var comment = state.Uploads.Single(upload => upload.SubmissionId == option.OptionId);
+                var parent = state.Uploads.SingleOrDefault(upload =>
+                    upload.SubmissionId == comment.ParentSubmissionId);
+                var thumbnail = Thumbnail(option.ThumbnailId!);
+                var badge = current.Phase.EndsWith("Results", StringComparison.Ordinal) && comment.WonBonus
+                    ? "PINNED COMMENT"
+                    : comment.CommentType?.ToUpperInvariant();
+                return new GameMediaItem(option.OptionId.ToString("N"), thumbnail.ImageUrl,
+                    thumbnail.AlternativeText, parent?.Text ?? "A returning upload", option.Text, badge);
+            }).ToArray());
+        }
+        if (current.Phase is RouletteVotingPhase or RouletteResultsPhase)
         {
             return new GameMediaPresentationView("gallery", state.Options.Select(option =>
             {
                 var thumbnail = Thumbnail(option.ThumbnailId!);
+                var upload = state.Uploads.SingleOrDefault(item => item.SubmissionId == option.OptionId);
                 return new GameMediaItem(option.OptionId.ToString("N"), thumbnail.ImageUrl,
                     thumbnail.AlternativeText, option.Text,
                     current.Phase.EndsWith("Results", StringComparison.Ordinal)
                         ? ResultDetail(state, option)
+                        : null,
+                    current.Phase.EndsWith("Results", StringComparison.Ordinal) && upload?.WonBonus == true
+                        ? "HEAT WINNER"
                         : null);
             }).ToArray());
         }
-        if (current.Phase is TelephoneRevealPhase or TelephoneVotingPhase or TelephoneResultsPhase)
+        if (current.Phase is TelephoneVotingPhase or TelephoneResultsPhase)
         {
-            var items = state.TelephoneMatches.Values.Select(match =>
+            var items = state.Options.Select(option =>
             {
+                var match = state.TelephoneMatches.Values.Single(item =>
+                    item.SubmissionId == option.OptionId);
                 var selected = Thumbnail(match.SelectedThumbnailId ?? match.IntendedThumbnailId);
+                var upload = state.Uploads.SingleOrDefault(item => item.SubmissionId == option.OptionId);
                 return new GameMediaItem(match.SubmissionId.ToString("N"), selected.ImageUrl,
                     selected.AlternativeText, state.TextSubmissions[match.WriterId],
                     match.SelectedThumbnailId is null ? "No match submitted"
                         : match.IsCorrect ? "ALGORITHM MATCHED" : "ALGORITHM MANGLED",
-                    match.IsCorrect ? "MATCH" : "MANGLED");
+                    current.Phase.EndsWith("Results", StringComparison.Ordinal) && upload?.WonBonus == true
+                        ? "TELEPHONE WINNER"
+                        : match.IsCorrect ? "MATCH" : "MANGLED");
             }).ToArray();
             return new GameMediaPresentationView("gallery", items);
         }
@@ -1307,26 +1318,68 @@ public sealed partial class SlopMachineGameModule : IGameModule
 
     private static IReadOnlyList<GamePresentationEntry> DisplayEntries(string phase, SlopMachineState state)
     {
+        if (phase is ScoreReview2Phase or ScoreReview4Phase)
+        {
+            var leader = GrowthLeader(state);
+            return
+            [
+                new GamePresentationEntry(
+                    leader.PlayerId,
+                    leader.DisplayName,
+                    $"NOW TRENDING AT #{leader.Rank}",
+                    leader.Rank,
+                    leader.Gained)
+            ];
+        }
         if (IsScoreScreen(phase) || phase == WinnerCelebrationPhase)
         {
             return RankedParticipants(state);
         }
         if (phase.EndsWith("Results", StringComparison.Ordinal) ||
-            phase.EndsWith("Voting", StringComparison.Ordinal) || phase.EndsWith("Reveal", StringComparison.Ordinal) ||
-            phase == FinalMachineGuessPhase)
+            phase.EndsWith("Voting", StringComparison.Ordinal) || phase == FinalMachineGuessPhase)
         {
             var counts = VoteCounts(state);
-            var ranked = state.Options.OrderByDescending(option => counts.GetValueOrDefault(option.OptionId))
-                .ThenBy(option => option.OptionId).ToArray();
-            return ranked.Select((option, index) => new GamePresentationEntry(
-                option.AuthorId ?? Guid.Empty,
-                ((char)('A' + index)).ToString(),
-                phase.EndsWith("Results", StringComparison.Ordinal)
-                    ? $"{option.Text} · {AuthorLabel(state, option)}"
-                    : option.Text,
-                phase.EndsWith("Results", StringComparison.Ordinal) ? index + 1 : null,
-                option.AuthorId is { } author ? state.Bonuses.Where(item => item.PlayerId == author).Sum(item => item.Points) : 0))
-                .ToArray();
+            var revealing = phase.EndsWith("Results", StringComparison.Ordinal) ||
+                phase == FinalMachineGuessPhase;
+            var opportunities = state.VotingOpportunities ?? VotingOpportunities(state, state.Options);
+            var ranked = revealing
+                ? state.Options.OrderByDescending(option => phase.StartsWith("Final", StringComparison.Ordinal)
+                    ? counts.GetValueOrDefault(option.OptionId)
+                    : opportunities.GetValueOrDefault(option.OptionId) == 0
+                        ? 0m
+                        : (decimal)counts.GetValueOrDefault(option.OptionId) /
+                            opportunities.GetValueOrDefault(option.OptionId))
+                    .ThenBy(option => option.OptionId).ToArray()
+                : state.Options.ToArray();
+            var entries = new List<GamePresentationEntry>();
+            decimal? previousScore = null;
+            var rank = 0;
+            for (var index = 0; index < ranked.Length; index++)
+            {
+                var option = ranked[index];
+                var score = phase.StartsWith("Final", StringComparison.Ordinal)
+                    ? counts.GetValueOrDefault(option.OptionId)
+                    : opportunities.GetValueOrDefault(option.OptionId) == 0
+                        ? 0m
+                        : (decimal)counts.GetValueOrDefault(option.OptionId) /
+                            opportunities.GetValueOrDefault(option.OptionId);
+                if (revealing && score != previousScore)
+                {
+                    rank = index + 1;
+                    previousScore = score;
+                }
+                var upload = state.Uploads.SingleOrDefault(item => item.SubmissionId == option.OptionId);
+                entries.Add(new GamePresentationEntry(
+                    option.AuthorId ?? Guid.Empty,
+                    ((char)('A' + index)).ToString(),
+                    revealing
+                        ? $"{option.Text} · {AuthorLabel(state, option)} · " +
+                            $"{counts.GetValueOrDefault(option.OptionId)} vote(s)"
+                        : option.Text,
+                    revealing ? rank : null,
+                    upload?.PointsAwarded ?? 0));
+            }
+            return entries;
         }
         return state.Participants.Select(participant => new GamePresentationEntry(
             participant.PlayerId, participant.DisplayName, "CHANNEL ONLINE", null, 0)).ToArray();
@@ -1348,10 +1401,12 @@ public sealed partial class SlopMachineGameModule : IGameModule
                 previous = score;
             }
             var earnedThisRound = score - state.ScoreReviewStart.GetValueOrDefault(ordered[index].PlayerId);
+            var hits = state.Uploads.Count(upload =>
+                upload.AuthorId == ordered[index].PlayerId && upload.WonBonus);
             entries.Add(new GamePresentationEntry(
                 ordered[index].PlayerId,
                 ordered[index].DisplayName,
-                $"{score:N0} views",
+                $"{score:N0} views · {hits} viral hit{(hits == 1 ? string.Empty : "s")}",
                 rank,
                 earnedThisRound));
         }
@@ -1373,54 +1428,56 @@ public sealed partial class SlopMachineGameModule : IGameModule
             return current.Phase switch
             {
                 RouletteSpinningPhase =>
-                    $"FORMAT: {assignment.Format} · CURVEBALL: {assignment.Curveball.Text}",
+                    $"FORMAT: {assignment.Format}",
                 RouletteWritingPhase =>
-                    $"Use “{assignment.Format}”. Curveball: {assignment.Curveball.Text}.",
+                    $"Complete the blank{(FormatSegments(assignment.Format).Length == 3 ? "s" : string.Empty)} in “{assignment.Format}”.",
                 CommentsWritingPhase =>
-                    $"Write {assignment.Curveball.Text.ToLowerInvariant()} beneath “{assignment.Format}”.",
-                _ => assignment.Curveball.Text
+                    $"Write {assignment.CommentType?.ToLowerInvariant()} beneath “{assignment.Format}”.",
+                TelephoneWritingPhase => "Make the title funny but recognisable.",
+                FreshWritingPhase => "Make it impossible not to click.",
+                FinalWritingPhase => "Write humanity's last clickbait title.",
+                _ => state.Message
             };
         }
         return state.Message;
     }
 
     private static bool HostCanAdvance(string phase) => phase is GameIntroPhase or FreshIntroPhase or
-        FreshRevealPhase or FreshResultsPhase or ScoreReview1Phase or RouletteIntroPhase or
-        RouletteSpinningPhase or RouletteRevealPhase or RouletteResultsPhase or ScoreReview2Phase or
-        TelephoneIntroPhase or TelephoneRevealPhase or TelephoneResultsPhase or ScoreReview3Phase or
-        CommentsIntroPhase or CommentsRevealPhase or CommentsResultsPhase or ScoreReview4Phase or
-        FinalIntroPhase or FinalRevealPhase or FinalResultsPhase or FinalScoreReviewPhase or
+        FreshResultsPhase or ScoreReview1Phase or RouletteIntroPhase or RouletteSpinningPhase or
+        RouletteResultsPhase or ScoreReview2Phase or TelephoneIntroPhase or TelephoneResultsPhase or
+        ScoreReview3Phase or CommentsIntroPhase or CommentsResultsPhase or ScoreReview4Phase or
+        FinalIntroPhase or FinalResultsPhase or FinalScoreReviewPhase or
         WinnerCelebrationPhase;
 
     private static string? AdvanceLabel(string phase) => phase switch
     {
         RouletteSpinningPhase => "Stop reels now",
-        GameIntroPhase or FreshIntroPhase or FreshRevealPhase or FreshResultsPhase or ScoreReview1Phase or
-            RouletteIntroPhase or RouletteRevealPhase or RouletteResultsPhase or ScoreReview2Phase or
-            TelephoneIntroPhase or TelephoneRevealPhase or TelephoneResultsPhase or ScoreReview3Phase or
-            CommentsIntroPhase or CommentsRevealPhase or CommentsResultsPhase or ScoreReview4Phase or
-            FinalIntroPhase or FinalRevealPhase or FinalResultsPhase or FinalScoreReviewPhase or
+        GameIntroPhase or FreshIntroPhase or FreshResultsPhase or ScoreReview1Phase or
+            RouletteIntroPhase or RouletteResultsPhase or ScoreReview2Phase or TelephoneIntroPhase or
+            TelephoneResultsPhase or ScoreReview3Phase or CommentsIntroPhase or CommentsResultsPhase or
+            ScoreReview4Phase or FinalIntroPhase or FinalResultsPhase or FinalScoreReviewPhase or
             WinnerCelebrationPhase => "Continue now",
         _ => null
     };
 
-    private static bool IsScoreScreen(string phase) => phase is ScoreReview1Phase or ScoreReview2Phase or
-        ScoreReview3Phase or ScoreReview4Phase or FinalScoreReviewPhase;
+    private static bool IsScoreScreen(string phase) =>
+        phase is ScoreReview1Phase or ScoreReview3Phase or FinalScoreReviewPhase;
 
     private static string DisplayTitle(string phase) => phase switch
     {
         GameIntroPhase => "SLOP MACHINE",
-        FreshIntroPhase or FreshWritingPhase or FreshRevealPhase or FreshVotingPhase or FreshResultsPhase =>
+        FreshIntroPhase or FreshWritingPhase or FreshVotingPhase or FreshResultsPhase =>
             "FRESH SLOP",
-        RouletteIntroPhase or RouletteSpinningPhase or RouletteWritingPhase or RouletteRevealPhase or
+        RouletteIntroPhase or RouletteSpinningPhase or RouletteWritingPhase or
             RouletteVotingPhase or RouletteResultsPhase => "ALGORITHM ROULETTE",
-        TelephoneIntroPhase or TelephoneWritingPhase or TelephoneMatchingPhase or TelephoneRevealPhase or
+        TelephoneIntroPhase or TelephoneWritingPhase or TelephoneMatchingPhase or
             TelephoneVotingPhase or TelephoneResultsPhase => "THUMBNAIL TELEPHONE",
-        CommentsIntroPhase or CommentsWritingPhase or CommentsRevealPhase or CommentsVotingPhase or
+        CommentsIntroPhase or CommentsWritingPhase or CommentsVotingPhase or
             CommentsResultsPhase => "COMMENTS SECTION",
-        FinalIntroPhase or FinalWritingPhase or FinalRevealPhase or FinalVotingPhase or
+        FinalIntroPhase or FinalWritingPhase or FinalVotingPhase or
             FinalMachineGuessPhase or FinalResultsPhase => "BEAT THE MACHINE",
         WinnerCelebrationPhase => "THE ALGORITHM HAS CHOSEN ITS HUMAN",
+        ScoreReview2Phase or ScoreReview4Phase => "CHANNEL UPDATE",
         _ => "CURRENT STANDINGS"
     };
 
@@ -1429,34 +1486,28 @@ public sealed partial class SlopMachineGameModule : IGameModule
         GameIntroPhase => "Feed the algorithm. Harvest the views.",
         FreshIntroPhase => "Everyone captions the same irresistible thumbnail.",
         FreshWritingPhase => $"Fresh Slop · Heat {state.FreshHeat + 1} of 2",
-        FreshRevealPhase => "The uploads have arrived anonymously.",
         FreshVotingPhase => "Which title would you click?",
         FreshResultsPhase => "Creators revealed. Views harvested.",
-        RouletteIntroPhase => "Three reels. One free re-spin. Infinite regret.",
-        RouletteSpinningPhase => "THUMBNAIL · FORMAT · CURVEBALL",
+        RouletteIntroPhase => "Two reels. One free re-spin. Infinite regret.",
+        RouletteSpinningPhase => "THUMBNAIL · TITLE FORMAT",
         RouletteWritingPhase => "Turn your cursed assignment into content.",
-        RouletteRevealPhase => state.RouletteHeats.Count > 1
-            ? $"Upload heat {state.RouletteHeat + 1} of {state.RouletteHeats.Count}"
-            : "The complete uploads",
         RouletteVotingPhase => "Feed one upload to the algorithm.",
         RouletteResultsPhase => "Algorithm Bonus awarded.",
         TelephoneIntroPhase => "Write it. Scramble it. Try to recognise it.",
         TelephoneWritingPhase => "Make the title funny but recognisable.",
         TelephoneMatchingPhase => "Reconnect a mystery title to its thumbnail.",
-        TelephoneRevealPhase => "Did the algorithm match or mangle it?",
         TelephoneVotingPhase => "Vote for the funniest resulting pairing.",
         TelephoneResultsPhase => "The telephone line has stopped screaming.",
         CommentsIntroPhase => "The worst part of every upload is now open.",
         CommentsWritingPhase => "Write beneath a returning viral upload.",
-        CommentsRevealPhase => "Please do not read the comments.",
         CommentsVotingPhase => "Reward the most engaging mistake.",
         CommentsResultsPhase => "Engagement Bonus awarded.",
         FinalIntroPhase => "Humans versus two stored machine titles.",
         FinalWritingPhase => "Write humanity's last clickbait title.",
-        FinalRevealPhase => "Which titles came from the machine? Nobody knows yet.",
         FinalVotingPhase => "Vote for the funniest title.",
         FinalMachineGuessPhase => "Identify both machine-generated titles.",
         FinalResultsPhase => "Machine authorship revealed.",
+        ScoreReview2Phase or ScoreReview4Phase => GrowthHeadline(state),
         FinalScoreReviewPhase => "FINAL VIEW COUNT",
         WinnerCelebrationPhase => state.Message,
         _ when IsScoreScreen(phase) => "CURRENT CHANNEL RANKINGS",
@@ -1510,6 +1561,41 @@ public sealed partial class SlopMachineGameModule : IGameModule
     private static GameTransition ScoreReview(SlopMachineState state, string phase, string message) =>
         Transition(phase, state with { Message = message });
 
+    private static GameTransition GrowthReview(SlopMachineState state, string phase)
+    {
+        var leader = GrowthLeader(state);
+        return Transition(phase, state with
+        {
+            Message = $"NOW TRENDING AT #{leader.Rank}"
+        });
+    }
+
+    private static string GrowthHeadline(SlopMachineState state)
+    {
+        var leader = GrowthLeader(state);
+        return $"{leader.DisplayName.ToUpperInvariant()} GAINED {leader.Gained:N0} VIEWS";
+    }
+
+    private static (Guid PlayerId, string DisplayName, int Gained, int Rank) GrowthLeader(
+        SlopMachineState state)
+    {
+        var ranked = state.Participants
+            .OrderByDescending(participant => TotalScore(state, participant.PlayerId))
+            .ThenBy(participant => participant.DisplayName, StringComparer.Ordinal)
+            .ToArray();
+        var leader = state.Participants
+            .OrderByDescending(participant => TotalScore(state, participant.PlayerId) -
+                state.ScoreReviewStart.GetValueOrDefault(participant.PlayerId))
+            .ThenByDescending(participant => TotalScore(state, participant.PlayerId))
+            .ThenBy(participant => participant.DisplayName, StringComparer.Ordinal)
+            .First();
+        return (
+            leader.PlayerId,
+            leader.DisplayName,
+            TotalScore(state, leader.PlayerId) - state.ScoreReviewStart.GetValueOrDefault(leader.PlayerId),
+            Array.FindIndex(ranked, participant => participant.PlayerId == leader.PlayerId) + 1);
+    }
+
     private static SlopMachineState ResetReview(SlopMachineState state, string message) => state with
     {
         ScoreReviewStart = state.Participants.ToDictionary(
@@ -1518,6 +1604,9 @@ public sealed partial class SlopMachineGameModule : IGameModule
         Bonuses = [],
         Options = [],
         Votes = new Dictionary<Guid, Guid>(),
+        VoteHeat = 0,
+        VoteHeats = [],
+        VotingOpportunities = new Dictionary<Guid, int>(),
         Message = message
     };
 
@@ -1529,13 +1618,10 @@ public sealed partial class SlopMachineGameModule : IGameModule
         Votes = new Dictionary<Guid, Guid>(),
         TelephoneMatches = new Dictionary<Guid, TelephoneMatch>(),
         MachineGuesses = new Dictionary<Guid, IReadOnlyList<Guid>>(),
-        Bonuses = []
-    };
-
-    private static SlopMachineState ClearVotes(SlopMachineState state) => state with
-    {
-        Votes = new Dictionary<Guid, Guid>(),
-        Bonuses = []
+        Bonuses = [],
+        VoteHeat = 0,
+        VoteHeats = [],
+        VotingOpportunities = new Dictionary<Guid, int>()
     };
 
     private static SlopMachineState ApplyAwards(
@@ -1556,12 +1642,59 @@ public sealed partial class SlopMachineGameModule : IGameModule
         return participant.StartingScore + state.EarnedViews.GetValueOrDefault(playerId);
     }
 
+    private static Dictionary<Guid, int> VotingOpportunities(
+        SlopMachineState state,
+        IReadOnlyList<SlopOption> options) => options.ToDictionary(
+            option => option.OptionId,
+            option => state.Participants.Count(participant => option.AuthorId != participant.PlayerId));
+
+    private static Guid[] AdjustedVoteWinners(
+        SlopMachineState state,
+        IReadOnlyDictionary<Guid, int> counts)
+    {
+        if (counts.Values.DefaultIfEmpty().Max() == 0)
+        {
+            return [];
+        }
+        var opportunities = state.VotingOpportunities ?? VotingOpportunities(state, state.Options);
+        var adjusted = state.Options.ToDictionary(
+            option => option.OptionId,
+            option => opportunities.GetValueOrDefault(option.OptionId) == 0
+                ? 0m
+                : (decimal)counts.GetValueOrDefault(option.OptionId) /
+                    opportunities.GetValueOrDefault(option.OptionId));
+        var best = adjusted.Values.Max();
+        return adjusted.Where(item => item.Value == best && best > 0)
+            .Select(item => item.Key).ToArray();
+    }
+
+    private static SlopSubmission[] UpdateUploads(
+        SlopMachineState state,
+        IReadOnlyDictionary<Guid, int> counts,
+        IReadOnlyCollection<Guid> winners,
+        int pointsPerVote,
+        int winnerBonus) => state.Uploads.Select(upload =>
+        {
+            if (state.Options.All(option => option.OptionId != upload.SubmissionId))
+            {
+                return upload;
+            }
+            var votes = counts.GetValueOrDefault(upload.SubmissionId);
+            return upload with
+            {
+                Votes = votes,
+                PointsAwarded = votes * pointsPerVote +
+                    (winners.Contains(upload.SubmissionId) ? winnerBonus : 0),
+                WonBonus = winners.Contains(upload.SubmissionId)
+            };
+        }).ToArray();
+
     private static Guid[] EligibleVoters(SlopMachineState state) => state.Participants
         .Where(participant => OptionsForPlayer(state, participant.PlayerId).Length > 0)
         .Select(participant => participant.PlayerId).ToArray();
 
     private static SlopOption[] OptionsForPlayer(SlopMachineState state, Guid playerId) =>
-        state.Options.Where(option => option.AuthorId != playerId && option.PartnerId != playerId).ToArray();
+        state.Options.Where(option => option.AuthorId != playerId).ToArray();
 
     private static Dictionary<Guid, int> VoteCounts(SlopMachineState state) =>
         state.Votes.Values.GroupBy(optionId => optionId).ToDictionary(group => group.Key, group => group.Count());
@@ -1599,24 +1732,29 @@ public sealed partial class SlopMachineGameModule : IGameModule
         return normalized;
     }
 
-    private static void ValidateConstraint(string value, SlopConstraint constraint)
+    private static string CompleteFormat(string format, IReadOnlyList<string>? values)
     {
-        var words = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var valid = constraint.ValidationKind switch
-        {
-            SlopValidationKind.ExactWords => words.Length == constraint.WordCount,
-            SlopValidationKind.MinimumWords => words.Length >= constraint.WordCount,
-            SlopValidationKind.MaximumWords => words.Length <= constraint.WordCount,
-            SlopValidationKind.RequiredWord => words.Contains(
-                constraint.RequiredWord, StringComparer.OrdinalIgnoreCase),
-            SlopValidationKind.MustContainNumber => value.Any(char.IsDigit),
-            _ => true
-        };
-        if (!valid)
+        var segments = FormatSegments(format);
+        var blankCount = segments.Length - 1;
+        if (blankCount is < 1 or > 2 || values is null || values.Count != blankCount)
         {
             throw new GameRuleViolationException(
-                "constraint-not-met", $"Your title must follow this curveball: {constraint.Text}.");
+                "invalid-format", "Complete every blank in the assigned title format.");
         }
+        var normalizedValues = values.Select(value => NormalizeText(value, MaximumTitleLength)).ToArray();
+        var completed = string.Concat(segments.Select((segment, index) =>
+            index < normalizedValues.Length ? segment + normalizedValues[index] : segment));
+        return NormalizeText(completed, MaximumTitleLength);
+    }
+
+    private static string[] FormatSegments(string format)
+    {
+        var segments = format.Split("___", StringSplitOptions.None);
+        if (segments.Length is < 2 or > 3)
+        {
+            throw new InvalidOperationException("Slop Machine title formats require one or two blanks.");
+        }
+        return segments;
     }
 
     private static List<Guid> Derange(List<Guid> writers, Random random)
@@ -1741,6 +1879,22 @@ public sealed partial class SlopMachineGameModule : IGameModule
             return value;
         }
         throw new GameRuleViolationException("invalid-payload", $"A valid {propertyName} is required.");
+    }
+
+    private static string[]? ReadOptionalStrings(JsonElement payload, string propertyName)
+    {
+        if (payload.ValueKind != JsonValueKind.Object ||
+            !payload.TryGetProperty(propertyName, out var property) ||
+            property.ValueKind == JsonValueKind.Null)
+        {
+            return null;
+        }
+        if (property.ValueKind != JsonValueKind.Array ||
+            property.EnumerateArray().Any(item => item.ValueKind != JsonValueKind.String))
+        {
+            throw new GameRuleViolationException("invalid-payload", $"Valid {propertyName} are required.");
+        }
+        return property.EnumerateArray().Select(item => item.GetString()!).ToArray();
     }
 
     private static Guid ReadGuid(JsonElement payload, string propertyName)

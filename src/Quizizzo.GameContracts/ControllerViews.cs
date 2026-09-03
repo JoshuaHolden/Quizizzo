@@ -61,7 +61,12 @@ public sealed record VoteControllerConfiguration(
 public sealed record TextControllerConfiguration(
     int MaximumLength,
     string Placeholder,
-    string? SubmittedValue = null);
+    string? SubmittedValue = null,
+    IReadOnlyList<string>? FormatSegments = null);
+
+public sealed record TextControllerSubmission(
+    string Value,
+    IReadOnlyList<string> Values);
 
 public sealed record ChoiceControllerConfiguration(
     IReadOnlyList<ControllerOption> Options,

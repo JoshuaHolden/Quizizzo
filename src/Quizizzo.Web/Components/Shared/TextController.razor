@@ -2,21 +2,49 @@
 
 <div class="text-controller">
     <label for="text-answer" class="form-label fw-semibold">Your answer</label>
-    <textarea id="text-answer"
-              class="form-control"
-              rows="4"
-              maxlength="@Configuration.MaximumLength"
-              placeholder="@Configuration.Placeholder"
-              disabled="@Disabled"
-              @bind="value"
-              @bind:event="oninput"></textarea>
+    @if (HasFormat && Configuration.SubmittedValue is { } lockedTitle)
+    {
+        <div class="format-answer format-answer-locked" id="text-answer">
+            <span>Locked title</span>
+            <strong>@lockedTitle</strong>
+        </div>
+    }
+    else if (HasFormat)
+    {
+        <div id="text-answer" class="format-answer" aria-label="Complete the title format">
+            @for (var index = 0; index < blankValues.Length; index++)
+            {
+                var blankIndex = index;
+                <span class="format-answer-segment">@Configuration.FormatSegments![index]</span>
+                <input class="form-control format-answer-input"
+                       maxlength="@Configuration.MaximumLength"
+                       placeholder="Blank @(index + 1)"
+                       aria-label="Title blank @(index + 1)"
+                       disabled="@Disabled"
+                       @bind="blankValues[blankIndex]"
+                       @bind:event="oninput" />
+            }
+            <span class="format-answer-segment">@Configuration.FormatSegments![^1]</span>
+        </div>
+    }
+    else
+    {
+        <textarea id="text-answer"
+                  class="form-control"
+                  rows="4"
+                  maxlength="@Configuration.MaximumLength"
+                  placeholder="@Configuration.Placeholder"
+                  disabled="@Disabled"
+                  @bind="value"
+                  @bind:event="oninput"></textarea>
+    }
     <div class="controller-meta mt-1">
         <span class="form-text">Keep it short and readable.</span>
         <span class="form-text" aria-live="polite">@CharacterCount/@Configuration.MaximumLength</span>
     </div>
     <button type="button"
             class="btn btn-primary btn-lg w-100 mt-2"
-            disabled="@(Disabled || string.IsNullOrWhiteSpace(value) || CharacterCount > Configuration.MaximumLength)"
+            disabled="@(Disabled || !CanSubmit)"
             @onclick="SubmitAsync">
         @SubmitLabel
     </button>
@@ -26,10 +54,19 @@
     [Parameter, EditorRequired] public TextControllerConfiguration Configuration { get; set; } = default!;
     [Parameter] public string SubmitLabel { get; set; } = "Send my answer";
     [Parameter] public bool Disabled { get; set; }
-    [Parameter] public EventCallback<string> Submitted { get; set; }
+    [Parameter] public EventCallback<TextControllerSubmission> Submitted { get; set; }
 
     private string value = string.Empty;
-    private int CharacterCount => value.Length;
+    private string[] blankValues = [];
+    private bool HasFormat => Configuration.FormatSegments is { Count: >= 2 };
+    private string CompletedValue => HasFormat
+        ? string.Concat(Configuration.FormatSegments!.Select((segment, index) =>
+            index < blankValues.Length ? segment + blankValues[index] : segment))
+        : value;
+    private int CharacterCount => CompletedValue.Length;
+    private bool CanSubmit => CharacterCount <= Configuration.MaximumLength &&
+        (HasFormat ? blankValues.All(item => !string.IsNullOrWhiteSpace(item)) :
+            !string.IsNullOrWhiteSpace(value));
 
     protected override void OnParametersSet()
     {
@@ -37,9 +74,14 @@
         {
             value = submitted;
         }
+        var blankCount = Math.Max(0, Configuration.FormatSegments?.Count - 1 ?? 0);
+        if (blankValues.Length != blankCount)
+        {
+            blankValues = new string[blankCount];
+        }
     }
 
-    private Task SubmitAsync() => string.IsNullOrWhiteSpace(value)
+    private Task SubmitAsync() => !CanSubmit
         ? Task.CompletedTask
-        : Submitted.InvokeAsync(value);
+        : Submitted.InvokeAsync(new TextControllerSubmission(CompletedValue, blankValues));
 }
