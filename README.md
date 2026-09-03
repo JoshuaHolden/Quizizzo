@@ -76,9 +76,9 @@ Dependencies point inward from the Web composition root toward Application, Doma
 
 ## Party and display foundation
 
-Authenticated hosts use `/host` to create or resume their active party and `/host/party/{partyId}` for the lobby foundation. Active room codes are four unambiguous characters and are protected by a PostgreSQL partial unique index. Host ownership is checked in the application layer and backed by the Identity user foreign key.
+Authenticated hosts use `/host` to resume their sole active party or create a fresh one, then continue directly on the owner-authorized `/display`. The shared display combines the audience presentation with owner-only game selection, playlist, progression, moderation, and party-closure controls; unauthenticated paired screens retain an uncluttered TV-only view. Active room codes are four unambiguous characters and are protected by a PostgreSQL partial unique index. Host ownership is checked in the application layer and backed by the Identity user foreign key.
 
-Opening `/display` creates or restores a durable display session using an HttpOnly browser cookie. Only a SHA-256 token hash is stored. The screen supplies a short-lived pairing code and host link; `/host/pair-display/{pairingCode}` allows only the owning host to attach it to a party.
+Opening `/display` creates or restores a durable display session using an HttpOnly browser cookie. Only a SHA-256 token hash is stored. Host and display refreshes reconstruct the party from durable identity and authoritative application state rather than relying on a Blazor circuit or SignalR history.
 
 ## Anonymous player sessions
 
@@ -120,7 +120,7 @@ The shared display uses one [long-lived Phaser presentation](docs/architecture/p
 
 The [responsive UI contract](docs/architecture/responsive-ui.md) covers public, account, host, player-controller, drawing, and shared-display layouts from 320 px phones through 4K screens. It defines touch-target, safe-area, keyboard, reduced-motion, overflow, short-height, and single-frame presentation requirements plus the representative viewport verification matrix.
 
-The completed [production-readiness review](docs/architecture/production-readiness.md) records the runtime, security, persistence, cleanup, and scaling decisions that apply before CI/CD. CI/CD and Hetzner deployment remain scheduled in `AGENTS.md`.
+The completed [production-readiness review](docs/architecture/production-readiness.md) records the runtime, security, persistence, cleanup, and scaling decisions. The completed [CI/CD delivery stages](docs/deployment/ci-cd.md) cover read-only quality gates, immutable commit-SHA image publishing, restricted Hetzner deployment with explicit backup and migrations, health verification, and rollback proof. Public HTTPS still requires a dedicated Quizizzo origin certificate and Nginx site as described in the [Hetzner coexistence guide](docs/deployment/hetzner-coexistence.md).
 
 ## SignalR Redis backplane
 

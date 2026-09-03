@@ -1,0 +1,24 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClickBaitThumbnailGenerator", "src\ClickBaitThumbnailGenerator\ClickBaitThumbnailGenerator.csproj", "{5E3E6E97-AD50-4B5B-A2C6-35F731A32B09}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ClickBaitThumbnailGenerator.Tests", "tests\ClickBaitThumbnailGenerator.Tests\ClickBaitThumbnailGenerator.Tests.csproj", "{6C5558F0-FD5B-40CB-99D1-95BDDDDD0BDF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5E3E6E97-AD50-4B5B-A2C6-35F731A32B09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5E3E6E97-AD50-4B5B-A2C6-35F731A32B09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5E3E6E97-AD50-4B5B-A2C6-35F731A32B09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5E3E6E97-AD50-4B5B-A2C6-35F731A32B09}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C5558F0-FD5B-40CB-99D1-95BDDDDD0BDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C5558F0-FD5B-40CB-99D1-95BDDDDD0BDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C5558F0-FD5B-40CB-99D1-95BDDDDD0BDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C5558F0-FD5B-40CB-99D1-95BDDDDD0BDF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
