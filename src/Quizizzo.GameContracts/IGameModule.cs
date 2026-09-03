@@ -18,6 +18,11 @@ public interface IGameModule
     IGameAction DecodeAction(string actionKind, System.Text.Json.JsonElement payload);
 }
 
+public interface IGameSimulationModule
+{
+    TimeSpan? GetSimulationInterval(GameModuleState state);
+}
+
 public sealed class GameRuleViolationException(string code, string message) : Exception(message)
 {
     public string Code { get; } = string.IsNullOrWhiteSpace(code)

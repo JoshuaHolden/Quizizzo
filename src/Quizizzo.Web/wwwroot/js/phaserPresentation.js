@@ -23,6 +23,16 @@ window.quizizzoPresentation = (() => {
         return new Map((snapshot?.players || []).map(player => [player.playerId, player]));
     }
 
+    function field(source, name, fallback = null) {
+        if (!source) return fallback;
+        const pascalName = `${name.charAt(0).toUpperCase()}${name.slice(1)}`;
+        return source[name] ?? source[pascalName] ?? fallback;
+    }
+
+    function normalizedId(value) {
+        return String(value || "").replaceAll("-", "").toLowerCase();
+    }
+
     class PartyPresentationScene extends Phaser.Scene {
         constructor(controller) {
             super({ key: `party-presentation-${controller.key}` });
@@ -51,6 +61,11 @@ window.quizizzoPresentation = (() => {
             this.screenChromeSignature = null;
             this.deadlineTimer = null;
             this.qrLoadPending = null;
+            this.pileContainer = null;
+            this.pileSignature = null;
+            this.pileDeadlineTimer = null;
+            this.pileCountdownTimer = null;
+            this.pileEffectSignature = null;
         }
 
         preload() {
@@ -105,7 +120,12 @@ window.quizizzoPresentation = (() => {
             const results = gameKey === "animates"
                 && ["Results", "ShowdownResults", "FinalCelebration"].includes(phase);
             const slop = gameKey === "slop-machine";
-            const palette = slop
+            const pileUp = gameKey === "pile-up-panic";
+            const palette = pileUp
+                ? phase === "WinnerCelebration"
+                    ? [0x080914, 0x51248a, 0xffb11b]
+                    : [0x080914, 0x102d4f, 0x6a2a78]
+                : slop
                 ? phase?.includes("ScoreReview") || phase === "WinnerCelebration"
                     ? [0x120507, 0x7a160c, 0xffd400]
                     : [0x071519, 0x7d1616, 0x00e7d7]
@@ -122,7 +142,19 @@ window.quizizzoPresentation = (() => {
             this.background.fillGradientStyle(
                 palette[1], palette[2], palette[0], palette[1], 1);
             this.background.fillRect(0, 0, width, height);
-            if (slop) {
+            if (pileUp) {
+                this.background.fillStyle(0x03050b, .44);
+                this.background.fillRect(0, 0, width, height);
+                this.background.lineStyle(2, 0x63e6ff, .1);
+                for (let x = 32; x < width; x += 64) {
+                    this.background.lineBetween(x, 0, x, height);
+                }
+                for (let y = 32; y < height; y += 64) {
+                    this.background.lineBetween(0, y, width, y);
+                }
+                this.background.lineStyle(5, 0xff4fa3, .28);
+                this.background.strokeRoundedRect(20, 20, width - 40, height - 40, 26);
+            } else if (slop) {
                 this.background.lineStyle(3, 0xffd400, .12);
                 for (let x = -80; x < width; x += 110) {
                     this.background.lineBetween(x, 0, x + 220, height);
@@ -180,7 +212,12 @@ window.quizizzoPresentation = (() => {
             const previousPlayers = playerMap(this.previous);
             const currentIds = new Set((snapshot.players || []).map(player => player.playerId));
             const showRoundRanking = Boolean(snapshot.showRoundRanking && snapshot.results?.length);
-            const characterMode = showRoundRanking ? "full" : "portrait";
+            const pileUp = snapshot.gameKey === "pile-up-panic";
+            const pileFullCharacters = pileUp && [
+                "Introduction", "ControllerReady", "RoundResult", "Standings",
+                "FinalWinner", "WinnerCelebration", "Completed"
+            ].includes(snapshot.phase);
+            const characterMode = showRoundRanking || pileFullCharacters ? "full" : "portrait";
             this.drawBackground(snapshot.gameKey, snapshot.phase);
             this.applyScreenChrome(snapshot);
             if (!initial && this.previous?.phase !== snapshot.phase && !showRoundRanking) {
@@ -212,6 +249,19 @@ window.quizizzoPresentation = (() => {
                     this.animateLeave(playerId, avatar);
                 }
             }
+
+            if (pileUp) {
+                this.stopRoundRanking();
+                this.renderPodium({ ...snapshot, showRoundRanking: false });
+                this.applyPresenter(null);
+                this.applyTutorial(null);
+                this.applyDrawing(null);
+                this.applyPileUp(snapshot, initial);
+                this.previous = cloneSnapshot(snapshot);
+                return;
+            }
+
+            this.applyPileUp(null);
 
             if (showRoundRanking) {
                 this.applyTutorial(null);
@@ -528,13 +578,476 @@ window.quizizzoPresentation = (() => {
             }
         }
 
+        applyPileUp(snapshot, initial = false) {
+            const signature = snapshot ? JSON.stringify({
+                phase: snapshot.phase,
+                phaseEndsAtUtc: snapshot.phaseEndsAtUtc,
+                phaseMessage: snapshot.phaseMessage,
+                gameState: snapshot.gameState
+            }) : null;
+            if (signature === this.pileSignature) return;
+
+            const previousPhase = this.previous?.phase;
+            this.pileSignature = signature;
+            this.pileDeadlineTimer?.remove(false);
+            this.pileDeadlineTimer = null;
+            this.pileCountdownTimer?.remove(false);
+            this.pileCountdownTimer = null;
+            this.pileContainer?.destroy(true);
+            this.pileContainer = null;
+
+            if (!snapshot) {
+                this.pileEffectSignature = null;
+                this.restorePileAvatars();
+                return;
+            }
+
+            const state = snapshot.gameState;
+            const match = field(state, "match", {});
+            const arenas = field(match, "arenas", []);
+            const items = [];
+            for (const avatar of this.avatars.values()) {
+                this.tweens.killTweensOf(avatar.container);
+                avatar.container.setDepth(46);
+                avatar.card.setVisible(false);
+                avatar.cardShadow.setVisible(false);
+                avatar.shadow.setVisible(false);
+                avatar.presence.setVisible(false);
+                avatar.name.setVisible(false);
+                avatar.score.setVisible(false);
+                avatar.wins.setVisible(false);
+                avatar.activity.setVisible(false);
+                avatar.remove.setVisible(false);
+            }
+
+            this.addPileHeader(snapshot, state, items);
+            if (["Introduction", "ControllerReady"].includes(snapshot.phase)) {
+                this.addPileIntro(snapshot, state, arenas, items);
+            } else if (["ArenaReveal", "Countdown", "Playing"].includes(snapshot.phase)) {
+                this.addPileArenas(snapshot, state, arenas, items);
+            } else {
+                this.addPileStandings(snapshot, state, arenas, items);
+            }
+
+            this.pileContainer = this.add.container(0, 0, items).setDepth(42);
+            if (!this.controller.reducedMotion && (initial || previousPhase !== snapshot.phase)) {
+                this.pileContainer.setAlpha(0);
+                this.tweens.add({
+                    targets: this.pileContainer,
+                    alpha: 1,
+                    duration: 320,
+                    ease: "Cubic.easeOut"
+                });
+            }
+        }
+
+        restorePileAvatars() {
+            const snapshot = this.controller.snapshot;
+            for (const player of snapshot?.players || []) {
+                const avatar = this.avatars.get(player.playerId);
+                if (!avatar) continue;
+                const portrait = avatar.mode === "portrait";
+                avatar.container.setVisible(true).setDepth(20);
+                avatar.card.setVisible(portrait);
+                avatar.cardShadow.setVisible(portrait);
+                avatar.shadow.setVisible(!portrait);
+                avatar.presence.setVisible(player.status === "Disconnected");
+                avatar.name.setVisible(true);
+                avatar.score.setVisible(true);
+                avatar.wins.setVisible(snapshot.mode === "Lobby");
+                avatar.activity.setVisible(player.activity === "Thinking");
+                avatar.remove.setVisible(this.controller.canManagePlayers && snapshot.mode === "Lobby");
+                avatar.pileAction = null;
+            }
+        }
+
+        playPileAvatar(avatar, action) {
+            if (!avatar) return;
+            const requested = this.controller.reducedMotion ? "stopped" : action;
+            if (avatar.pileAction === requested) return;
+            avatar.pileAction = requested;
+            if (requested === "stopped") avatar.rig?.stop();
+            else avatar.rig?.play(requested);
+        }
+
+        pileValue(dictionary, playerId, fallback = 0) {
+            if (!dictionary) return fallback;
+            const target = normalizedId(playerId);
+            const key = Object.keys(dictionary).find(candidate => normalizedId(candidate) === target);
+            return key ? dictionary[key] : fallback;
+        }
+
+        pileMaterialColour(material) {
+            return ({
+                copper: 0xf28b39,
+                aqua: 0x25d9dc,
+                lemon: 0xffdf3d,
+                violet: 0x9b6cff,
+                coral: 0xff617d,
+                mint: 0x58e3a5,
+                sky: 0x5ba8ff,
+                sand: 0xe8c785,
+                junk: 0x6f7787
+            })[String(material || "").toLowerCase()] || 0xb9c4d4;
+        }
+
+        pileAbilityLabel(ability) {
+            const key = String(ability ?? "");
+            return ({
+                "0": "SEND JUNK",
+                "1": "SCRAMBLE QUEUE",
+                "2": "SHIELD",
+                SendJunk: "SEND JUNK",
+                ScrambleQueue: "SCRAMBLE QUEUE",
+                Shield: "SHIELD"
+            })[key] || key.replace(/([a-z])([A-Z])/g, "$1 $2").toUpperCase();
+        }
+
+        pileActiveCells(state, active) {
+            if (!active) return [];
+            const shapes = field(state, "clusterShapes", {});
+            const shape = field(shapes, field(active, "clusterKey", ""), []);
+            const turns = ((Number(field(active, "rotation", 0)) % 4) + 4) % 4;
+            const transformed = shape.map(cell => {
+                const x = Number(field(cell, "x", 0));
+                const y = Number(field(cell, "y", 0));
+                if (turns === 1) return { x: -y, y: x };
+                if (turns === 2) return { x: -x, y: -y };
+                if (turns === 3) return { x: y, y: -x };
+                return { x, y };
+            });
+            const minimumX = Math.min(0, ...transformed.map(cell => cell.x));
+            const minimumY = Math.min(0, ...transformed.map(cell => cell.y));
+            const originX = Number(field(active, "x", 0));
+            const originY = Number(field(active, "y", 0));
+            return transformed.map(cell => ({
+                x: cell.x - minimumX + originX,
+                y: cell.y - minimumY + originY,
+                material: field(active, "material", "sand")
+            }));
+        }
+
+        addPileHeader(snapshot, state, items) {
+            const round = Number(field(state, "roundNumber", 1));
+            const topLabel = snapshot.phase === "WinnerCelebration"
+                ? "SCRAPYARD CHAMPION"
+                : `PILE-UP PANIC  ·  ROUND ${round}/5`;
+            items.push(
+                this.add.text(width / 2, 28, topLabel, {
+                    color: "#ffe86a", fontFamily: displayFont, fontSize: "20px",
+                    fontStyle: "bold", letterSpacing: 4,
+                    stroke: "#080914", strokeThickness: 5
+                }).setOrigin(.5, 0),
+                this.add.text(width / 2, 56, snapshot.phaseMessage || "", {
+                    color: "#ffffff", fontFamily: displayFont,
+                    fontSize: snapshot.phase === "Countdown" ? "30px" : "25px",
+                    fontStyle: "bold", stroke: "#080914", strokeThickness: 6,
+                    align: "center", wordWrap: { width: 880 }
+                }).setOrigin(.5, 0)
+            );
+
+            if (!snapshot.phaseEndsAtUtc) return;
+            const timer = this.add.text(1198, 34, "", {
+                color: "#ffe86a", backgroundColor: "#14162a",
+                padding: { x: 13, y: 8 }, fontFamily: displayFont,
+                fontSize: "24px", fontStyle: "bold", stroke: "#080914", strokeThickness: 3
+            }).setOrigin(1, 0).setDepth(3);
+            items.push(timer);
+            const update = () => {
+                const milliseconds = Math.max(0, Date.parse(snapshot.phaseEndsAtUtc) - Date.now());
+                timer.setText(`${Math.ceil(milliseconds / 1000)}s`);
+            };
+            update();
+            this.pileDeadlineTimer = this.time.addEvent({ delay: 250, loop: true, callback: update });
+        }
+
+        addPileIntro(snapshot, state, arenas, items) {
+            const readyIds = new Set(field(state, "readyPlayerIds", []).map(normalizedId));
+            const isReady = snapshot.phase === "ControllerReady";
+            items.push(
+                this.add.text(width / 2, 132,
+                    isReady ? "CONTROLLERS ONLINE" : "WELCOME TO THE SCRAPYARD", {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold",
+                        stroke: "#ff4fa3", strokeThickness: 8
+                    }).setOrigin(.5),
+                this.add.text(width / 2, 196,
+                    isReady
+                        ? "Open your controls, then ready up."
+                        : "Build complete circuits. Charge chaos. Be the last pile standing.", {
+                        color: "#cdefff", fontFamily: bodyFont, fontSize: "24px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: 960 }
+                    }).setOrigin(.5)
+            );
+
+            const count = Math.max(1, arenas.length);
+            const spacing = Math.min(250, 1020 / count);
+            arenas.forEach((arena, index) => {
+                const playerId = normalizedId(field(arena, "playerId", ""));
+                const player = (snapshot.players || []).find(candidate => normalizedId(candidate.playerId) === playerId);
+                const avatar = player ? this.avatars.get(player.playerId) : null;
+                const x = width / 2 + (index - (count - 1) / 2) * spacing;
+                const ready = readyIds.has(playerId);
+                if (avatar) {
+                    avatar.container.setVisible(true).setPosition(x, 538).setScale(.68)
+                        .setAlpha(field(arena, "isConnected", true) ? 1 : .38);
+                    this.playPileAvatar(avatar, ready ? "celebrate" : "idle");
+                }
+                items.push(
+                    this.add.ellipse(x, 552, 150, 30, 0x03050b, .55),
+                    this.add.text(x, 600, field(arena, "displayName", player?.displayName || "Player"), {
+                        color: "#ffffff", fontFamily: displayFont, fontSize: "23px", fontStyle: "bold",
+                        stroke: "#080914", strokeThickness: 5
+                    }).setOrigin(.5),
+                    this.add.text(x, 634, isReady ? (ready ? "READY" : "WAITING…") : "SCRAP PILOT", {
+                        color: ready ? "#58e3a5" : "#ffe86a", fontFamily: displayFont,
+                        fontSize: "15px", fontStyle: "bold", letterSpacing: 2
+                    }).setOrigin(.5)
+                );
+            });
+        }
+
+        addPileArenas(snapshot, state, arenas, items) {
+            const count = Math.max(1, arenas.length);
+            const gap = count === 4 ? 12 : 18;
+            const availableWidth = 1190;
+            const cardWidth = (availableWidth - gap * (count - 1)) / count;
+            const cellSize = Math.min(count === 2 ? 28 : count === 3 ? 25 : 21,
+                Math.floor((cardWidth - 24) / 9));
+            const gridWidth = cellSize * 9;
+            const gridHeight = cellSize * 17;
+            const cardHeight = Math.min(555, gridHeight + 132);
+            const cardTop = 112;
+            const startX = (width - availableWidth) / 2;
+
+            arenas.forEach((arena, index) => {
+                const x = startX + cardWidth / 2 + index * (cardWidth + gap);
+                const playerId = normalizedId(field(arena, "playerId", ""));
+                const player = (snapshot.players || []).find(candidate => normalizedId(candidate.playerId) === playerId);
+                const avatar = player ? this.avatars.get(player.playerId) : null;
+                const overloaded = Boolean(field(arena, "isOverloaded", false));
+                const connected = Boolean(field(arena, "isConnected", true));
+                const shielded = Boolean(field(arena, "shielded", false));
+                const graphics = this.add.graphics();
+                const cardLeft = x - cardWidth / 2;
+                graphics.fillStyle(0x080914, .86);
+                graphics.fillRoundedRect(cardLeft, cardTop, cardWidth, cardHeight, 18);
+                graphics.lineStyle(4, overloaded ? 0xff617d : shielded ? 0x58e3a5 : 0x38d8ff, .9);
+                graphics.strokeRoundedRect(cardLeft, cardTop, cardWidth, cardHeight, 18);
+
+                const gridLeft = x - gridWidth / 2;
+                const gridTop = cardTop + 68;
+                graphics.fillStyle(0x02040a, .96);
+                graphics.fillRect(gridLeft, gridTop, gridWidth, gridHeight);
+                graphics.lineStyle(1, 0x9beaff, .1);
+                for (let column = 0; column <= 9; column++) {
+                    graphics.lineBetween(gridLeft + column * cellSize, gridTop,
+                        gridLeft + column * cellSize, gridTop + gridHeight);
+                }
+                for (let row = 0; row <= 17; row++) {
+                    graphics.lineBetween(gridLeft, gridTop + row * cellSize,
+                        gridLeft + gridWidth, gridTop + row * cellSize);
+                }
+
+                const drawCell = cell => {
+                    const cellX = Number(field(cell, "x", -1));
+                    const cellY = Number(field(cell, "y", -1)) - 3;
+                    if (cellX < 0 || cellX >= 9 || cellY < 0 || cellY >= 17) return;
+                    const colour = this.pileMaterialColour(field(cell, "material", "junk"));
+                    const px = gridLeft + cellX * cellSize + 2;
+                    const py = gridTop + cellY * cellSize + 2;
+                    graphics.fillStyle(colour, .96);
+                    graphics.fillRoundedRect(px, py, cellSize - 4, cellSize - 4, Math.max(2, cellSize / 6));
+                    graphics.fillStyle(0xffffff, .2);
+                    graphics.fillRect(px + 2, py + 2, cellSize - 8, 3);
+                };
+                field(arena, "grid", []).forEach(drawCell);
+                this.pileActiveCells(state, field(arena, "active", null)).forEach(drawCell);
+                items.push(graphics);
+
+                if (avatar) {
+                    avatar.container.setVisible(true).setPosition(cardLeft + 34, cardTop + 39).setScale(.28)
+                        .setAlpha(connected ? 1 : .35);
+                    this.playPileAvatar(avatar, overloaded ? "cry" : "idle");
+                }
+
+                const upcoming = field(arena, "upcoming", []);
+                items.push(
+                    this.add.text(x - cardWidth / 2 + 62, cardTop + 19,
+                        field(arena, "displayName", player?.displayName || "Player"), {
+                            color: "#ffffff", fontFamily: displayFont,
+                            fontSize: count === 4 ? "16px" : "20px", fontStyle: "bold",
+                            stroke: "#080914", strokeThickness: 4
+                        }).setOrigin(0, .5),
+                    this.add.text(x + cardWidth / 2 - 12, cardTop + 19,
+                        `${Number(field(arena, "views", 0)).toLocaleString()} views`, {
+                            color: "#ffe86a", fontFamily: displayFont,
+                            fontSize: count === 4 ? "13px" : "15px", fontStyle: "bold"
+                        }).setOrigin(1, .5)
+                );
+                upcoming.slice(0, 2).forEach((scrap, queueIndex) => {
+                    items.push(this.add.circle(
+                        x + cardWidth / 2 - 15 - queueIndex * 20,
+                        cardTop + 48, 7,
+                        this.pileMaterialColour(field(scrap, "material", "sand")), 1)
+                        .setStrokeStyle(2, 0xffffff, .45));
+                });
+
+                const ability = field(arena, "availableAbility", null);
+                const charge = Number(field(arena, "chaosCharge", 0));
+                const footerY = gridTop + gridHeight + 12;
+                const chargeWidth = Math.max(50, cardWidth - 24);
+                const chargeFill = Math.max(0, Math.min(1, ability !== null ? 1 : charge / 100));
+                const chargeBackground = this.add.rectangle(x, footerY + 10, chargeWidth, 13, 0x24283b, 1)
+                    .setStrokeStyle(2, 0x697386, .8);
+                const chargeBar = this.add.rectangle(
+                    x - chargeWidth / 2 + (chargeWidth * chargeFill) / 2,
+                    footerY + 10, chargeWidth * chargeFill, 9,
+                    ability !== null ? 0xff4fa3 : 0x38d8ff, 1);
+                items.push(chargeBackground, chargeBar);
+                const status = overloaded ? "⚠ OVERLOADED"
+                    : !connected ? "OFFLINE"
+                    : ability !== null ? `CHAOS READY · ${this.pileAbilityLabel(ability)}`
+                    : shielded ? "SHIELD ACTIVE"
+                    : field(arena, "queuedJunk", 0) > 0 ? `${field(arena, "queuedJunk", 0)} JUNK QUEUED`
+                    : `${field(arena, "circuitsCompleted", 0)} CIRCUITS · CHAOS ${charge}%`;
+                items.push(this.add.text(x, footerY + 31, status, {
+                    color: overloaded || !connected ? "#ff8ba0" : shielded ? "#6effbd" : "#cdefff",
+                    fontFamily: displayFont, fontSize: count === 4 ? "11px" : "13px",
+                    fontStyle: "bold", align: "center", wordWrap: { width: cardWidth - 18 }
+                }).setOrigin(.5, 0));
+
+                const previousArenas = field(field(this.previous?.gameState, "match", {}), "arenas", []);
+                const previousArena = previousArenas.find(candidate =>
+                    normalizedId(field(candidate, "playerId", "")) === playerId);
+                if (previousArena && Number(field(arena, "views", 0)) > Number(field(previousArena, "views", 0))) {
+                    this.burst(x, gridTop + gridHeight * .55, 18);
+                }
+                if (!this.controller.reducedMotion && previousArena && overloaded &&
+                    !Boolean(field(previousArena, "isOverloaded", false))) {
+                    this.cameras.main.shake(160, .004);
+                }
+            });
+
+            if (snapshot.phase === "Countdown") {
+                const countdown = this.add.text(width / 2, height / 2, "", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "150px", fontStyle: "bold",
+                    stroke: "#ff4fa3", strokeThickness: 15
+                }).setOrigin(.5).setDepth(10);
+                const update = () => countdown.setText(String(Math.max(1,
+                    Math.ceil((Date.parse(snapshot.phaseEndsAtUtc) - Date.now()) / 1000))));
+                update();
+                this.pileCountdownTimer = this.time.addEvent({ delay: 150, loop: true, callback: update });
+                items.push(countdown);
+            }
+        }
+
+        addPileStandings(snapshot, state, arenas, items) {
+            const roundWins = field(state, "roundWins", {});
+            const roundPoints = field(state, "roundPoints", {});
+            const performanceViews = field(state, "performanceViews", {});
+            const finalViews = field(state, "finalViews", {});
+            const resultByPlayer = new Map(field(state, "results", []).map(result =>
+                [normalizedId(field(result, "playerId", "")), result]));
+            const finalPhase = ["FinalWinner", "WinnerCelebration", "Completed"].includes(snapshot.phase);
+            const ranked = arenas.map(arena => {
+                const playerId = normalizedId(field(arena, "playerId", ""));
+                const result = resultByPlayer.get(playerId);
+                return {
+                    arena,
+                    playerId,
+                    name: field(arena, "displayName", "Player"),
+                    wins: Number(this.pileValue(roundWins, playerId)),
+                    points: Number(this.pileValue(roundPoints, playerId)),
+                    views: Number(this.pileValue(performanceViews, playerId)),
+                    finalViews: Number(this.pileValue(finalViews, playerId)),
+                    roundRank: Number(field(result, "rank", 999)),
+                    placementPoints: Number(field(result, "placementPoints", 0))
+                };
+            }).sort((left, right) => finalPhase
+                ? right.wins - left.wins || right.points - left.points || right.views - left.views
+                : left.roundRank - right.roundRank);
+
+            const heading = snapshot.phase === "RoundResult" ? "ROUND RESULT"
+                : snapshot.phase === "Standings" ? "MATCH STANDINGS"
+                : snapshot.phase === "WinnerCelebration" ? "THE LAST PILE STANDING!"
+                : snapshot.phase === "Completed" ? "FINAL SCRAPYARD RESULTS"
+                : "FINAL SURVIVOR";
+            items.push(this.add.text(width / 2, 118, heading, {
+                color: "#ffffff", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold",
+                stroke: "#ff4fa3", strokeThickness: 9
+            }).setOrigin(.5));
+
+            const count = Math.max(1, ranked.length);
+            const spacing = Math.min(252, 1040 / count);
+            const maximumHeight = 260;
+            const minimumHeight = 130;
+            const winnerId = normalizedId(field(state, "matchWinnerId", field(field(state, "match", {}), "roundWinnerId", "")));
+            const lastRank = ranked.length;
+            ranked.forEach((entry, index) => {
+                const rank = finalPhase ? index + 1 : entry.roundRank;
+                const x = width / 2 + (index - (count - 1) / 2) * spacing;
+                const podiumHeight = Math.max(minimumHeight, maximumHeight - (rank - 1) * 42);
+                const podiumTop = 650 - podiumHeight;
+                const colour = rank === 1 ? 0xffc51b : rank === 2 ? 0xbec8da : rank === 3 ? 0xb97745 : 0x36506d;
+                const panel = this.add.rectangle(x, podiumTop + podiumHeight / 2, spacing - 18, podiumHeight,
+                    colour, .96).setStrokeStyle(5, 0x080914, 1);
+                const player = (snapshot.players || []).find(candidate => normalizedId(candidate.playerId) === entry.playerId);
+                const avatar = player ? this.avatars.get(player.playerId) : null;
+                if (avatar) {
+                    avatar.container.setVisible(true).setPosition(x, podiumTop - 1).setScale(.55)
+                        .setAlpha(field(entry.arena, "isConnected", true) ? 1 : .42);
+                    this.playPileAvatar(avatar,
+                        rank === 1 ? "celebrate" : rank === lastRank && lastRank > 1 ? "cry" : "idle");
+                }
+                items.push(
+                    panel,
+                    this.add.text(x, podiumTop + 48, entry.name, {
+                        color: "#080914", fontFamily: displayFont, fontSize: "20px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: spacing - 34 }
+                    }).setOrigin(.5),
+                    this.add.text(x, podiumTop + 79,
+                        finalPhase
+                            ? `${entry.wins} ${entry.wins === 1 ? "WIN" : "WINS"} · ${entry.points} RP`
+                            : `+${entry.placementPoints} ROUND POINTS`, {
+                            color: "#251139", fontFamily: displayFont, fontSize: "14px", fontStyle: "bold",
+                            align: "center", wordWrap: { width: spacing - 32 }
+                        }).setOrigin(.5),
+                    this.add.text(x, 628, `#${rank}`, {
+                        color: "#251139", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold"
+                    }).setOrigin(.5, 1)
+                );
+                if (finalPhase) {
+                    items.push(this.add.text(x, podiumTop + 106,
+                        `${entry.finalViews.toLocaleString()} total views`, {
+                            color: "#251139", fontFamily: bodyFont, fontSize: "14px", fontStyle: "bold"
+                        }).setOrigin(.5));
+                }
+            });
+
+            const effectSignature = `${snapshot.gameInstanceId}:${snapshot.phase}:${winnerId}`;
+            if (snapshot.phase === "WinnerCelebration" && winnerId &&
+                this.pileEffectSignature !== effectSignature) {
+                this.pileEffectSignature = effectSignature;
+                const winnerIndex = ranked.findIndex(entry => entry.playerId === winnerId);
+                if (winnerIndex >= 0) {
+                    const x = width / 2 + (winnerIndex - (count - 1) / 2) * spacing;
+                    this.burst(x, 270, 55);
+                    if (!this.controller.reducedMotion) this.cameras.main.shake(180, .005);
+                }
+            }
+        }
+
         animatePhaseTransition(phase) {
             if (this.controller.reducedMotion) return;
             this.clearPhaseChrome();
             const labels = {
                 Drawing: "DRAW!", Guessing: "WHAT IS IT?", Choosing: "PICK AN ANSWER",
                 Results: "REVEAL!", ShowdownPlayback: "SHOWDOWN", ShowdownVoting: "VOTE NOW",
-                ShowdownResults: "THE WINNER", FinalCelebration: "FINAL RESULTS"
+                ShowdownResults: "THE WINNER", FinalCelebration: "FINAL RESULTS",
+                Introduction: "PILE-UP PANIC", ControllerReady: "READY UP",
+                ArenaReveal: "SCRAPYARDS ONLINE", Countdown: "GET READY",
+                RoundResult: "ROUND OVER", Standings: "MATCH STANDINGS",
+                FinalWinner: "FINAL SURVIVOR", WinnerCelebration: "CHAMPION!"
             };
             const label = labels[phase];
             if (!label) return;
@@ -584,6 +1097,7 @@ window.quizizzoPresentation = (() => {
             this.screenChromeContainer?.destroy(true);
             this.screenChromeContainer = null;
 
+            if (snapshot.gameKey === "pile-up-panic") return;
             if (snapshot.showRoundRanking || snapshot.presenterMessage) return;
             const items = [];
             if (snapshot.mode === "Pairing") {
@@ -1528,6 +2042,7 @@ window.quizizzoPresentation = (() => {
             avatar.cardShadow.setVisible(mode === "portrait");
             avatar.shadow.setScale(variants.bodyWidth, 1);
             avatar.mode = mode;
+            avatar.pileAction = null;
         }
 
         layoutAvatars(snapshot, immediate, podiumChanged = true) {

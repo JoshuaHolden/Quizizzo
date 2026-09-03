@@ -9,7 +9,8 @@ public enum PlayerControllerKind
     Text,
     Number,
     Vote,
-    Drawing
+    Drawing,
+    Arcade
 }
 
 public sealed record PlayerControllerView(
@@ -32,6 +33,26 @@ public sealed record DrawingControllerConfiguration(
     int FrameCount,
     string DraftScope,
     bool OnionSkinEnabled = true);
+
+public sealed record ArcadeControl(
+    string Input,
+    string Label,
+    string AccessibleLabel,
+    int? HoldRepeatMilliseconds = null);
+
+public sealed record ArcadeControllerConfiguration(
+    IReadOnlyList<ArcadeControl> Controls,
+    long NextSequence,
+    IReadOnlyList<ControllerOption> Targets,
+    string? SelectedTargetId,
+    string? AvailableAbility,
+    int ChargePercent);
+
+public sealed record ArcadeControllerSubmission(
+    long Sequence,
+    string Input,
+    string? TargetPlayerId,
+    DateTimeOffset ClientTimestamp);
 
 public sealed record ControllerOption(
     string Id,
@@ -136,4 +157,5 @@ public sealed record DisplayGameViewPayload(
     bool ShowRoundRanking = false,
     GameMediaPresentationView? Media = null,
     string ScoreUnit = "pts",
-    IReadOnlyList<GameStatisticView>? Statistics = null);
+    IReadOnlyList<GameStatisticView>? Statistics = null,
+    JsonElement? State = null);

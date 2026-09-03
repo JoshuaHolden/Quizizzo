@@ -19,6 +19,8 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
     private readonly GameRuntimeOptions options;
     private readonly ILogger<GameInstanceActor>? logger;
     private CancellationTokenSource? deadlineCancellation;
+    private CancellationTokenSource? simulationCancellation;
+    private DateTimeOffset? simulationScheduledForUtc;
     private GameRuntimeSnapshot snapshot;
 
     public GameInstanceActor(
@@ -46,6 +48,7 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
         });
         processor = ProcessQueueAsync();
         ScheduleDeadline();
+        SynchronizeSimulationSchedule();
     }
 
     public async Task<GameCommandResult> ExecuteAsync(
@@ -201,6 +204,10 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
         await store.SaveAsync(updated, snapshot.Revision, lifetime.Token);
         snapshot = updated;
         ScheduleDeadline();
+        if (command.Action is not SimulationTickElapsedAction)
+        {
+            SynchronizeSimulationSchedule();
+        }
         _ = NotifyObserversAsync(new GameRuntimeChange(
             snapshot.GameInstanceId,
             snapshot.PartyId,
@@ -277,7 +284,11 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
                 !snapshot.Participants.Any(player => player.PlayerId == playerId):
                 return ("player-forbidden", "Only a current game participant can issue player actions.");
             case GameActorRole.System when command.Action is not DeadlineElapsedAction:
-                return ("system-action-forbidden", "The engine may issue only deadline actions.");
+                if (command.Action is not SimulationTickElapsedAction)
+                {
+                    return ("system-action-forbidden", "The engine may issue only scheduled system actions.");
+                }
+                break;
             case not (GameActorRole.Host or GameActorRole.Player or GameActorRole.System):
                 return ("actor-role-invalid", "The game actor role is invalid.");
         }
@@ -295,6 +306,21 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
             if (now < elapsed.ScheduledForUtc)
             {
                 return ("early-deadline", "The current phase deadline has not elapsed.");
+            }
+        }
+        else if (command.Action is SimulationTickElapsedAction simulationTick)
+        {
+            if (command.Actor.Role != GameActorRole.System)
+            {
+                return ("simulation-tick-forbidden", "Only the engine may advance simulation time.");
+            }
+            if (module is not IGameSimulationModule || simulationScheduledForUtc != simulationTick.ScheduledForUtc)
+            {
+                return ("stale-simulation-tick", "The simulation tick is no longer current.");
+            }
+            if (now < simulationTick.ScheduledForUtc)
+            {
+                return ("early-simulation-tick", "The simulation tick is not due yet.");
             }
         }
         else if (snapshot.ModuleState.PhaseEndsAtUtc is { } deadline && now >= deadline)
@@ -438,6 +464,116 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
         return new GameCommandId(new Guid(bytes.AsSpan(0, 16)));
     }
 
+    private void SynchronizeSimulationSchedule()
+    {
+        var interval = GetValidatedSimulationInterval(module, snapshot.ModuleState);
+
+        CancellationTokenSource? previous = null;
+        DateTimeOffset? scheduled = null;
+        CancellationTokenSource? scheduledCancellation = null;
+        lock (timerGate)
+        {
+            if (interval is null)
+            {
+                previous = simulationCancellation;
+                simulationCancellation = null;
+                simulationScheduledForUtc = null;
+            }
+            else if (simulationCancellation is null)
+            {
+                scheduled = timeProvider.GetUtcNow().Add(interval.Value);
+                simulationScheduledForUtc = scheduled;
+                simulationCancellation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+                scheduledCancellation = simulationCancellation;
+            }
+        }
+        previous?.Cancel();
+        if (scheduled is { } next)
+        {
+            _ = RunSimulationTickAsync(next, scheduledCancellation!);
+        }
+    }
+
+    internal static TimeSpan? GetValidatedSimulationInterval(
+        IGameModule module,
+        GameModuleState state)
+    {
+        var interval = state.IsComplete
+            ? null
+            : (module as IGameSimulationModule)?.GetSimulationInterval(state);
+        if (interval is { } configured &&
+            (configured < TimeSpan.FromMilliseconds(20) || configured > TimeSpan.FromSeconds(5)))
+        {
+            throw new InvalidOperationException(
+                $"Game module '{module.Descriptor.Key}' requested an invalid simulation interval.");
+        }
+        return interval;
+    }
+
+    private async Task RunSimulationTickAsync(
+        DateTimeOffset scheduledForUtc,
+        CancellationTokenSource cancellation)
+    {
+        var cancellationToken = cancellation.Token;
+        try
+        {
+            while (true)
+            {
+                var delay = scheduledForUtc - timeProvider.GetUtcNow();
+                if (delay <= TimeSpan.Zero)
+                {
+                    break;
+                }
+                await Task.Delay(delay, timeProvider, cancellationToken);
+            }
+            var command = new GameCommand(
+                CreateSimulationCommandId(snapshot.GameInstanceId, scheduledForUtc),
+                snapshot.GameInstanceId,
+                snapshot.PartyId,
+                GameActor.SystemActor,
+                new SimulationTickElapsedAction(scheduledForUtc));
+            await ExecuteAsync(command, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (ChannelClosedException)
+        {
+        }
+        catch (Exception exception)
+        {
+            if (logger is not null)
+            {
+                LogSimulationFailure(logger, exception, snapshot.GameInstanceId, scheduledForUtc);
+            }
+        }
+        finally
+        {
+            lock (timerGate)
+            {
+                if (ReferenceEquals(simulationCancellation, cancellation))
+                {
+                    simulationCancellation = null;
+                    simulationScheduledForUtc = null;
+                }
+            }
+            cancellation.Dispose();
+            if (!lifetime.IsCancellationRequested)
+            {
+                SynchronizeSimulationSchedule();
+            }
+        }
+    }
+
+    private static GameCommandId CreateSimulationCommandId(
+        GameInstanceId gameInstanceId,
+        DateTimeOffset scheduledForUtc)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
+            $"simulation:{gameInstanceId.Value:N}:{scheduledForUtc.UtcTicks}"));
+        return new GameCommandId(new Guid(bytes.AsSpan(0, 16)));
+    }
+
     private async Task NotifyObserversAsync(GameRuntimeChange change)
     {
         foreach (var observer in observers)
@@ -490,6 +626,16 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
         string observerType,
         GameInstanceId gameInstanceId);
 
+    [LoggerMessage(
+        EventId = 1004,
+        Level = LogLevel.Error,
+        Message = "Simulation processing failed for game {GameInstanceId} at {ScheduledForUtc}")]
+    private static partial void LogSimulationFailure(
+        ILogger logger,
+        Exception exception,
+        GameInstanceId gameInstanceId,
+        DateTimeOffset scheduledForUtc);
+
     public async ValueTask DisposeAsync()
     {
         lifetime.Cancel();
@@ -499,6 +645,9 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
             deadlineCancellation?.Cancel();
             deadlineCancellation?.Dispose();
             deadlineCancellation = null;
+            simulationCancellation?.Cancel();
+            simulationCancellation = null;
+            simulationScheduledForUtc = null;
         }
         await processor;
         lifetime.Dispose();

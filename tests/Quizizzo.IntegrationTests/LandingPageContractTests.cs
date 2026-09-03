@@ -450,12 +450,36 @@ public sealed class LandingPageContractTests
         var playerPage = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
 
-        Assert.Equal(4, CountOccurrences(playerPage, "@key=\"ControllerRenderKey\""));
+        Assert.Equal(5, CountOccurrences(playerPage, "@key=\"ControllerRenderKey\""));
         Assert.Contains("gameView.GameInstanceId.ToString(\"N\")", playerPage,
             StringComparison.Ordinal);
         Assert.Contains("gameView.Phase", playerPage, StringComparison.Ordinal);
         Assert.Contains("game.Controller.Kind", playerPage, StringComparison.Ordinal);
         Assert.Contains("game.Controller.ActionKind", playerPage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Arcade_controller_uses_compact_holdable_controls_without_form_submission_locking()
+    {
+        var playerPage = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
+        var controller = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/ArcadeController.razor");
+        var styles = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
+
+        Assert.Contains("case PlayerControllerKind.Arcade", playerPage, StringComparison.Ordinal);
+        Assert.Contains("Submitted=\"SubmitArcadeAsync\"", playerPage, StringComparison.Ordinal);
+        Assert.Contains("partyConnection.InvokeAsync(", playerPage, StringComparison.Ordinal);
+        Assert.Contains("@onpointerdown=\"() => StartHold(control)\"", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("HoldRepeatMilliseconds", controller, StringComparison.Ordinal);
+        Assert.Contains("nextSequence++", controller, StringComparison.Ordinal);
+        Assert.Contains("role=\"progressbar\"", controller, StringComparison.Ordinal);
+        Assert.Contains(".phone-controller-shell .arcade-control-deck", styles,
+            StringComparison.Ordinal);
+        Assert.Contains("touch-action: none", styles, StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr))", styles,
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -590,6 +614,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("quiz-show-sparkle.774e332653a6.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("countdown-to-zero.fd84e59f102d.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("/media/audio/games/slop-machine", audio, StringComparison.Ordinal);
+        Assert.Contains("/media/audio/games/pile-up-panic", audio, StringComparison.Ordinal);
+        Assert.Contains("falling-block-fever.mp3", audio, StringComparison.Ordinal);
+        Assert.Contains("trackKey: \"pileUp\"", audio, StringComparison.Ordinal);
         Assert.Contains("slop-lobby.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("slop-writing.mp3", audio, StringComparison.Ordinal);
         Assert.Contains("slop-countdown.mp3", audio, StringComparison.Ordinal);
@@ -617,6 +644,32 @@ public sealed class LandingPageContractTests
         Assert.True(
             app.IndexOf("presentationAudio.js", StringComparison.Ordinal) <
             app.IndexOf("phaserPresentation.js", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Pile_up_display_uses_server_owned_geometry_and_responsive_phaser_arenas()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var mapper = ReadRepositoryFile(
+            "src/Quizizzo.Web/Presentation/PhaserPresentationSnapshot.cs");
+
+        Assert.Contains("snapshot.gameKey === \"pile-up-panic\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("applyPileUp(snapshot, initial)", presentation, StringComparison.Ordinal);
+        Assert.Contains("field(state, \"clusterShapes\", {})", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("field(arena, \"grid\", []).forEach(drawCell)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("const cellSize = Math.min(count === 2", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("this.playPileAvatar(avatar,", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("rank === 1 ? \"celebrate\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("this.controller.reducedMotion", presentation, StringComparison.Ordinal);
+        Assert.Contains("JsonElement? GameState = null", mapper, StringComparison.Ordinal);
+        Assert.Contains("game?.State", mapper, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

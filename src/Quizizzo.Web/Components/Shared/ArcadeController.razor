@@ -1,0 +1,165 @@
+@using Quizizzo.GameContracts
+@implements IAsyncDisposable
+
+<section class="arcade-controller" aria-label="Arcade controls">
+    <header class="arcade-status-strip">
+        <div>
+            <span>Chaos charge</span>
+            <strong>@ChargePercent%</strong>
+        </div>
+        <div class="arcade-charge-meter" role="progressbar" aria-label="Chaos charge"
+             aria-valuemin="0" aria-valuemax="100" aria-valuenow="@ChargePercent">
+            <span style="width: @(ChargePercent)%"></span>
+        </div>
+        <strong class="arcade-ability @(Configuration.AvailableAbility is null ? "empty" : null)">
+            @(Configuration.AvailableAbility ?? "NO ABILITY")
+        </strong>
+    </header>
+
+    @if (Configuration.Targets.Count > 0)
+    {
+        <fieldset class="arcade-targets">
+            <legend>Target</legend>
+            @foreach (var target in Configuration.Targets)
+            {
+                <button type="button"
+                        class="@(target.Id == selectedTargetId ? "selected" : null)"
+                        disabled="@Disabled"
+                        aria-pressed="@(target.Id == selectedTargetId)"
+                        @onclick="() => SelectTargetAsync(target.Id)">
+                    <strong>@target.Label</strong>
+                    @if (!string.IsNullOrWhiteSpace(target.Detail))
+                    {
+                        <span>@target.Detail</span>
+                    }
+                </button>
+            }
+        </fieldset>
+    }
+
+    <div class="arcade-control-deck">
+        @foreach (var control in MovementControls)
+        {
+            <button type="button"
+                    class="arcade-control arcade-control-@ControlClass(control.Input)"
+                    disabled="@Disabled"
+                    aria-label="@control.AccessibleLabel"
+                    @onpointerdown="() => StartHold(control)"
+                    @onpointerup="StopHold"
+                    @onpointercancel="StopHold"
+                    @onpointerleave="StopHold"
+                    @onclick="() => SendAsync(control.Input)">
+                <span aria-hidden="true">@control.Label</span>
+            </button>
+        }
+        @if (AbilityControl is { } ability)
+        {
+            <button type="button"
+                    class="arcade-control arcade-control-ability"
+                    disabled="@(Disabled || Configuration.AvailableAbility is null)"
+                    aria-label="@ability.AccessibleLabel"
+                    @onclick="() => SendAsync(ability.Input)">
+                <span aria-hidden="true">@ability.Label</span>
+                <small>@(Configuration.AvailableAbility ?? "CHARGING")</small>
+            </button>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public ArcadeControllerConfiguration Configuration { get; set; } = default!;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter, EditorRequired] public EventCallback<ArcadeControllerSubmission> Submitted { get; set; }
+
+    private long nextSequence;
+    private string? selectedTargetId;
+    private CancellationTokenSource? holdCancellation;
+    private int ChargePercent => Math.Clamp(Configuration.ChargePercent, 0, 100);
+    private IEnumerable<ArcadeControl> MovementControls =>
+        Configuration.Controls.Where(control => control.Input != "ActivateAbility");
+    private ArcadeControl? AbilityControl =>
+        Configuration.Controls.FirstOrDefault(control => control.Input == "ActivateAbility");
+
+    protected override void OnParametersSet()
+    {
+        nextSequence = Math.Max(nextSequence, Configuration.NextSequence);
+        if (selectedTargetId is null || Configuration.Targets.All(target => target.Id != selectedTargetId))
+        {
+            selectedTargetId = Configuration.SelectedTargetId is { } selected &&
+                Configuration.Targets.Any(target => target.Id == selected)
+                    ? selected
+                    : Configuration.Targets.FirstOrDefault()?.Id;
+        }
+    }
+
+    private async Task SelectTargetAsync(string targetId)
+    {
+        selectedTargetId = targetId;
+        await SendAsync("SelectTarget", targetId);
+    }
+
+    private async Task SendAsync(string input, string? targetOverride = null)
+    {
+        if (Disabled)
+        {
+            return;
+        }
+        var target = targetOverride ?? selectedTargetId;
+        var submission = new ArcadeControllerSubmission(
+            nextSequence++,
+            input,
+            target,
+            DateTimeOffset.UtcNow);
+        await Submitted.InvokeAsync(submission);
+    }
+
+    private void StartHold(ArcadeControl control)
+    {
+        StopHold();
+        if (Disabled || control.HoldRepeatMilliseconds is not { } repeat)
+        {
+            return;
+        }
+        holdCancellation = new CancellationTokenSource();
+        _ = RepeatAsync(control.Input, Math.Clamp(repeat, 40, 500), holdCancellation.Token);
+    }
+
+    private void StopHold()
+    {
+        holdCancellation?.Cancel();
+        holdCancellation?.Dispose();
+        holdCancellation = null;
+    }
+
+    private async Task RepeatAsync(string input, int repeatMilliseconds, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await InvokeAsync(() => SendAsync(input));
+                await Task.Delay(TimeSpan.FromMilliseconds(repeatMilliseconds), cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+    }
+
+    private static string ControlClass(string input) => input switch
+    {
+        "MoveLeft" => "left",
+        "MoveRight" => "right",
+        "RotateClockwise" => "rotate",
+        "SoftDrop" => "soft-drop",
+        "InstantDrop" => "instant-drop",
+        _ => "action"
+    };
+
+    public ValueTask DisposeAsync()
+    {
+        StopHold();
+        return ValueTask.CompletedTask;
+    }
+}

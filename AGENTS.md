@@ -625,6 +625,29 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Preserve accumulated player identities and scores across automatic handoffs, retain queued games after immediate play, and clear the playlist when the party closes.
 - [x] Document the lifecycle, format all modified C# files, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 267 .NET tests.
 
+### Pile-Up Panic engine deliveries (Stages 1–4, 2026-09-03)
+
+- [x] Add an isolated, unregistered game project with a server-owned 9×17-visible arena and three hidden spawn rows.
+- [x] Define twelve original mixed-size scrap clusters, a separately shuffled accessible material palette, and a reproducible recent-excluding generator.
+- [x] Implement movement, generic clockwise rotation correction, collision, instant/soft drop, locking, circuit completion/collapse, scoring, charge, and overload rules.
+- [x] Implement bounded junk, queue scramble, single-use shield, validated targeting, sequenced/rate-limited authenticated inputs, disconnect grace/forfeit, timeout ranking, fixed-step simulation entry, and complete semantic snapshots.
+- [x] Add IP design notes plus architecture, configuration, fairness, scoring, scheduler-boundary, and remaining-stage documentation.
+- [x] Format the new C# slice, pass 21 focused rules tests, pass a zero-warning strict Release build, and pass all 288 .NET tests.
+- [x] Add an opt-in bounded recurring actor scheduler whose deterministic system commands use the existing serialized command, persistence, recovery, and observer path.
+- [x] Round-trip the complete arena/match simulation state, retain monotonic input rejection across actor recovery, activate server lock delay, and separate incoming-junk warning from later junk application.
+- [x] Add the unregistered `IGameModule` adapter with role-secret views, automatic best-of-three/first-to-two progression, 4/2/1/0 local placement points, and one terminal conversion to cumulative party views.
+- [x] Format the engine slice, pass a zero-warning strict Release build, and pass all 299 .NET tests including scheduler restart and full automatic match coverage.
+- [x] Add reconstructable introduction, controller-ready, arena-reveal, countdown, round-result, standings, final-winner, and celebration phases with automatic deadlines and early all-ready progression.
+- [x] Add a reusable semantic arcade-controller contract and compact Pointer Event phone renderer with held-input cadence, monotonic sequencing, targeting, charge/ability state, and a low-latency SignalR submission path.
+- [x] Keep arena grids and upcoming clusters out of phone views while exposing the complete bounded arena snapshot only to the display renderer boundary.
+- [x] Format the lifecycle/controller slice, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 303 .NET tests.
+- [x] Forward opaque display-only module state through the shared Phaser bridge while retaining the existing role-specific secrecy boundary.
+- [x] Add responsive two-, three-, and four-player Phaser scrapyards with server-described settled/active scrap, queues, charge, abilities, shields, junk, presence, overloads, and authoritative clocks.
+- [x] Add Pile-specific introduction, ready, round result, match standings, final survivor, and reduced-motion-aware winner celebration scenes using the shared production character rig.
+- [x] Add presentation mapper and static renderer contracts, validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 305 .NET tests.
+- [x] Import Falling Blocks Fever as immutable game-owned media, keep one uninterrupted background loop across all live Pile-Up phases, pass all 22 client tests, pass a zero-warning strict Release build, and pass all 306 .NET tests.
+- [ ] Add live presence wiring, spectator mode, active-piece interpolation, any additional audio cues, exact browser journeys, and only then production registration.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

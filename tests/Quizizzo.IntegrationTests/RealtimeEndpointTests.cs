@@ -82,6 +82,7 @@ public sealed class RealtimeEndpointTests : IClassFixture<WebApplicationFactory<
     [InlineData("/media/audio/games/slop-machine/slop-final.mp3")]
     [InlineData("/media/audio/games/slop-machine/slop-human-victory.mp3")]
     [InlineData("/media/audio/games/slop-machine/slop-machine-victory.mp3")]
+    [InlineData("/media/audio/games/pile-up-panic/falling-block-fever.mp3")]
     public async Task Presentation_audio_is_served_with_long_lived_edge_cache_headers(string path)
     {
         using var response = await client.GetAsync(path);

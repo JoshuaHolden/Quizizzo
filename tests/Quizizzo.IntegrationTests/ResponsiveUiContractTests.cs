@@ -115,6 +115,25 @@ public sealed class ResponsiveUiContractTests
         Assert.Contains("passive: false", gestures, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Arcade_controller_fits_phone_portrait_and_short_landscape_without_page_scroll()
+    {
+        var css = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
+        var controller = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/ArcadeController.razor");
+
+        Assert.Contains("class=\"arcade-controller\"", controller, StringComparison.Ordinal);
+        Assert.Contains("class=\"arcade-control-deck\"", controller, StringComparison.Ordinal);
+        Assert.Contains("@onpointercancel=\"StopHold\"", controller, StringComparison.Ordinal);
+        Assert.Contains(".phone-controller-shell .arcade-controller", css, StringComparison.Ordinal);
+        Assert.Contains("grid-template-rows: auto auto minmax(0, 1fr)", css,
+            StringComparison.Ordinal);
+        Assert.Contains("@media (max-height: 430px) and (orientation: landscape)", css,
+            StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: minmax(12rem, .65fr) minmax(0, 1.35fr)", css,
+            StringComparison.Ordinal);
+    }
+
     private static int CountOccurrences(string value, string needle)
     {
         var count = 0;

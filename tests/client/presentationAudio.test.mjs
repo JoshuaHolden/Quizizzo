@@ -84,6 +84,16 @@ const slopSnapshot = (phase, overrides = {}) => ({
     gameInstanceId: "game-1",
     ...overrides
 });
+const pileUpSnapshot = (phase, overrides = {}) => ({
+    mode: "Game",
+    gameKey: "pile-up-panic",
+    phase,
+    phaseEndsAtUtc: null,
+    revision: 1,
+    roomCode: "TEST",
+    gameInstanceId: "pile-game-1",
+    ...overrides
+});
 const createController = stateChanged => audio.create(stateChanged || (() => { }), {
     fadeInMilliseconds: 0,
     fadeOutMilliseconds: 0,
@@ -124,6 +134,23 @@ test("every Slop Machine phase maps to its intended background track", () => {
         assert.equal(state?.trackKey ?? null, trackKey, phase);
     }
     assert.equal(audio.backgroundState({ mode: "Lobby", phase: "Lobby" })?.trackKey, "lobby");
+});
+
+test("Pile-Up Panic keeps Falling Blocks Fever playing across its live phases", () => {
+    const phases = [
+        "Introduction", "ControllerReady", "ArenaReveal", "Countdown", "Playing",
+        "RoundResult", "Standings", "FinalWinner", "WinnerCelebration"
+    ];
+
+    for (const phase of phases) {
+        const state = audio.backgroundState(pileUpSnapshot(phase), Date.now());
+        assert.equal(state?.trackKey, "pileUp", phase);
+        assert.equal(state?.sessionKey, "pile-up|pile-game-1", phase);
+    }
+    assert.equal(audio.backgroundState(pileUpSnapshot("Completed"), Date.now()), null);
+    assert.equal(audio.tracks.pileUp.loop, true);
+    assert.equal(audio.tracks.pileUp.source,
+        "/media/audio/games/pile-up-panic/falling-block-fever.mp3");
 });
 
 test("lobby music survives roster and revision updates without restarting", async () => {

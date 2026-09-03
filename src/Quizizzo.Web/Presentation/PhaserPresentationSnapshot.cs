@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Games;
 using Quizizzo.Application.Players;
@@ -27,7 +28,8 @@ public sealed record PhaserPresentationSnapshot(
     PhaserTutorialPresentationSnapshot? Tutorial,
     PhaserMediaPresentationSnapshot? Media = null,
     string ScoreUnit = "pts",
-    IReadOnlyList<PhaserStatisticSnapshot>? Statistics = null);
+    IReadOnlyList<PhaserStatisticSnapshot>? Statistics = null,
+    JsonElement? GameState = null);
 
 public sealed record PhaserEntrySnapshot(
     string Label,
@@ -227,7 +229,8 @@ public static class PhaserPresentationMapper
                 : null,
             game?.ScoreUnit ?? "pts",
             game?.Statistics?.Select(statistic => new PhaserStatisticSnapshot(
-                statistic.Label, statistic.Value)).ToArray());
+                statistic.Label, statistic.Value)).ToArray(),
+            game?.State);
     }
 
     private static PhaserResultSnapshot[] RankedScores(

@@ -25,6 +25,32 @@ public sealed class PhaserPresentationMapperTests
     }
 
     [Fact]
+    public void Game_specific_display_state_is_forwarded_to_the_presentation_bridge()
+    {
+        var partyId = Guid.NewGuid();
+        var session = new DisplaySessionView(
+            Guid.NewGuid(), "PAIR1234", DateTimeOffset.UtcNow, true, partyId, "K7XM");
+        var displayState = GameJson.From(new
+        {
+            RoundNumber = 2,
+            Match = new { Layout = "three-up", OperationalPlayers = 3 }
+        });
+        var payload = new DisplayGameViewPayload(
+            "PILE-UP PANIC", "Complete circuits", "Three piles operational", 0, 3, [],
+            State: displayState);
+        var game = new PartyGameView(
+            partyId, Guid.NewGuid(), "pile-up-panic", GameAudienceRole.Display,
+            "Playing", 9, DateTimeOffset.UtcNow.AddMinutes(2), false,
+            GameJson.From(payload), new Dictionary<Guid, int>());
+
+        var snapshot = PhaserPresentationMapper.Create(session, [], game, payload);
+
+        Assert.Equal(2, snapshot.GameState!.Value.GetProperty("RoundNumber").GetInt32());
+        Assert.Equal("three-up", snapshot.GameState.Value
+            .GetProperty("Match").GetProperty("Layout").GetString());
+    }
+
+    [Fact]
     public void Active_game_snapshot_contains_character_traits_server_scores_and_revealed_results()
     {
         var partyId = Guid.NewGuid();

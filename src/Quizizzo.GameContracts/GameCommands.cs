@@ -18,6 +18,11 @@ public sealed record DeadlineElapsedAction(DateTimeOffset ScheduledForUtc) : IGa
     public string Kind => "engine.deadline-elapsed";
 }
 
+public sealed record SimulationTickElapsedAction(DateTimeOffset ScheduledForUtc) : IGameAction
+{
+    public string Kind => "engine.simulation-tick-elapsed";
+}
+
 public enum GameActorRole
 {
     Host,

@@ -182,6 +182,16 @@
                                           Submitted="optionId => SubmitSelectionAsync(choiceActionKind, choiceSelectionProperty, optionId)" />
                     }
                     break;
+                case PlayerControllerKind.Arcade:
+                    var arcadeConfiguration = game.Controller.Configuration.Deserialize<ArcadeControllerConfiguration>();
+                    if (arcadeConfiguration is not null)
+                    {
+                        <ArcadeController @key="ControllerRenderKey"
+                                          Configuration="arcadeConfiguration"
+                                          Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                          Submitted="SubmitArcadeAsync" />
+                    }
+                    break;
                 case PlayerControllerKind.Waiting:
                     <div class="waiting-controller" aria-live="polite">
                         <span class="waiting-pulse" aria-hidden="true"></span>
@@ -272,6 +282,35 @@
         finally
         {
             submitting = false;
+        }
+    }
+
+    private async Task SubmitArcadeAsync(ArcadeControllerSubmission submission)
+    {
+        if (partyConnection is null ||
+            game?.Controller.ActionKind is not { Length: > 0 } actionKind ||
+            connectionStatus != "Connected")
+        {
+            return;
+        }
+
+        try
+        {
+            await partyConnection.InvokeAsync(
+                "SubmitPlayerAction",
+                Guid.NewGuid(),
+                actionKind,
+                new
+                {
+                    sequence = submission.Sequence,
+                    input = submission.Input,
+                    targetPlayerId = submission.TargetPlayerId,
+                    clientTimestamp = submission.ClientTimestamp
+                });
+        }
+        catch (Exception exception) when (exception is JSException or InvalidOperationException)
+        {
+            ShowTransientError(exception);
         }
     }
 

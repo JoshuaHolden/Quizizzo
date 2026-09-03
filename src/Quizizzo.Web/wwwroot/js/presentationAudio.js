@@ -13,10 +13,12 @@ window.quizizzoPresentationAudio = (() => {
         scoreboardToVictoryMilliseconds: 300
     });
     const slopRoot = "/media/audio/games/slop-machine";
+    const pileUpRoot = "/media/audio/games/pile-up-panic";
     const assets = Object.freeze({
         lobby: `${slopRoot}/slop-lobby.mp3`,
         game: "/media/audio/quiz-show-sparkle.774e332653a6.mp3",
         countdown: "/media/audio/countdown-to-zero.fd84e59f102d.mp3",
+        pileUp: `${pileUpRoot}/falling-block-fever.mp3`,
         slopWriting: `${slopRoot}/slop-writing.mp3`,
         slopCountdown: `${slopRoot}/slop-countdown.mp3`,
         slopSpinner: `${slopRoot}/slop-spinner.mp3`,
@@ -31,6 +33,7 @@ window.quizizzoPresentationAudio = (() => {
     const tracks = Object.freeze({
         lobby: { source: assets.lobby, loop: true, volume: configuration.musicVolume },
         game: { source: assets.game, loop: true, volume: configuration.musicVolume },
+        pileUp: { source: assets.pileUp, loop: true, volume: configuration.musicVolume },
         countdown: { source: assets.countdown, loop: false, volume: configuration.countdownVolume },
         slopWriting: { source: assets.slopWriting, loop: true, volume: configuration.musicVolume },
         slopCountdown: { source: assets.slopCountdown, loop: false, volume: configuration.countdownVolume },
@@ -182,6 +185,12 @@ window.quizizzoPresentationAudio = (() => {
         if (snapshot.mode === "Lobby") return { trackKey: "lobby", sessionKey: "lobby" };
         if (snapshot.mode !== "Game") return null;
         if (snapshot.gameKey === "slop-machine") return slopBackground(snapshot);
+        if (snapshot.gameKey === "pile-up-panic") {
+            return snapshot.phase === "Completed" ? null : {
+                trackKey: "pileUp",
+                sessionKey: `pile-up|${snapshot.gameInstanceId || "game"}`
+            };
+        }
         return { trackKey: "game", sessionKey: `game|${snapshot.gameKey || "unknown"}` };
     }
 

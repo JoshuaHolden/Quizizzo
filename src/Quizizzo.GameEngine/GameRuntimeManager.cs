@@ -54,6 +54,7 @@ public sealed class GameRuntimeManager(
                 now,
                 request.Configuration));
             GameStateValidator.Validate(moduleState, module.Descriptor.Key);
+            _ = GameInstanceActor.GetValidatedSimulationInterval(module, moduleState);
             var snapshot = new GameRuntimeSnapshot(
                 request.GameInstanceId,
                 request.PartyId,
