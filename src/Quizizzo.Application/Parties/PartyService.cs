@@ -104,5 +104,6 @@ public sealed class PartyService(
         party.CreatedAt,
         party.CompletedAt,
         party.CurrentGameInstanceId,
-        party.CurrentGameKey);
+        party.CurrentGameKey,
+        party.GameQueue.ToArray());
 }

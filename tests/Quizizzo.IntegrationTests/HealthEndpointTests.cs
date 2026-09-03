@@ -109,6 +109,10 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal(64, currentGameKey.GetMaxLength());
         Assert.True(currentGameKey.IsNullable);
         Assert.True(currentGameInstanceId.IsNullable);
+        Assert.Equal("jsonb", party.FindProperty(nameof(Party.GameQueue))!.GetColumnType());
+        Assert.Contains(
+            "20260903090000_AddPartyGameQueue",
+            dbContext.Database.GetMigrations());
         var drawingAsset = dbContext.Model.FindEntityType(typeof(DrawingAssetMetadata))!;
         Assert.Contains(drawingAsset.GetIndexes(), index =>
             index.Properties.Single().Name == nameof(DrawingAssetMetadata.ExpiresAtUtc));

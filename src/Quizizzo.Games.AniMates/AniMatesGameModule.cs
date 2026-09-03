@@ -58,7 +58,13 @@ public sealed class AniMatesGameModule(
     private readonly TimeSpan showdownResultsDuration = showdownResultsDuration ?? TimeSpan.FromSeconds(12);
     private readonly TimeSpan celebrationDuration = celebrationDuration ?? TimeSpan.FromSeconds(15);
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "AniMates", 2, MaximumPlayers);
+    public GameDescriptor Descriptor { get; } = new(
+        GameKey,
+        "AniMates",
+        2,
+        MaximumPlayers,
+        "Draw ridiculous frame-by-frame animations, then vote for the funniest moving masterpiece.",
+        "Drawing · 2 rounds");
 
     public GameModuleState Start(GameStartContext context)
     {

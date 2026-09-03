@@ -294,6 +294,12 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
 
+                    b.Property<string>("GameQueue")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("jsonb")
+                        .HasDefaultValueSql("'[]'::jsonb");
+
                     b.Property<string>("HostUserId")
                         .IsRequired()
                         .HasMaxLength(450)

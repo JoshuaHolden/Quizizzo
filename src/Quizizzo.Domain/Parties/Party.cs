@@ -2,6 +2,8 @@ namespace Quizizzo.Domain.Parties;
 
 public sealed class Party
 {
+    public const int MaximumQueuedGames = 12;
+
     private Party()
     {
     }
@@ -24,6 +26,7 @@ public sealed class Party
     public DateTimeOffset? CompletedAt { get; private set; }
     public Guid? CurrentGameInstanceId { get; private set; }
     public string? CurrentGameKey { get; private set; }
+    public IReadOnlyList<PartyGameQueueItem> GameQueue { get; private set; } = [];
 
     public bool HasActiveRoomCode => Status is PartyStatus.Created or PartyStatus.Lobby or PartyStatus.Playing or PartyStatus.Paused;
 
@@ -66,6 +69,43 @@ public sealed class Party
         Status = PartyStatus.Lobby;
     }
 
+    public void ReplaceGameQueue(IEnumerable<PartyGameQueueItem> items)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        if (Status != PartyStatus.Lobby || CurrentGameInstanceId.HasValue)
+        {
+            throw new InvalidOperationException("The game queue can be changed only in the party lobby.");
+        }
+
+        var queue = items.ToArray();
+        if (queue.Length > MaximumQueuedGames)
+        {
+            throw new InvalidOperationException($"A party can queue at most {MaximumQueuedGames} games.");
+        }
+        if (queue.Select(item => item.QueueItemId).Distinct().Count() != queue.Length)
+        {
+            throw new InvalidOperationException("Every queued game must have a unique ID.");
+        }
+
+        GameQueue = queue;
+    }
+
+    public PartyGameQueueItem TakeNextQueuedGame()
+    {
+        if (Status != PartyStatus.Lobby || CurrentGameInstanceId.HasValue)
+        {
+            throw new InvalidOperationException("A queued game can start only from the party lobby.");
+        }
+        if (GameQueue.Count == 0)
+        {
+            throw new InvalidOperationException("Add at least one game to the queue first.");
+        }
+
+        var next = GameQueue[0];
+        GameQueue = GameQueue.Skip(1).ToArray();
+        return next;
+    }
+
     public void Complete(DateTimeOffset completedAt)
     {
         if (Status is PartyStatus.Completed or PartyStatus.Abandoned)
@@ -76,6 +116,7 @@ public sealed class Party
         Status = PartyStatus.Completed;
         CurrentGameInstanceId = null;
         CurrentGameKey = null;
+        GameQueue = [];
         CompletedAt = completedAt;
     }
 
@@ -89,6 +130,7 @@ public sealed class Party
         Status = PartyStatus.Abandoned;
         CurrentGameInstanceId = null;
         CurrentGameKey = null;
+        GameQueue = [];
         CompletedAt = abandonedAt;
     }
 }

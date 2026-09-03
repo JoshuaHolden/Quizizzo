@@ -110,7 +110,13 @@ public sealed partial class SlopMachineGameModule : IGameModule
         this.rouletteWritingDuration = rouletteWritingDuration ?? TimeSpan.FromSeconds(35);
     }
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "Slop Machine", 3, 12);
+    public GameDescriptor Descriptor { get; } = new(
+        GameKey,
+        "Slop Machine",
+        3,
+        12,
+        "Create terrible clickbait, steal ideas, fight the algorithm and grow your parody channel.",
+        "Writing · Matching · Voting");
 
     public GameModuleState Start(GameStartContext context)
     {

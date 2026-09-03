@@ -77,14 +77,14 @@
 
             @if (players.Count > 0)
             {
-                <section class="display-host-party-record" aria-labelledby="display-host-party-record-title">
-                    <header>
+                <details class="display-host-party-record">
+                    <summary>
                         <div>
                             <p>Since this lobby started</p>
                             <h3 id="display-host-party-record-title">Party standings</h3>
                         </div>
-                        <span>Overall score · game wins</span>
-                    </header>
+                        <span>Overall score · game wins <b>View</b></span>
+                    </summary>
                     <ol>
                         @foreach (var standing in players
                             .OrderByDescending(candidate => candidate.Score)
@@ -105,14 +105,22 @@
                             </li>
                         }
                     </ol>
-                </section>
+                </details>
             }
 
             @if (hostGameView is not null && hostGame is not null)
             {
                 <section class="display-host-current-game">
-                    <p>@hostGameView.Phase</p>
-                    <h3>@hostGame.Title</h3>
+                    <div class="display-host-current-game-heading">
+                        <div>
+                            <p>Live now · @hostGameView.Phase</p>
+                            <h3>@hostGame.Title</h3>
+                        </div>
+                        @if (hostParty!.GameQueue.Count > 0)
+                        {
+                            <span>@hostParty.GameQueue.Count up next</span>
+                        }
+                    </div>
                     <p>@hostGame.Prompt</p>
                     <p>@hostGame.PhaseMessage</p>
                     @if (hostGameView.PhaseEndsAtUtc is not null)
@@ -126,50 +134,148 @@
                             @(hostActionPending ? "Working…" : hostGame.AdvanceLabel)
                         </button>
                     }
+                    @if (hostParty.GameQueue.Count > 0)
+                    {
+                        <div class="display-host-up-next-compact">
+                            <strong>Party playlist</strong>
+                            <ol>
+                                @foreach (var queuedGame in hostParty.GameQueue)
+                                {
+                                    <li>@GameDisplayName(queuedGame.GameKey)</li>
+                                }
+                            </ol>
+                            <small>The next game launches automatically when this one finishes.</small>
+                        </div>
+                    }
                 </section>
             }
             else
             {
-                <section aria-labelledby="display-host-games-title">
-                    <h3 id="display-host-games-title">Choose a game</h3>
-                    <div class="display-host-game-grid">
-                        @foreach (var availableGame in availableGames)
-                        {
-                            <article class="display-host-game-card">
-                                <header>
-                                    <strong>@availableGame.DisplayName</strong>
-                                    <span>@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
-                                </header>
-                                @if (availableGame.Key == AniMatesGameModule.GameKey)
-                                {
-                                    <div class="display-host-game-setting">
-                                        <label for="animates-drawing-seconds">Drawing time per frame</label>
-                                        <div>
-                                            <input id="animates-drawing-seconds" type="number"
-                                                   min="@AniMatesGameModule.MinimumDrawingSecondsPerFrame"
-                                                   max="@AniMatesGameModule.MaximumDrawingSecondsPerFrame"
-                                                   step="5" inputmode="numeric"
-                                                   @bind="aniMatesDrawingSecondsPerFrame"
-                                                   @bind:event="oninput" />
-                                            <span>seconds</span>
-                                        </div>
-                                        <small>
-                                            Round 1: 3 × @aniMatesDrawingSecondsPerFrame s =
-                                            @FormatDuration(AniMatesGameModule.RoundOneFrameCount * aniMatesDrawingSecondsPerFrame)
-                                            · Round 2: 5 × @aniMatesDrawingSecondsPerFrame s =
-                                            @FormatDuration(AniMatesGameModule.RoundTwoFrameCount * aniMatesDrawingSecondsPerFrame)
-                                        </small>
+                <section class="display-host-game-picker" aria-labelledby="display-host-games-title">
+                    <div class="display-host-picker-intro">
+                        <div>
+                            <p>Pick the next event</p>
+                            <h3 id="display-host-games-title">Build your party</h3>
+                        </div>
+                        <span>Play one now or line up a playlist</span>
+                    </div>
+
+                    <div class="display-host-picker-layout">
+                        <div class="display-host-game-catalogue">
+                            @foreach (var availableGame in availableGames)
+                            {
+                                var canPlay = CanPlay(availableGame);
+                                <article class="display-host-game-card @GameThemeClass(availableGame.Key)">
+                                    <div class="display-host-game-art" aria-hidden="true">
+                                        <span>@GameMonogram(availableGame.Key)</span>
                                     </div>
-                                }
-                                <button type="button" class="btn btn-primary"
-                                        disabled="@(players.Count < availableGame.MinimumPlayers ||
-                                            players.Count > availableGame.MaximumPlayers || hostActionPending ||
-                                            hostParty!.Status != PartyStatus.Lobby)"
-                                        @onclick="() => StartGameAsync(availableGame.Key)">
-                                    Start @availableGame.DisplayName
+                                    <div class="display-host-game-copy">
+                                        <header>
+                                            <div>
+                                                <span class="display-host-game-style">@availableGame.PlayStyle</span>
+                                                <h4>@availableGame.DisplayName</h4>
+                                            </div>
+                                            <span class="display-host-game-players">@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
+                                        </header>
+                                        <p>@availableGame.Description</p>
+                                        @if (availableGame.Key == AniMatesGameModule.GameKey)
+                                        {
+                                            <details class="display-host-game-setting">
+                                                <summary>Drawing time per frame · @aniMatesDrawingSecondsPerFrame seconds</summary>
+                                                <div class="display-host-game-setting-body">
+                                                    <label for="animates-drawing-seconds">Seconds per frame</label>
+                                                    <div>
+                                                        <input id="animates-drawing-seconds" type="number"
+                                                               min="@AniMatesGameModule.MinimumDrawingSecondsPerFrame"
+                                                               max="@AniMatesGameModule.MaximumDrawingSecondsPerFrame"
+                                                               step="5" inputmode="numeric"
+                                                               @bind="aniMatesDrawingSecondsPerFrame"
+                                                               @bind:event="oninput" />
+                                                        <small>
+                                                            3 frames: @FormatDuration(AniMatesGameModule.RoundOneFrameCount * aniMatesDrawingSecondsPerFrame)
+                                                            · 5 frames: @FormatDuration(AniMatesGameModule.RoundTwoFrameCount * aniMatesDrawingSecondsPerFrame)
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </details>
+                                        }
+                                        @if (!canPlay)
+                                        {
+                                            <p class="display-host-game-unavailable">@GameAvailability(availableGame)</p>
+                                        }
+                                        <footer>
+                                            <button type="button" class="display-host-queue-add"
+                                                    disabled="@(!canPlay || hostActionPending || hostParty!.GameQueue.Count >= Party.MaximumQueuedGames)"
+                                                    @onclick="() => AddGameToQueueAsync(availableGame.Key)">
+                                                <span aria-hidden="true">＋</span> Add to playlist
+                                            </button>
+                                            <button type="button" class="display-host-play-now"
+                                                    disabled="@(!canPlay || hostActionPending)"
+                                                    @onclick="() => StartGameAsync(availableGame.Key)">
+                                                Play now <span aria-hidden="true">▶</span>
+                                            </button>
+                                        </footer>
+                                    </div>
+                                </article>
+                            }
+                        </div>
+
+                        <aside class="display-host-game-queue" aria-labelledby="display-host-queue-title">
+                            <header>
+                                <div>
+                                    <p>Automatic handoff</p>
+                                    <h4 id="display-host-queue-title">Party playlist</h4>
+                                </div>
+                                <span>@hostParty!.GameQueue.Count/@Party.MaximumQueuedGames</span>
+                            </header>
+                            @if (hostParty.GameQueue.Count == 0)
+                            {
+                                <div class="display-host-queue-empty">
+                                    <span aria-hidden="true">＋</span>
+                                    <strong>Your playlist is empty</strong>
+                                    <p>Add games in the order you want to play them.</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <ol>
+                                    @for (var queueIndex = 0; queueIndex < hostParty.GameQueue.Count; queueIndex++)
+                                    {
+                                        var queuedGame = hostParty.GameQueue[queueIndex];
+                                        var queuedDescriptor = FindGame(queuedGame.GameKey);
+                                        <li>
+                                            <span class="display-host-queue-number">@(queueIndex + 1)</span>
+                                            <div>
+                                                <strong>@(queuedDescriptor?.DisplayName ?? queuedGame.GameKey)</strong>
+                                                <small>@QueueConfigurationSummary(queuedGame)</small>
+                                            </div>
+                                            <div class="display-host-queue-actions">
+                                                <button type="button" disabled="@(queueIndex == 0 || hostActionPending)"
+                                                        aria-label="Move @(queuedDescriptor?.DisplayName ?? queuedGame.GameKey) earlier"
+                                                        @onclick="() => MoveQueuedGameAsync(queuedGame.QueueItemId, -1)">↑</button>
+                                                <button type="button" disabled="@(queueIndex == hostParty.GameQueue.Count - 1 || hostActionPending)"
+                                                        aria-label="Move @(queuedDescriptor?.DisplayName ?? queuedGame.GameKey) later"
+                                                        @onclick="() => MoveQueuedGameAsync(queuedGame.QueueItemId, 1)">↓</button>
+                                                <button type="button" disabled="@hostActionPending"
+                                                        aria-label="Remove @(queuedDescriptor?.DisplayName ?? queuedGame.GameKey) from playlist"
+                                                        @onclick="() => RemoveQueuedGameAsync(queuedGame.QueueItemId)">×</button>
+                                            </div>
+                                        </li>
+                                    }
+                                </ol>
+                                <p class="display-host-queue-note">
+                                    @(PlaylistCanStart
+                                        ? "Scores and players carry through every game. There is no lobby break."
+                                        : "The current player count does not fit every game in this playlist yet.")
+                                </p>
+                                <button type="button" class="display-host-start-playlist"
+                                        disabled="@(!PlaylistCanStart || hostActionPending)"
+                                        @onclick="StartGameQueueAsync">
+                                    @(hostActionPending ? "Starting…" : StartPlaylistLabel)
+                                    <span aria-hidden="true">▶</span>
                                 </button>
-                            </article>
-                        }
+                            }
+                        </aside>
                     </div>
                 </section>
             }
@@ -297,12 +403,110 @@
 
     private async Task StartGameAsync(string gameKey) => await RunHostActionAsync(async () =>
     {
-        var configuration = gameKey == AniMatesGameModule.GameKey
+        await HostPartyState.StartGameAsync(
+            session.PartyId!.Value, hostUserId!, gameKey, ConfigurationFor(gameKey));
+    });
+
+    private async Task AddGameToQueueAsync(string gameKey) => await RunHostActionAsync(async () =>
+    {
+        var queue = hostParty!.GameQueue
+            .Select(ToQueueRequest)
+            .Append(new PartyGameQueueRequest(Guid.NewGuid(), gameKey, ConfigurationFor(gameKey)))
+            .ToArray();
+        await HostPartyState.SaveGameQueueAsync(session.PartyId!.Value, hostUserId!, queue);
+    });
+
+    private async Task RemoveQueuedGameAsync(Guid queueItemId) => await RunHostActionAsync(async () =>
+    {
+        var queue = hostParty!.GameQueue
+            .Where(item => item.QueueItemId != queueItemId)
+            .Select(ToQueueRequest)
+            .ToArray();
+        await HostPartyState.SaveGameQueueAsync(session.PartyId!.Value, hostUserId!, queue);
+    });
+
+    private async Task MoveQueuedGameAsync(Guid queueItemId, int direction) => await RunHostActionAsync(async () =>
+    {
+        var queue = hostParty!.GameQueue.ToList();
+        var currentIndex = queue.FindIndex(item => item.QueueItemId == queueItemId);
+        var destinationIndex = currentIndex + direction;
+        if (currentIndex < 0 || destinationIndex < 0 || destinationIndex >= queue.Count)
+        {
+            return;
+        }
+
+        (queue[currentIndex], queue[destinationIndex]) = (queue[destinationIndex], queue[currentIndex]);
+        await HostPartyState.SaveGameQueueAsync(
+            session.PartyId!.Value,
+            hostUserId!,
+            queue.Select(ToQueueRequest).ToArray());
+    });
+
+    private async Task StartGameQueueAsync() => await RunHostActionAsync(async () =>
+    {
+        await HostPartyState.StartGameQueueAsync(session.PartyId!.Value, hostUserId!);
+    });
+
+    private JsonElement ConfigurationFor(string gameKey) =>
+        gameKey == AniMatesGameModule.GameKey
             ? GameJson.From(new AniMatesGameConfiguration(aniMatesDrawingSecondsPerFrame))
             : GameJson.Empty;
-        await HostPartyState.StartGameAsync(
-            session.PartyId!.Value, hostUserId!, gameKey, configuration);
-    });
+
+    private static PartyGameQueueRequest ToQueueRequest(PartyGameQueueItem item)
+    {
+        using var document = JsonDocument.Parse(item.ConfigurationJson);
+        return new PartyGameQueueRequest(item.QueueItemId, item.GameKey, document.RootElement.Clone());
+    }
+
+    private GameDescriptor? FindGame(string gameKey) => availableGames.FirstOrDefault(game =>
+        string.Equals(game.Key, gameKey, StringComparison.OrdinalIgnoreCase));
+
+    private bool CanPlay(GameDescriptor game) =>
+        hostParty?.Status == PartyStatus.Lobby &&
+        players.Count >= game.MinimumPlayers &&
+        players.Count <= game.MaximumPlayers;
+
+    private bool PlaylistCanStart => hostParty is { Status: PartyStatus.Lobby, GameQueue.Count: > 0 } &&
+        hostParty.GameQueue.All(item => FindGame(item.GameKey) is { } game && CanPlay(game));
+
+    private string StartPlaylistLabel =>
+        $"Start playlist · {hostParty!.GameQueue.Count} game{(hostParty.GameQueue.Count == 1 ? string.Empty : "s")}";
+
+    private string GameAvailability(GameDescriptor game) => players.Count < game.MinimumPlayers
+        ? $"Needs {game.MinimumPlayers - players.Count} more player{(game.MinimumPlayers - players.Count == 1 ? string.Empty : "s")}"
+        : $"Supports up to {game.MaximumPlayers} players";
+
+    private static string GameThemeClass(string gameKey) => $"game-theme-{gameKey}";
+
+    private static string GameMonogram(string gameKey) => gameKey switch
+    {
+        AniMatesGameModule.GameKey => "AM",
+        "slop-machine" => "SM",
+        "bullshit" => "BS",
+        "majority-rules" => "MR",
+        "estimate" => "≋",
+        _ => gameKey[..Math.Min(2, gameKey.Length)].ToUpperInvariant()
+    };
+
+    private static string QueueConfigurationSummary(PartyGameQueueItem item)
+    {
+        if (item.GameKey != AniMatesGameModule.GameKey)
+        {
+            return "Standard setup";
+        }
+
+        try
+        {
+            var configuration = JsonSerializer.Deserialize<AniMatesGameConfiguration>(item.ConfigurationJson);
+            return configuration is null
+                ? "Standard setup"
+                : $"{configuration.DrawingSecondsPerFrame}s per frame";
+        }
+        catch (JsonException)
+        {
+            return "Custom setup";
+        }
+    }
 
     private static string FormatDuration(int totalSeconds)
     {

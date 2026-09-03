@@ -91,6 +91,22 @@ public sealed class PartyServiceTests
         Assert.Null(await service.GetActiveAsync("host-1"));
     }
 
+    [Fact]
+    public async Task Owned_party_view_reconstructs_the_ordered_game_playlist()
+    {
+        var repository = new FakePartyRepository();
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        var first = new PartyGameQueueItem(Guid.NewGuid(), "animates", "{}");
+        var second = new PartyGameQueueItem(Guid.NewGuid(), "estimate", "{}");
+        party.ReplaceGameQueue([first, second]);
+        repository.Parties.Add(party);
+        var service = CreateService(repository);
+
+        var view = await service.GetOwnedAsync(party.Id.Value, "host-1");
+
+        Assert.Equal([first, second], view.GameQueue);
+    }
+
     private sealed class FixedTimeProvider : TimeProvider
     {
         public override DateTimeOffset GetUtcNow() => new(2026, 8, 26, 12, 0, 0, TimeSpan.Zero);

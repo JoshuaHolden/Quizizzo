@@ -9,4 +9,5 @@ public sealed record PartyView(
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
     Guid? CurrentGameInstanceId,
-    string? CurrentGameKey);
+    string? CurrentGameKey,
+    IReadOnlyList<PartyGameQueueItem> GameQueue);

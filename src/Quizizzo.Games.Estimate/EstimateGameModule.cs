@@ -15,7 +15,13 @@ public sealed class EstimateGameModule(
     private readonly TimeSpan answerDuration = answerDuration ?? TimeSpan.FromSeconds(30);
     private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "Estimate", 2, 12);
+    public GameDescriptor Descriptor { get; } = new(
+        GameKey,
+        "Estimate",
+        2,
+        12,
+        "Make your best numerical guess. Closest answers score while wild confidence gets exposed.",
+        "Numbers · 3 rounds");
 
     public GameModuleState Start(GameStartContext context)
     {

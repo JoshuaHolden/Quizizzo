@@ -43,28 +43,73 @@ public sealed class PartyGameService(
         }
 
         var members = await players.ListMembersAsync(party.Id, cancellationToken);
-        var gameInstanceId = GameInstanceId.New();
-        var participants = members.Select(player => new GameParticipant(
-            player.Id.Value,
-            player.DisplayName.Value,
-            player.Score)).ToArray();
-        var status = await runtime.StartAsync(new RuntimeGameStart(
-            gameInstanceId,
-            party.Id.Value,
-            hostUserId,
-            gameKey,
-            participants,
-            configuration), cancellationToken);
-
-        party.StartGame(gameInstanceId.Value, gameKey, timeProvider.GetUtcNow());
+        ValidateGameCanStart(gameKey, members.Count);
+        var view = await StartGameCoreAsync(
+            party, hostUserId, gameKey, configuration, members, cancellationToken);
         await parties.SaveChangesAsync(cancellationToken);
-        return new PartyGameSessionView(
-            party.Id.Value,
-            status.GameInstanceId.Value,
-            gameKey,
-            status.Phase,
-            status.PhaseEndsAtUtc,
-            status.IsComplete);
+        return view;
+    }
+
+    public async Task SaveQueueAsync(
+        Guid partyId,
+        string hostUserId,
+        IReadOnlyList<PartyGameQueueRequest> requests,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(requests);
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
+        var party = await GetOwnedPartyAsync(partyId, hostUserId, cancellationToken);
+        if (party.Status != PartyStatus.Lobby || party.CurrentGameInstanceId.HasValue)
+        {
+            throw new InvalidOperationException("The game queue can be changed only in the party lobby.");
+        }
+
+        var members = await players.ListMembersAsync(party.Id, cancellationToken);
+        var queuedGames = requests.Select(request =>
+        {
+            ValidateGameCanStart(request.GameKey, members.Count);
+            var configurationJson = request.Configuration.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null
+                ? "{}"
+                : request.Configuration.GetRawText();
+            ValidateConfigurationJson(configurationJson);
+            return new PartyGameQueueItem(request.QueueItemId, request.GameKey, configurationJson);
+        }).ToArray();
+
+        party.ReplaceGameQueue(queuedGames);
+        await parties.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<PartyGameSessionView> StartQueueAsync(
+        Guid partyId,
+        string hostUserId,
+        CancellationToken cancellationToken = default)
+    {
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
+        var party = await GetOwnedPartyAsync(partyId, hostUserId, cancellationToken);
+        if (party.Status != PartyStatus.Lobby || party.CurrentGameInstanceId.HasValue)
+        {
+            throw new InvalidOperationException("A playlist can start only from the party lobby.");
+        }
+
+        var members = await players.ListMembersAsync(party.Id, cancellationToken);
+        if (party.GameQueue.Count == 0)
+        {
+            throw new InvalidOperationException("Add at least one game to the playlist first.");
+        }
+        var next = party.GameQueue[0];
+        ValidateGameCanStart(next.GameKey, members.Count);
+        party.TakeNextQueuedGame();
+        var view = await StartGameCoreAsync(
+            party,
+            hostUserId,
+            next.GameKey,
+            ParseConfiguration(next.ConfigurationJson),
+            members,
+            cancellationToken);
+        await parties.SaveChangesAsync(cancellationToken);
+        return view;
     }
 
     public async Task<PartyGameView?> GetHostViewAsync(
@@ -175,7 +220,7 @@ public sealed class PartyGameService(
 
         if (result.Applied && result.IsComplete)
         {
-            await FinalizeGameAsync(party, instanceId, result.Scores, cancellationToken);
+            await FinalizeGameAsync(party.Id.Value, instanceId, result.Scores, cancellationToken);
         }
 
         return new PartyGameCommandView(
@@ -204,8 +249,11 @@ public sealed class PartyGameService(
             new GameInstanceId(instanceId), role, subjectId, cancellationToken);
         if (view.IsComplete)
         {
-            await FinalizeGameAsync(party, instanceId, view.Scores, cancellationToken);
-            return null;
+            var startedNext = await FinalizeGameAsync(
+                party.Id.Value, instanceId, view.Scores, cancellationToken);
+            return startedNext
+                ? await GetViewAsync(party, role, subjectId, cancellationToken)
+                : null;
         }
         return new PartyGameView(
             party.Id.Value,
@@ -220,15 +268,19 @@ public sealed class PartyGameService(
             view.Scores);
     }
 
-    private async Task FinalizeGameAsync(
-        Party party,
+    private async Task<bool> FinalizeGameAsync(
+        Guid partyId,
         Guid instanceId,
         IReadOnlyDictionary<Guid, int> scores,
         CancellationToken cancellationToken)
     {
+        await using var mutation = await partyMutations.AcquireAsync(
+            new PartyId(partyId), cancellationToken);
+        var party = await parties.GetByIdAsync(new PartyId(partyId), cancellationToken)
+            ?? throw new PartyNotFoundException();
         if (party.CurrentGameInstanceId != instanceId)
         {
-            return;
+            return false;
         }
 
         var gameKey = party.CurrentGameKey
@@ -253,8 +305,90 @@ public sealed class PartyGameService(
             }
         }
         party.ReturnToLobby(instanceId);
+
+        var startedNext = false;
+        if (party.GameQueue.Count > 0)
+        {
+            var next = party.GameQueue[0];
+            ValidateGameCanStart(next.GameKey, members.Count);
+            party.TakeNextQueuedGame();
+            await StartGameCoreAsync(
+                party,
+                party.HostUserId,
+                next.GameKey,
+                ParseConfiguration(next.ConfigurationJson),
+                members,
+                cancellationToken);
+            startedNext = true;
+        }
+
         await players.SaveChangesAsync(cancellationToken);
         await parties.SaveChangesAsync(cancellationToken);
+        return startedNext;
+    }
+
+    private async Task<PartyGameSessionView> StartGameCoreAsync(
+        Party party,
+        string hostUserId,
+        string gameKey,
+        JsonElement configuration,
+        IReadOnlyList<Player> members,
+        CancellationToken cancellationToken)
+    {
+        var gameInstanceId = GameInstanceId.New();
+        var participants = members.Select(player => new GameParticipant(
+            player.Id.Value,
+            player.DisplayName.Value,
+            player.Score)).ToArray();
+        var status = await runtime.StartAsync(new RuntimeGameStart(
+            gameInstanceId,
+            party.Id.Value,
+            hostUserId,
+            gameKey,
+            participants,
+            configuration), cancellationToken);
+
+        party.StartGame(gameInstanceId.Value, gameKey, timeProvider.GetUtcNow());
+        return new PartyGameSessionView(
+            party.Id.Value,
+            status.GameInstanceId.Value,
+            gameKey,
+            status.Phase,
+            status.PhaseEndsAtUtc,
+            status.IsComplete);
+    }
+
+    private void ValidateGameCanStart(string gameKey, int playerCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(gameKey);
+        var descriptor = runtime.ListGames().FirstOrDefault(candidate =>
+            string.Equals(candidate.Key, gameKey, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException($"The game '{gameKey}' is not available.");
+        if (playerCount < descriptor.MinimumPlayers || playerCount > descriptor.MaximumPlayers)
+        {
+            throw new InvalidOperationException(
+                $"{descriptor.DisplayName} needs {descriptor.MinimumPlayers}–{descriptor.MaximumPlayers} players.");
+        }
+    }
+
+    private static void ValidateConfigurationJson(string configurationJson)
+    {
+        if (configurationJson.Length > PartyGameQueueItem.MaximumConfigurationLength)
+        {
+            throw new InvalidOperationException("A queued game configuration is too large.");
+        }
+        using var document = JsonDocument.Parse(configurationJson);
+        if (document.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException("A queued game configuration must be a JSON object.");
+        }
+    }
+
+    private static JsonElement ParseConfiguration(string configurationJson)
+    {
+        ValidateConfigurationJson(configurationJson);
+        using var document = JsonDocument.Parse(configurationJson);
+        return document.RootElement.Clone();
     }
 
     private async Task<Party> GetOwnedPartyAsync(
@@ -300,3 +434,8 @@ public sealed record PartyGameCommandView(
     bool IsComplete,
     string? ErrorCode,
     string? ErrorMessage);
+
+public sealed record PartyGameQueueRequest(
+    Guid QueueItemId,
+    string GameKey,
+    JsonElement Configuration);

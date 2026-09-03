@@ -23,7 +23,13 @@ public sealed class BullshitGameModule(
     private readonly TimeSpan choosingDuration = choosingDuration ?? TimeSpan.FromSeconds(30);
     private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "Bullshit", 3, 12);
+    public GameDescriptor Descriptor { get; } = new(
+        GameKey,
+        "Bullshit",
+        3,
+        12,
+        "Invent believable wrong answers, spot the truth and trick your friends into choosing your bluff.",
+        "Bluffing · 3 rounds");
 
     public GameModuleState Start(GameStartContext context) => ModuleState(
         BluffingPhase,

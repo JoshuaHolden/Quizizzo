@@ -20,7 +20,13 @@ public sealed class MajorityRulesGameModule(
     private readonly TimeSpan votingDuration = votingDuration ?? TimeSpan.FromSeconds(30);
     private readonly TimeSpan resultsDuration = resultsDuration ?? TimeSpan.FromSeconds(10);
 
-    public GameDescriptor Descriptor { get; } = new(GameKey, "Majority Rules", 3, 12);
+    public GameDescriptor Descriptor { get; } = new(
+        GameKey,
+        "Majority Rules",
+        3,
+        12,
+        "Write an answer, predict the room and earn points when the crowd agrees with you.",
+        "Writing · Voting");
 
     public GameModuleState Start(GameStartContext context) => ModuleState(
         AnsweringPhase,

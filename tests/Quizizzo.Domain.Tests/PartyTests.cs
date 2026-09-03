@@ -58,4 +58,31 @@ public sealed class PartyTests
         Assert.Throws<InvalidOperationException>(() =>
             party.StartGame(Guid.NewGuid(), "estimate", DateTimeOffset.UtcNow));
     }
+
+    [Fact]
+    public void Game_queue_preserves_order_and_is_consumed_one_item_at_a_time()
+    {
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        var first = new PartyGameQueueItem(Guid.NewGuid(), "animates", "{\"drawingSecondsPerFrame\":45}");
+        var second = new PartyGameQueueItem(Guid.NewGuid(), "estimate", "{}");
+
+        party.ReplaceGameQueue([first, second]);
+        var taken = party.TakeNextQueuedGame();
+
+        Assert.Equal(first, taken);
+        Assert.Equal([second], party.GameQueue);
+    }
+
+    [Fact]
+    public void Game_queue_is_bounded_and_cannot_change_during_play()
+    {
+        var party = Party.Create("host-1", RoomCode.Parse("K7XM"), DateTimeOffset.UtcNow);
+        var tooMany = Enumerable.Range(0, Party.MaximumQueuedGames + 1)
+            .Select(_ => new PartyGameQueueItem(Guid.NewGuid(), "estimate", "{}"));
+
+        Assert.Throws<InvalidOperationException>(() => party.ReplaceGameQueue(tooMany));
+
+        party.StartGame(Guid.NewGuid(), "estimate", DateTimeOffset.UtcNow);
+        Assert.Throws<InvalidOperationException>(() => party.ReplaceGameQueue([]));
+    }
 }

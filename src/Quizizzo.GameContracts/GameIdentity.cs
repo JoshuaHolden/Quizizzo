@@ -18,7 +18,9 @@ public sealed record GameDescriptor(
     string Key,
     string DisplayName,
     int MinimumPlayers,
-    int MaximumPlayers);
+    int MaximumPlayers,
+    string Description = "",
+    string PlayStyle = "Party game");
 
 public sealed record GameParticipant(
     Guid PlayerId,

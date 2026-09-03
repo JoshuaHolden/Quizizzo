@@ -30,9 +30,11 @@ public sealed class HostPartyRealtimeService(
         var players = services.GetRequiredService<PlayerService>();
         var games = services.GetRequiredService<PartyGameService>();
 
+        var game = await games.GetHostViewAsync(partyId, hostUserId, cancellationToken);
+        // Loading a completed snapshot can atomically start the next queued game,
+        // so reconstruct the party after the game view has reconciled completion.
         var party = await parties.GetOwnedAsync(partyId, hostUserId, cancellationToken);
         var roster = await players.ListForHostAsync(partyId, hostUserId, cancellationToken);
-        var game = await games.GetHostViewAsync(partyId, hostUserId, cancellationToken);
         return new HostPartyRealtimeState(
             party,
             roster,
@@ -51,6 +53,35 @@ public sealed class HostPartyRealtimeService(
         {
             await scope.ServiceProvider.GetRequiredService<PartyGameService>()
                 .StartAsync(partyId, hostUserId, gameKey, configuration, cancellationToken);
+        }
+
+        await realtime.PartyChangedAsync(partyId, "GameStarted", cancellationToken);
+    }
+
+    public async Task SaveGameQueueAsync(
+        Guid partyId,
+        string hostUserId,
+        IReadOnlyList<PartyGameQueueRequest> queue,
+        CancellationToken cancellationToken = default)
+    {
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PartyGameService>()
+                .SaveQueueAsync(partyId, hostUserId, queue, cancellationToken);
+        }
+
+        await realtime.PartyChangedAsync(partyId, "GameQueueChanged", cancellationToken);
+    }
+
+    public async Task StartGameQueueAsync(
+        Guid partyId,
+        string hostUserId,
+        CancellationToken cancellationToken = default)
+    {
+        await using (var scope = scopeFactory.CreateAsyncScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<PartyGameService>()
+                .StartQueueAsync(partyId, hostUserId, cancellationToken);
         }
 
         await realtime.PartyChangedAsync(partyId, "GameStarted", cancellationToken);

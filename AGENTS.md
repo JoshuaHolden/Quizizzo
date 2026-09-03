@@ -615,6 +615,16 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Animate in-scene view awards and winner emphasis without overlapping cards, validate JavaScript, pass all 21 client tests, pass formatting for every modified C# file, and pass all 261 .NET tests.
 - [x] Delete the unreachable legacy reveal phases and timer, their obsolete display/audio mappings, the unused vote-reset helper, and write-only submission/re-spin model fields.
 
+### Professional game picker and party playlists (completed 2026-09-03)
+
+- [x] Replace the standings-heavy host picker with a wide, responsive game catalogue featuring distinctive game treatments, descriptions, play styles, player eligibility, and compact per-game settings.
+- [x] Add quick-play and an editable ordered playlist with add, remove, and reorder controls plus a compact active-game “up next” view.
+- [x] Persist the bounded playlist and each entry's configuration as reconstructable PostgreSQL JSONB party state behind a migration.
+- [x] Authorize and serialize every playlist mutation through the existing party mutation coordinator and validate game availability and player limits server-side.
+- [x] Finalize scores and wins, dequeue, and start the next game under one party mutation lease so players move between games without an editable lobby stop.
+- [x] Preserve accumulated player identities and scores across automatic handoffs, retain queued games after immediate play, and clear the playlist when the party closes.
+- [x] Document the lifecycle, format all modified C# files, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 267 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

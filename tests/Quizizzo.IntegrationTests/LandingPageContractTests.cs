@@ -475,7 +475,10 @@ public sealed class LandingPageContractTests
         var styles = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
 
         Assert.Contains("display-host-controls", page, StringComparison.Ordinal);
-        Assert.Contains("display-host-game-grid", page, StringComparison.Ordinal);
+        Assert.Contains("display-host-game-catalogue", page, StringComparison.Ordinal);
+        Assert.Contains("display-host-game-queue", page, StringComparison.Ordinal);
+        Assert.Contains("Party playlist", page, StringComparison.Ordinal);
+        Assert.Contains("Play now", page, StringComparison.Ordinal);
         Assert.Contains("Host controls", page, StringComparison.Ordinal);
         Assert.Contains("Close party", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);

@@ -140,6 +140,91 @@ public sealed class PartyGameServiceTests
         Assert.Equal(900, fixture.Second.Score);
     }
 
+    [Fact]
+    public async Task Saved_playlist_survives_as_ordered_party_state_and_start_consumes_only_the_first_game()
+    {
+        var fixture = new Fixture();
+        var firstId = Guid.NewGuid();
+        var secondId = Guid.NewGuid();
+
+        await fixture.Service.SaveQueueAsync(
+            fixture.Party.Id.Value,
+            Fixture.HostId,
+            [
+                new PartyGameQueueRequest(
+                    firstId,
+                    "animates",
+                    GameJson.From(new { DrawingSecondsPerFrame = 35 })),
+                new PartyGameQueueRequest(secondId, "estimate", GameJson.Empty)
+            ]);
+        var started = await fixture.Service.StartQueueAsync(
+            fixture.Party.Id.Value,
+            Fixture.HostId);
+
+        Assert.Equal("animates", started.GameKey);
+        var remaining = Assert.Single(fixture.Party.GameQueue);
+        Assert.Equal(secondId, remaining.QueueItemId);
+        Assert.Equal("estimate", remaining.GameKey);
+        Assert.Equal(35, Assert.Single(fixture.Runtime.Starts).Configuration
+            .GetProperty("DrawingSecondsPerFrame").GetInt32());
+    }
+
+    [Fact]
+    public async Task Completing_a_queued_game_starts_the_next_game_without_a_lobby_stop()
+    {
+        var fixture = new Fixture();
+        await fixture.Service.SaveQueueAsync(
+            fixture.Party.Id.Value,
+            Fixture.HostId,
+            [
+                new PartyGameQueueRequest(Guid.NewGuid(), "estimate", GameJson.Empty),
+                new PartyGameQueueRequest(Guid.NewGuid(), "animates", GameJson.Empty)
+            ]);
+        await fixture.Service.StartQueueAsync(fixture.Party.Id.Value, Fixture.HostId);
+        fixture.Runtime.NextResult = new RuntimeGameCommandResult(
+            true,
+            false,
+            "Completed",
+            null,
+            true,
+            null,
+            null,
+            new Dictionary<Guid, int>
+            {
+                [fixture.First.Id.Value] = 650,
+                [fixture.Second.Id.Value] = 400
+            });
+
+        await fixture.Service.ExecuteHostActionAsync(
+            fixture.Party.Id.Value,
+            Fixture.HostId,
+            Guid.NewGuid(),
+            "complete",
+            GameJson.Empty);
+
+        Assert.Equal(PartyStatus.Playing, fixture.Party.Status);
+        Assert.Equal("animates", fixture.Party.CurrentGameKey);
+        Assert.Empty(fixture.Party.GameQueue);
+        Assert.Equal(2, fixture.Runtime.Starts.Count);
+        Assert.Equal(650, fixture.Runtime.Starts[1].Participants.Single(player =>
+            player.PlayerId == fixture.First.Id.Value).StartingScore);
+    }
+
+    [Fact]
+    public async Task Playing_now_keeps_an_existing_playlist_for_automatic_handoff()
+    {
+        var fixture = new Fixture();
+        await fixture.Service.SaveQueueAsync(
+            fixture.Party.Id.Value,
+            Fixture.HostId,
+            [new PartyGameQueueRequest(Guid.NewGuid(), "animates", GameJson.Empty)]);
+
+        await fixture.Service.StartAsync(fixture.Party.Id.Value, Fixture.HostId, "estimate");
+
+        Assert.Single(fixture.Party.GameQueue);
+        Assert.Equal("estimate", fixture.Party.CurrentGameKey);
+    }
+
     private sealed class Fixture
     {
         public const string HostId = "host-user";
@@ -212,7 +297,10 @@ public sealed class PartyGameServiceTests
         public RuntimeGameView? NextView { get; set; }
 
         public IReadOnlyList<GameDescriptor> ListGames() =>
-            [new GameDescriptor("estimate", "Estimate", 2, 12)];
+            [
+                new GameDescriptor("estimate", "Estimate", 2, 12),
+                new GameDescriptor("animates", "AniMates", 2, 6)
+            ];
 
         public Task<RuntimeGameStatus> StartAsync(
             RuntimeGameStart request,
