@@ -1,7 +1,10 @@
 @using Quizizzo.GameContracts
 @implements IAsyncDisposable
 
-<section class="arcade-controller" aria-label="Arcade controls">
+<section class="arcade-controller" aria-label="Arcade controls" tabindex="0"
+         @onkeydown="HandleKeyDownAsync" @onkeydown:preventDefault="true"
+         @onkeyup="HandleKeyUp" @onkeyup:preventDefault="true"
+         @onblur="StopKeyboardHolds">
     <header class="arcade-status-strip">
         <div>
             <span>Chaos charge</span>
@@ -64,6 +67,9 @@
             </button>
         }
     </div>
+    <p class="arcade-keyboard-hint">
+        Keyboard: arrows move, rotate and drop · Space slams · Shift fires chaos
+    </p>
 </section>
 
 @code {
@@ -74,6 +80,8 @@
     private long nextSequence;
     private string? selectedTargetId;
     private CancellationTokenSource? holdCancellation;
+    private readonly Dictionary<string, CancellationTokenSource> keyboardHolds =
+        new(StringComparer.Ordinal);
     private int ChargePercent => Math.Clamp(Configuration.ChargePercent, 0, 100);
     private IEnumerable<ArcadeControl> MovementControls =>
         Configuration.Controls.Where(control => control.Input != "ActivateAbility");
@@ -147,6 +155,56 @@
         }
     }
 
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (Disabled || args.Repeat || KeyboardInput(args.Key) is not { } input ||
+            keyboardHolds.ContainsKey(args.Key))
+        {
+            return;
+        }
+
+        await SendAsync(input);
+        var control = Configuration.Controls.FirstOrDefault(candidate => candidate.Input == input);
+        if (control?.HoldRepeatMilliseconds is not { } repeat)
+        {
+            return;
+        }
+
+        var cancellation = new CancellationTokenSource();
+        keyboardHolds[args.Key] = cancellation;
+        _ = RepeatAsync(input, Math.Clamp(repeat, 40, 500), cancellation.Token);
+    }
+
+    private void HandleKeyUp(KeyboardEventArgs args)
+    {
+        if (keyboardHolds.Remove(args.Key, out var cancellation))
+        {
+            cancellation.Cancel();
+            cancellation.Dispose();
+        }
+    }
+
+    private void StopKeyboardHolds()
+    {
+        foreach (var cancellation in keyboardHolds.Values)
+        {
+            cancellation.Cancel();
+            cancellation.Dispose();
+        }
+        keyboardHolds.Clear();
+    }
+
+    private static string? KeyboardInput(string key) => key switch
+    {
+        "ArrowLeft" or "a" or "A" => "MoveLeft",
+        "ArrowRight" or "d" or "D" => "MoveRight",
+        "ArrowUp" or "w" or "W" => "RotateClockwise",
+        "ArrowDown" or "s" or "S" => "SoftDrop",
+        " " or "Enter" => "InstantDrop",
+        "Shift" or "x" or "X" => "ActivateAbility",
+        _ => null
+    };
+
     private static string ControlClass(string input) => input switch
     {
         "MoveLeft" => "left",
@@ -160,6 +218,7 @@
     public ValueTask DisposeAsync()
     {
         StopHold();
+        StopKeyboardHolds();
         return ValueTask.CompletedTask;
     }
 }

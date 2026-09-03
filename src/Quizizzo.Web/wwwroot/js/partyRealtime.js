@@ -30,7 +30,7 @@ window.quizizzoRealtime = (() => {
             .build();
 
         connection.on("StateChanged", async message => {
-            if (role === "Display") {
+            if (role === "Display" && message.reason === "DisplayPaired") {
                 // Pairing changes the display's party group without replacing its durable identity.
                 try {
                     await bind(connection, role, partyId);

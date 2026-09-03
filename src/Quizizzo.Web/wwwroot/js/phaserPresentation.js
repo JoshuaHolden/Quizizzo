@@ -731,7 +731,7 @@ window.quizizzoPresentation = (() => {
             const round = Number(field(state, "roundNumber", 1));
             const topLabel = snapshot.phase === "WinnerCelebration"
                 ? "SCRAPYARD CHAMPION"
-                : `PILE-UP PANIC  ·  ROUND ${round}/5`;
+                : `PILE-UP PANIC  ·  ROUND ${round}/3`;
             items.push(
                 this.add.text(width / 2, 28, topLabel, {
                     color: "#ffe86a", fontFamily: displayFont, fontSize: "20px",
@@ -827,6 +827,9 @@ window.quizizzoPresentation = (() => {
                 const overloaded = Boolean(field(arena, "isOverloaded", false));
                 const connected = Boolean(field(arena, "isConnected", true));
                 const shielded = Boolean(field(arena, "shielded", false));
+                const previousArenas = field(field(this.previous?.gameState, "match", {}), "arenas", []);
+                const previousArena = previousArenas.find(candidate =>
+                    normalizedId(field(candidate, "playerId", "")) === playerId);
                 const graphics = this.add.graphics();
                 const cardLeft = x - cardWidth / 2;
                 graphics.fillStyle(0x080914, .86);
@@ -848,21 +851,46 @@ window.quizizzoPresentation = (() => {
                         gridLeft + gridWidth, gridTop + row * cellSize);
                 }
 
-                const drawCell = cell => {
+                const drawCell = (target, cell, isActive = false) => {
                     const cellX = Number(field(cell, "x", -1));
                     const cellY = Number(field(cell, "y", -1)) - 3;
                     if (cellX < 0 || cellX >= 9 || cellY < 0 || cellY >= 17) return;
                     const colour = this.pileMaterialColour(field(cell, "material", "junk"));
                     const px = gridLeft + cellX * cellSize + 2;
                     const py = gridTop + cellY * cellSize + 2;
-                    graphics.fillStyle(colour, .96);
-                    graphics.fillRoundedRect(px, py, cellSize - 4, cellSize - 4, Math.max(2, cellSize / 6));
-                    graphics.fillStyle(0xffffff, .2);
-                    graphics.fillRect(px + 2, py + 2, cellSize - 8, 3);
+                    if (isActive) {
+                        target.lineStyle(2, 0xffffff, .72);
+                        target.strokeRoundedRect(px - 1, py - 1, cellSize - 2, cellSize - 2,
+                            Math.max(2, cellSize / 6));
+                    }
+                    target.fillStyle(colour, .96);
+                    target.fillRoundedRect(px, py, cellSize - 4, cellSize - 4, Math.max(2, cellSize / 6));
+                    target.fillStyle(0xffffff, isActive ? .34 : .2);
+                    target.fillRect(px + 2, py + 2, cellSize - 8, 3);
                 };
-                field(arena, "grid", []).forEach(drawCell);
-                this.pileActiveCells(state, field(arena, "active", null)).forEach(drawCell);
-                items.push(graphics);
+                field(arena, "grid", []).forEach(cell => drawCell(graphics, cell));
+
+                const active = field(arena, "active", null);
+                const activeGraphics = this.add.graphics();
+                this.pileActiveCells(state, active).forEach(cell => drawCell(activeGraphics, cell, true));
+                const previousActive = field(previousArena, "active", null);
+                const canInterpolate = snapshot.phase === "Playing" && previousActive && active &&
+                    field(previousActive, "clusterKey", "") === field(active, "clusterKey", "") &&
+                    field(previousActive, "material", "") === field(active, "material", "") &&
+                    Number(field(previousActive, "rotation", 0)) === Number(field(active, "rotation", 0));
+                if (!this.controller.reducedMotion && canInterpolate) {
+                    activeGraphics.setPosition(
+                        (Number(field(previousActive, "x", 0)) - Number(field(active, "x", 0))) * cellSize,
+                        (Number(field(previousActive, "y", 0)) - Number(field(active, "y", 0))) * cellSize);
+                    this.tweens.add({
+                        targets: activeGraphics,
+                        x: 0,
+                        y: 0,
+                        duration: 180,
+                        ease: "Cubic.easeOut"
+                    });
+                }
+                items.push(graphics, activeGraphics);
 
                 if (avatar) {
                     avatar.container.setVisible(true).setPosition(cardLeft + 34, cardTop + 39).setScale(.28)
@@ -916,9 +944,6 @@ window.quizizzoPresentation = (() => {
                     fontStyle: "bold", align: "center", wordWrap: { width: cardWidth - 18 }
                 }).setOrigin(.5, 0));
 
-                const previousArenas = field(field(this.previous?.gameState, "match", {}), "arenas", []);
-                const previousArena = previousArenas.find(candidate =>
-                    normalizedId(field(candidate, "playerId", "")) === playerId);
                 if (previousArena && Number(field(arena, "views", 0)) > Number(field(previousArena, "views", 0))) {
                     this.burst(x, gridTop + gridHeight * .55, 18);
                 }

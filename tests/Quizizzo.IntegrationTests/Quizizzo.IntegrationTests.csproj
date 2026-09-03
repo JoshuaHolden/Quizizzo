@@ -21,6 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Quizizzo.Games.PileUpPanic\Quizizzo.Games.PileUpPanic.csproj" />
     <ProjectReference Include="..\..\src\Quizizzo.Games.SlopMachine\Quizizzo.Games.SlopMachine.csproj" />
     <ProjectReference Include="..\..\src\Quizizzo.Web\Quizizzo.Web.csproj" />
   </ItemGroup>

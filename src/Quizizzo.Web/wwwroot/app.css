@@ -3002,6 +3002,30 @@ body:has(.phone-controller-shell) {
     -webkit-user-select: none;
 }
 
+.phone-controller-shell .arcade-controller:focus-visible {
+    border-radius: .9rem;
+    outline: 3px solid #37d9f5;
+    outline-offset: 2px;
+}
+
+.phone-controller-shell .arcade-keyboard-hint {
+    display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .phone-controller-shell .arcade-keyboard-hint {
+        color: #c8bfdf;
+        display: block;
+        font-size: .68rem;
+        margin: -.15rem 0 0;
+        text-align: center;
+    }
+
+    .phone-controller-shell .arcade-controller {
+        grid-template-rows: auto auto minmax(0, 1fr) auto;
+    }
+}
+
 .phone-controller-shell .arcade-status-strip {
     align-items: center;
     backdrop-filter: blur(.8rem);

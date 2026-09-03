@@ -23,6 +23,11 @@ public interface IGameSimulationModule
     TimeSpan? GetSimulationInterval(GameModuleState state);
 }
 
+/// <summary>
+/// Marks a module that consumes serialized player-presence changes from the game runtime.
+/// </summary>
+public interface IGamePlayerPresenceModule;
+
 public sealed class GameRuleViolationException(string code, string message) : Exception(message)
 {
     public string Code { get; } = string.IsNullOrWhiteSpace(code)

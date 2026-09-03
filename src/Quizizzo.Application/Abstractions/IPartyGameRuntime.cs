@@ -20,7 +20,18 @@ public interface IPartyGameRuntime
         GameAudienceRole role,
         string subjectId,
         CancellationToken cancellationToken = default);
+
+    Task<bool> SetPlayerPresenceAsync(
+        RuntimePlayerPresence request,
+        CancellationToken cancellationToken = default);
 }
+
+public sealed record RuntimePlayerPresence(
+    GameInstanceId GameInstanceId,
+    Guid PartyId,
+    string GameKey,
+    Guid PlayerId,
+    bool IsConnected);
 
 public sealed record RuntimeGameStart(
     GameInstanceId GameInstanceId,

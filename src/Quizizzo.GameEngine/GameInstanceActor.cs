@@ -284,9 +284,11 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
                 !snapshot.Participants.Any(player => player.PlayerId == playerId):
                 return ("player-forbidden", "Only a current game participant can issue player actions.");
             case GameActorRole.System when command.Action is not DeadlineElapsedAction:
-                if (command.Action is not SimulationTickElapsedAction)
+                if ((command.Action is not SimulationTickElapsedAction &&
+                     command.Action is not PlayerPresenceChangedAction) ||
+                    (command.Action is PlayerPresenceChangedAction && module is not IGamePlayerPresenceModule))
                 {
-                    return ("system-action-forbidden", "The engine may issue only scheduled system actions.");
+                    return ("system-action-forbidden", "The engine may issue only supported system actions.");
                 }
                 break;
             case not (GameActorRole.Host or GameActorRole.Player or GameActorRole.System):
@@ -321,6 +323,17 @@ internal sealed partial class GameInstanceActor : IAsyncDisposable
             if (now < simulationTick.ScheduledForUtc)
             {
                 return ("early-simulation-tick", "The simulation tick is not due yet.");
+            }
+        }
+        else if (command.Action is PlayerPresenceChangedAction presence)
+        {
+            if (command.Actor.Role != GameActorRole.System || module is not IGamePlayerPresenceModule)
+            {
+                return ("presence-forbidden", "This game does not accept player presence changes.");
+            }
+            if (!snapshot.Participants.Any(player => player.PlayerId == presence.PlayerId))
+            {
+                return ("presence-player-invalid", "The presence change is not for a current participant.");
             }
         }
         else if (snapshot.ModuleState.PhaseEndsAtUtc is { } deadline && now >= deadline)

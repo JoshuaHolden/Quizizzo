@@ -119,4 +119,22 @@ public sealed class GameRuntimeGateway(
         }
         return response;
     }
+
+    public async Task<bool> SetPlayerPresenceAsync(
+        RuntimePlayerPresence request,
+        CancellationToken cancellationToken = default)
+    {
+        if (modules.GetRequired(request.GameKey) is not IGamePlayerPresenceModule)
+        {
+            return false;
+        }
+
+        var result = await runtime.ExecuteAsync(new GameCommand(
+            GameCommandId.New(),
+            request.GameInstanceId,
+            request.PartyId,
+            GameActor.SystemActor,
+            new PlayerPresenceChangedAction(request.PlayerId, request.IsConnected)), cancellationToken);
+        return result.Outcome == GameCommandOutcome.Applied;
+    }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Quizizzo.Application.Games;
 using Quizizzo.Application.Players;
 
 namespace Quizizzo.Web.Realtime;
@@ -45,11 +46,15 @@ public sealed partial class PartyConnectionRegistry(
 
         if (becamePresent && partyId.HasValue)
         {
+            if (role == RealtimeRole.Player && Guid.TryParse(subjectId, out var playerId))
+            {
+                await UpdateActiveGamePresenceAsync(partyId.Value, playerId, true, cancellationToken);
+            }
             await notifier.PartyChangedAsync(partyId.Value, $"{role}Connected", cancellationToken);
         }
     }
 
-    public Task UnregisterAsync(string connectionId)
+    public async Task UnregisterAsync(string connectionId)
     {
         ConnectionBinding? binding;
         var becameAbsent = false;
@@ -59,7 +64,7 @@ public sealed partial class PartyConnectionRegistry(
         {
             if (!connections.Remove(connectionId, out binding))
             {
-                return Task.CompletedTask;
+                return;
             }
 
             key = new PresenceKey(binding.PartyId, binding.Role, binding.SubjectId);
@@ -76,16 +81,20 @@ public sealed partial class PartyConnectionRegistry(
 
         if (!becameAbsent || !binding.PartyId.HasValue)
         {
-            return Task.CompletedTask;
+            return;
         }
 
         if (binding.Role == RealtimeRole.Player)
         {
+            if (Guid.TryParse(binding.SubjectId, out var playerId))
+            {
+                await UpdateActiveGamePresenceAsync(binding.PartyId.Value, playerId, false);
+            }
             SchedulePlayerDisconnect(key, binding);
-            return Task.CompletedTask;
+            return;
         }
 
-        return notifier.PartyChangedAsync(binding.PartyId.Value, $"{binding.Role}Disconnected");
+        await notifier.PartyChangedAsync(binding.PartyId.Value, $"{binding.Role}Disconnected");
     }
 
     public PartyPresenceSnapshot GetSnapshot(Guid partyId)
@@ -188,6 +197,27 @@ public sealed partial class PartyConnectionRegistry(
         }
     }
 
+    private async Task UpdateActiveGamePresenceAsync(
+        Guid partyId,
+        Guid playerId,
+        bool isConnected,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var scope = scopeFactory.CreateScope();
+            var games = scope.ServiceProvider.GetService<PartyGameService>();
+            if (games is not null)
+            {
+                await games.SetPlayerPresenceAsync(partyId, playerId, isConnected, cancellationToken);
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogPresenceSyncFailure(logger, exception, playerId, partyId, isConnected);
+        }
+    }
+
     private sealed record ConnectionBinding(string ConnectionId, Guid? PartyId, RealtimeRole Role, string SubjectId);
     private readonly record struct PresenceKey(Guid? PartyId, RealtimeRole Role, string SubjectId);
 
@@ -200,4 +230,15 @@ public sealed partial class PartyConnectionRegistry(
         Exception exception,
         string playerId,
         Guid? partyId);
+
+    [LoggerMessage(
+        EventId = 3202,
+        Level = LogLevel.Error,
+        Message = "Failed to synchronize player {PlayerId} presence for party {PartyId}; connected={IsConnected}")]
+    private static partial void LogPresenceSyncFailure(
+        ILogger logger,
+        Exception exception,
+        Guid playerId,
+        Guid partyId,
+        bool isConnected);
 }

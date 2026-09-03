@@ -2,16 +2,16 @@
 
 ## Current delivery boundary
 
-The fourth delivery adds the reconstructable Phaser display while deliberately stopping before production registration. `Quizizzo.Games.PileUpPanic` is built by the solution and tested through the existing game-engine test project; it is not shown in the host catalogue or reachable by players until live presence wiring and complete browser journeys are proven.
+The final integration registers `Quizizzo.Games.PileUpPanic` in the production module catalogue. It is available to quick play and persisted party playlists for parties of two to four players, with the same automatic handoff and cumulative party-score behavior as the other games.
 
-The repository already provides the outer boundaries this game will use:
+The game uses the repository's existing outer boundaries:
 
 - `GameInstanceActor` serializes semantic game commands and persists versioned reconstructable state.
 - `GameRuntimeManager` owns UTC phase deadlines and module discovery.
 - durable player IDs and cookies remain identity; SignalR connection IDs remain transport metadata.
 - `PartyGameService` finalizes game-local awards into cumulative party views and wins.
-- Blazor will own authenticated phone inputs and realtime refresh; Phaser will receive semantic display snapshots only.
-- `presentationAudio.js` will map semantic phase/event cues to local audio identifiers.
+- Blazor owns authenticated phone inputs and realtime refresh; Phaser receives semantic display snapshots only.
+- `presentationAudio.js` maps semantic phase/event cues to local audio identifiers.
 
 The shared engine now has one small opt-in extension: modules implementing `IGameSimulationModule` may request a bounded recurring interval between 20 ms and five seconds. Each due time becomes a deterministic, idempotent `SimulationTickElapsedAction` sent through the existing per-game actor. A normal 250 ms Pile-Up transition advances deterministic internal 50 ms steps, so the database and observers see four reconstructable updates per second rather than one write per physics step. Recovery starts a fresh due interval from the persisted simulation cursor and catches the rules state up authoritatively. Gravity is never driven from a phone or display.
 
@@ -44,7 +44,7 @@ Semantic event hooks currently include match/round start and completion, input r
 
 `PileUpOptions` centralizes input rate, horizontal and soft-drop repeat, initial/minimum fall intervals, speed progression, lock delay, queued/time-window junk caps, ability cooldown, disconnect grace, 150-second round duration, and 50 ms simulation step. Validation rejects non-positive or inconsistent values.
 
-Lock delay is active in the server simulation. Horizontal and soft-drop repeat values remain the future ordinary-web-controller cadence; every repeated intention will still pass through monotonic sequence and server rate validation.
+Lock delay is active in the server simulation. Horizontal and soft-drop repeat values drive the ordinary web-controller cadence; every repeated intention still passes through monotonic sequence and server rate validation.
 
 ## Implemented Stage 3 lifecycle and controller boundary
 
@@ -62,15 +62,17 @@ Introduction and controller-ready scenes use the shared production character rig
 
 The supplied `Falling Blocks Fever.mp3` is stored as a game-owned immutable media asset and plays as one looping background session across every non-completed Pile-Up phase. Reconstructable phase and revision refreshes do not restart it; a new game instance receives a fresh audio session, and the shared display mute/autoplay behavior remains unchanged.
 
-The mapper forwards only the role-specific `DisplayGameViewPayload.State`; this is an opaque presentation seam and does not make module state generally visible to phones. The Pile module remains unregistered, so this renderer cannot accidentally expose an unfinished production game.
+The mapper forwards only the role-specific `DisplayGameViewPayload.State`; this is an opaque presentation seam and does not make module state generally visible to phones.
 
-## Remaining stages
+## Final integration
 
-1. Wire durable live presence/disconnect changes into the match and decide the spectator-controller treatment after overload.
-2. Add active-piece interpolation/reconciliation and any additional one-shot Pile-Up audio cues after their supplied art/audio direction is available.
-3. Add keyboard bindings where physical keyboards are available and exact 320 px/short-landscape browser coverage for real held-input interaction.
-4. Register the module only after the display renderer and full production lifecycle are reconstructable.
-5. Run complete two-, three-, and four-player browser journeys plus display/controller refresh recovery and production lifecycle tests.
+- The first and last live transport for each durable player emit serialized presence commands through the active game actor. Multiple tabs still collapse to one subject, reconnect cancels the ordinary party disconnect grace, and transport IDs never become game identity.
+- A disconnected pile continues under natural gravity for the server-owned grace window, then forfeits by overload. An overloaded player receives the reusable waiting controller and remains a spectator of the surviving arenas.
+- Phaser reconciles active clusters from the previous authoritative snapshot to the next over a short 180 ms ease. Settled cells remain immediate, refresh reconstructs directly, and reduced-motion mode skips interpolation.
+- Touch controls retain the server-described hold cadence. Physical keyboards add arrows/WASD, Space/Enter, and Shift/X without introducing a client-authoritative simulation path.
+- The display rebinds its SignalR party group only after a real `DisplayPaired` event. High-frequency simulation hints therefore refresh reconstructable state without repeating database-backed display pairing.
+- Exact two-, three-, and four-player Edge journeys cover 320×568 portrait and 667×375 short-landscape controllers, held pointer input, rotation, controller refresh, and display refresh. All three production-catalogue journeys pass without error-level container logs.
+- The supplied Falling Blocks Fever loop remains the game audio. No synthetic one-shot cues were invented without supplied sound assets.
 
 ## Risks and decisions
 

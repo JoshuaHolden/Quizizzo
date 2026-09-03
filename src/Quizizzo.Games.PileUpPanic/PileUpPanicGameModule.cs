@@ -61,7 +61,7 @@ public sealed record PileUpFlowOptions
 public sealed class PileUpPanicGameModule(
     PileUpOptions? matchOptions = null,
     TimeSpan? simulationInterval = null,
-    PileUpFlowOptions? flowOptions = null) : IGameModule, IGameSimulationModule
+    PileUpFlowOptions? flowOptions = null) : IGameModule, IGameSimulationModule, IGamePlayerPresenceModule
 {
     public const string GameKey = "pile-up-panic";
     public const string IntroductionPhase = "Introduction";
@@ -124,6 +124,7 @@ public sealed class PileUpPanicGameModule(
         {
             SubmitPileInputAction input => ApplyInput(state, game, context, input),
             ReadyPileControllerAction => Ready(state, game, context),
+            PlayerPresenceChangedAction presence => SetPlayerPresence(state, game, context, presence),
             SimulationTickElapsedAction => Simulate(state, game, context.ReceivedAtUtc),
             DeadlineElapsedAction => Progress(state, game, context.ReceivedAtUtc),
             AdvancePileRoundAction => Advance(state, game, context),
@@ -155,6 +156,29 @@ public sealed class PileUpPanicGameModule(
 
     public TimeSpan? GetSimulationInterval(GameModuleState state) =>
         !state.IsComplete && state.Phase == PlayingPhase ? simulationInterval : null;
+
+    private static GameTransition SetPlayerPresence(
+        GameModuleState current,
+        PileUpGameState game,
+        GameActionContext context,
+        PlayerPresenceChangedAction action)
+    {
+        if (context.Actor.Role != GameActorRole.System)
+        {
+            throw new GameRuleViolationException(
+                "presence-forbidden", "Only the game runtime may update player presence.");
+        }
+
+        var match = PileUpMatch.Restore(game.Match);
+        match.SetConnection(action.PlayerId, action.IsConnected, context.ReceivedAtUtc);
+        var events = match.DrainEvents()
+            .Select(item => new GameEvent(item.Kind, GameJson.From(item)))
+            .ToArray();
+        return new GameTransition(
+            current with { Data = GameJson.From(game with { Match = match.CaptureState() }) },
+            [],
+            events);
+    }
 
     private GameTransition Ready(
         GameModuleState current,

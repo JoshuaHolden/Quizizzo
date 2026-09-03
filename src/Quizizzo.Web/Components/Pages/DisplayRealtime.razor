@@ -9,6 +9,7 @@
 @using Quizizzo.Domain.Parties
 @using Quizizzo.GameContracts
 @using Quizizzo.Games.AniMates
+@using Quizizzo.Games.PileUpPanic
 @using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
 @inject DisplayRealtimeStateLoader StateLoader
@@ -481,6 +482,7 @@
     private static string GameMonogram(string gameKey) => gameKey switch
     {
         AniMatesGameModule.GameKey => "AM",
+        PileUpPanicGameModule.GameKey => "PU",
         "slop-machine" => "SM",
         "bullshit" => "BS",
         "majority-rules" => "MR",

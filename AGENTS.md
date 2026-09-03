@@ -646,7 +646,10 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Add Pile-specific introduction, ready, round result, match standings, final survivor, and reduced-motion-aware winner celebration scenes using the shared production character rig.
 - [x] Add presentation mapper and static renderer contracts, validate JavaScript, pass all 21 client tests, pass a zero-warning strict Release build, and pass all 305 .NET tests.
 - [x] Import Falling Blocks Fever as immutable game-owned media, keep one uninterrupted background loop across all live Pile-Up phases, pass all 22 client tests, pass a zero-warning strict Release build, and pass all 306 .NET tests.
-- [ ] Add live presence wiring, spectator mode, active-piece interpolation, any additional audio cues, exact browser journeys, and only then production registration.
+- [x] Wire first/last durable-player presence through the serialized actor, forfeit disconnected piles after grace, and keep overloaded players in a spectator waiting controller.
+- [x] Add reduced-motion-safe active-piece reconciliation, physical-keyboard controls, and retain the supplied uninterrupted Falling Blocks Fever track without inventing unsupplied one-shot audio.
+- [x] Register Pile-Up Panic for production quick play and playlists only after exact 2/3/4-player Edge journeys passed at 320×568 and 667×375 with held input plus controller/display refresh recovery.
+- [x] Prevent high-frequency simulation hints from repeatedly re-pairing displays, verify clean error-only container logs, pass all 22 client tests, pass a zero-warning strict Release build, and pass all 309 .NET tests.
 
 ## Verification requirements
 

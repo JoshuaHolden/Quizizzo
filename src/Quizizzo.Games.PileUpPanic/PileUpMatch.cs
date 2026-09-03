@@ -218,6 +218,10 @@ public sealed class PileUpMatch
         {
             throw new ArgumentException("The player is not in this match.", nameof(playerId));
         }
+        if (runtime.IsConnected == connected)
+        {
+            return;
+        }
         runtime.IsConnected = connected;
         runtime.DisconnectedAtUtc = connected ? null : atUtc;
         events.Add(new PileMatchEvent(connected ? "PlayerReconnected" : "PlayerDisconnected", playerId));

@@ -3,7 +3,9 @@
 @using Quizizzo.Web.Presentation
 @inject IJSRuntime JavaScript
 
-<div id="@elementId" class="phaser-presentation @(CanManagePlayers ? "host-interactive" : null)" aria-hidden="true"></div>
+<div id="@elementId" class="phaser-presentation @(CanManagePlayers ? "host-interactive" : null)"
+     data-room-code="@Snapshot.RoomCode" data-game-key="@Snapshot.GameKey" data-phase="@Snapshot.Phase"
+     aria-hidden="true"></div>
 @if (!failed)
 {
     <button type="button"

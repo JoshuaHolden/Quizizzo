@@ -225,6 +225,23 @@ public sealed class PartyGameServiceTests
         Assert.Equal("estimate", fixture.Party.CurrentGameKey);
     }
 
+    [Fact]
+    public async Task Active_participant_presence_is_forwarded_to_the_current_runtime()
+    {
+        var fixture = new Fixture();
+        var started = await fixture.Service.StartAsync(
+            fixture.Party.Id.Value, Fixture.HostId, "estimate");
+
+        var forwarded = await fixture.Service.SetPlayerPresenceAsync(
+            fixture.Party.Id.Value, fixture.First.Id.Value, false);
+
+        Assert.True(forwarded);
+        var presence = Assert.Single(fixture.Runtime.PresenceChanges);
+        Assert.Equal(started.GameInstanceId, presence.GameInstanceId.Value);
+        Assert.Equal(fixture.First.Id.Value, presence.PlayerId);
+        Assert.False(presence.IsConnected);
+    }
+
     private sealed class Fixture
     {
         public const string HostId = "host-user";
@@ -292,6 +309,7 @@ public sealed class PartyGameServiceTests
     private sealed class FakeRuntime : IPartyGameRuntime
     {
         public List<RuntimeGameStart> Starts { get; } = [];
+        public List<RuntimePlayerPresence> PresenceChanges { get; } = [];
         public RuntimeGameCommandResult NextResult { get; set; } = new(
             true, false, "Results", null, false, null, null, new Dictionary<Guid, int>());
         public RuntimeGameView? NextView { get; set; }
@@ -321,6 +339,14 @@ public sealed class PartyGameServiceTests
             string subjectId,
             CancellationToken cancellationToken = default) => Task.FromResult(
                 NextView ?? throw new NotSupportedException("No fake runtime view was configured."));
+
+        public Task<bool> SetPlayerPresenceAsync(
+            RuntimePlayerPresence request,
+            CancellationToken cancellationToken = default)
+        {
+            PresenceChanges.Add(request);
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class FakePartyRepository : IPartyRepository

@@ -23,6 +23,11 @@ public sealed record SimulationTickElapsedAction(DateTimeOffset ScheduledForUtc)
     public string Kind => "engine.simulation-tick-elapsed";
 }
 
+public sealed record PlayerPresenceChangedAction(Guid PlayerId, bool IsConnected) : IGameAction
+{
+    public string Kind => "engine.player-presence-changed";
+}
+
 public enum GameActorRole
 {
     Host,

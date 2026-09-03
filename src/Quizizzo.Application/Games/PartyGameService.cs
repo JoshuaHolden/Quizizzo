@@ -194,6 +194,30 @@ public sealed class PartyGameService(
             cancellationToken);
     }
 
+    public async Task<bool> SetPlayerPresenceAsync(
+        Guid partyId,
+        Guid playerId,
+        bool isConnected,
+        CancellationToken cancellationToken = default)
+    {
+        var party = await parties.GetByIdAsync(new PartyId(partyId), cancellationToken);
+        var player = await players.GetByIdAsync(new PlayerId(playerId), cancellationToken);
+        if (party is null || player?.PartyId != party.Id ||
+            party.Status != PartyStatus.Playing ||
+            party.CurrentGameInstanceId is not { } instanceId ||
+            string.IsNullOrWhiteSpace(party.CurrentGameKey))
+        {
+            return false;
+        }
+
+        return await runtime.SetPlayerPresenceAsync(new RuntimePlayerPresence(
+            new GameInstanceId(instanceId),
+            party.Id.Value,
+            party.CurrentGameKey,
+            player.Id.Value,
+            isConnected), cancellationToken);
+    }
+
     private async Task<PartyGameCommandView> ExecuteAsync(
         Party party,
         GameActor actor,

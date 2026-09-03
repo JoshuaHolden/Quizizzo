@@ -125,6 +125,8 @@ public sealed class ResponsiveUiContractTests
         Assert.Contains("class=\"arcade-controller\"", controller, StringComparison.Ordinal);
         Assert.Contains("class=\"arcade-control-deck\"", controller, StringComparison.Ordinal);
         Assert.Contains("@onpointercancel=\"StopHold\"", controller, StringComparison.Ordinal);
+        Assert.Contains("@onkeydown=\"HandleKeyDownAsync\"", controller, StringComparison.Ordinal);
+        Assert.Contains("\"ArrowLeft\" or \"a\" or \"A\"", controller, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .arcade-controller", css, StringComparison.Ordinal);
         Assert.Contains("grid-template-rows: auto auto minmax(0, 1fr)", css,
             StringComparison.Ordinal);

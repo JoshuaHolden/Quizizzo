@@ -636,6 +636,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("quizizzo.display.audio-muted", audio, StringComparison.Ordinal);
         Assert.Contains("controller.audio?.update(controller.snapshot)", presentation, StringComparison.Ordinal);
         Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);
+        Assert.Contains("data-room-code=\"@Snapshot.RoomCode\"", component, StringComparison.Ordinal);
         Assert.Contains("Enable sound", component, StringComparison.Ordinal);
         Assert.Contains("left: max(1rem, env(safe-area-inset-left))", css,
             StringComparison.Ordinal);
@@ -659,8 +660,10 @@ public sealed class LandingPageContractTests
         Assert.Contains("applyPileUp(snapshot, initial)", presentation, StringComparison.Ordinal);
         Assert.Contains("field(state, \"clusterShapes\", {})", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("field(arena, \"grid\", []).forEach(drawCell)", presentation,
+        Assert.Contains("field(arena, \"grid\", []).forEach(cell => drawCell(graphics, cell))", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("duration: 180", presentation, StringComparison.Ordinal);
+        Assert.Contains("previousActive", presentation, StringComparison.Ordinal);
         Assert.Contains("const cellSize = Math.min(count === 2", presentation,
             StringComparison.Ordinal);
         Assert.Contains("this.playPileAvatar(avatar,", presentation,
@@ -670,6 +673,18 @@ public sealed class LandingPageContractTests
         Assert.Contains("this.controller.reducedMotion", presentation, StringComparison.Ordinal);
         Assert.Contains("JsonElement? GameState = null", mapper, StringComparison.Ordinal);
         Assert.Contains("game?.State", mapper, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Realtime_display_rebinds_only_for_pairing_changes()
+    {
+        var realtime = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/partyRealtime.js");
+
+        Assert.Contains(
+            "role === \"Display\" && message.reason === \"DisplayPaired\"",
+            realtime,
+            StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

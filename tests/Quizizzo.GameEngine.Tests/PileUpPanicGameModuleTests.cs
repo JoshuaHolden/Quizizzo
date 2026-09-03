@@ -225,6 +225,56 @@ public sealed class PileUpPanicGameModuleTests
     }
 
     [Fact]
+    public void Serialized_presence_changes_disable_control_and_overload_into_spectator_mode()
+    {
+        var now = new DateTimeOffset(2026, 9, 3, 15, 0, 0, TimeSpan.Zero);
+        var module = new PileUpPanicGameModule(
+            new PileUpOptions { DisconnectGracePeriod = TimeSpan.FromSeconds(2) },
+            flowOptions: FastFlow());
+        var players = Participants(3);
+        var gameId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
+        var started = module.Start(new GameStartContext(gameId, partyId, "host", players, now));
+        var game = started.Data.Deserialize<PileUpGameState>()!;
+        var playing = started with
+        {
+            Phase = PileUpPanicGameModule.PlayingPhase,
+            PhaseEndsAtUtc = game.Match.RoundEndsAtUtc
+        };
+
+        var disconnected = module.Apply(
+            playing,
+            Context(gameId, partyId, GameActor.SystemActor, now),
+            new PlayerPresenceChangedAction(players[0].PlayerId, false));
+        var disconnectedPayload = module.CreateView(
+            disconnected.State,
+            new GameViewContext(
+                GameAudienceRole.Player,
+                players[0].PlayerId.ToString("N"),
+                players[0].PlayerId)).Data.Deserialize<PlayerGameViewPayload>();
+        Assert.Equal(PlayerControllerKind.Arcade, disconnectedPayload!.Controller.Kind);
+        Assert.False(disconnectedPayload.Controller.IsEnabled);
+
+        var simulated = module.Apply(
+            disconnected.State,
+            Context(gameId, partyId, GameActor.SystemActor, now.AddSeconds(3)),
+            new SimulationTickElapsedAction(now.AddSeconds(3)));
+        var spectatorPayload = module.CreateView(
+            simulated.State,
+            new GameViewContext(
+                GameAudienceRole.Player,
+                players[0].PlayerId.ToString("N"),
+                players[0].PlayerId)).Data.Deserialize<PlayerGameViewPayload>();
+        var spectatorState = spectatorPayload!.State.Deserialize<PilePlayerViewState>();
+
+        Assert.True(spectatorState!.Arena.IsOverloaded);
+        Assert.Equal(PlayerControllerKind.Waiting, spectatorPayload.Controller.Kind);
+        Assert.Contains("Watch the remaining", spectatorPayload.Instructions, StringComparison.Ordinal);
+        Assert.Contains(simulated.Events, item =>
+            item.Kind == "PlayerOverloaded" || item.Kind == "DisconnectForfeit");
+    }
+
+    [Fact]
     public void Action_decoder_rejects_malformed_inputs_and_preserves_optional_target()
     {
         var module = new PileUpPanicGameModule();

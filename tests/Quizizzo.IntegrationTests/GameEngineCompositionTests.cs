@@ -5,6 +5,7 @@ using Quizizzo.Games.Estimate;
 using Quizizzo.Games.AniMates;
 using Quizizzo.Games.MajorityRules;
 using Quizizzo.Games.Bullshit;
+using Quizizzo.Games.PileUpPanic;
 using Quizizzo.Infrastructure.Games;
 
 namespace Quizizzo.IntegrationTests;
@@ -32,5 +33,6 @@ public sealed class GameEngineCompositionTests : IClassFixture<WebApplicationFac
         Assert.Contains(games, game => game.Key == AniMatesGameModule.GameKey && game.DisplayName == "AniMates");
         Assert.Contains(games, game => game.Key == MajorityRulesGameModule.GameKey && game.DisplayName == "Majority Rules");
         Assert.Contains(games, game => game.Key == BullshitGameModule.GameKey && game.DisplayName == "Bullshit");
+        Assert.Contains(games, game => game.Key == PileUpPanicGameModule.GameKey && game.DisplayName == "Pile-Up Panic");
     }
 }
