@@ -455,7 +455,7 @@ public sealed class PileUpPanicGameModule(
         game.Match.Players.Count,
         PresentationEntries(current, game),
         ShowRoundRanking: current.Phase is StandingsPhase or FinalWinnerPhase or WinnerCelebrationPhase,
-        ScoreUnit: "views",
+        ScoreUnit: "pts",
         State: GameJson.From(new PileDisplayViewState(
             PileUpMatch.Restore(game.Match).CreateSnapshot(),
             game.RoundNumber,
@@ -512,7 +512,7 @@ public sealed class PileUpPanicGameModule(
                 game.RoundWins,
                 game.RoundPoints,
                 ownResult)),
-            ScoreUnit: "views");
+            ScoreUnit: "pts");
     }
 
     private PlayerControllerView PlayerController(
@@ -542,8 +542,7 @@ public sealed class PileUpPanicGameModule(
             .Where(opponent => !opponent.IsOverloaded)
             .Select(opponent => new ControllerOption(
                 opponent.PlayerId.ToString("N"),
-                opponent.DisplayName,
-                $"{opponent.Views:N0} views · {opponent.CircuitsCompleted} circuits"))
+                opponent.DisplayName))
             .ToArray();
         return new PlayerControllerView(
             PlayerControllerKind.Arcade,
@@ -556,8 +555,8 @@ public sealed class PileUpPanicGameModule(
                     new("MoveRight", "→", "Move right", (int)matchOptions.HorizontalRepeat.TotalMilliseconds),
                     new("RotateClockwise", "↻", "Rotate clockwise"),
                     new("SoftDrop", "↓", "Soft drop", (int)matchOptions.SoftDropRepeat.TotalMilliseconds),
-                    new("InstantDrop", "DROP", "Instant drop"),
-                    new("ActivateAbility", "CHAOS", "Activate chaos ability")
+                    new("InstantDrop", "⇊", "Instant drop"),
+                    new("ActivateAbility", "⚡", "Activate chaos ability")
                 ],
                 own.LastSequence + 1,
                 targets,

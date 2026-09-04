@@ -2,11 +2,11 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JavaScript
 
-<section class="arcade-controller" aria-label="Arcade controls" tabindex="0"
+<section class="arcade-controller @(Configuration.Targets.Count <= 1 ? "arcade-single-target" : null)" aria-label="Arcade controls" tabindex="0"
          @ref="controllerElement">
     <header class="arcade-status-strip">
         <div>
-            <span>Chaos charge</span>
+            <span>Chaos</span>
             <strong>@ChargePercent%</strong>
         </div>
         <div class="arcade-charge-meter" role="progressbar" aria-label="Chaos charge"
@@ -16,9 +16,13 @@
         <strong class="arcade-ability @(Configuration.AvailableAbility is null ? "empty" : null)">
             @(Configuration.AvailableAbility ?? "NO ABILITY")
         </strong>
+        @if (EndsAtUtc is not null)
+        {
+            <span class="arcade-deadline"><DeadlineCountdown EndsAtUtc="EndsAtUtc" /></span>
+        }
     </header>
 
-    @if (Configuration.Targets.Count > 0)
+    @if (Configuration.Targets.Count > 1)
     {
         <fieldset class="arcade-targets">
             <legend>Target</legend>
@@ -30,10 +34,6 @@
                         aria-pressed="@(target.Id == selectedTargetId)"
                     data-arcade-target="@target.Id">
                     <strong>@target.Label</strong>
-                    @if (!string.IsNullOrWhiteSpace(target.Detail))
-                    {
-                        <span>@target.Detail</span>
-                    }
                 </button>
             }
         </fieldset>
@@ -80,6 +80,7 @@
     [Parameter, EditorRequired] public ArcadeControllerConfiguration Configuration { get; set; } = default!;
     [Parameter, EditorRequired] public string ConnectionKey { get; set; } = string.Empty;
     [Parameter, EditorRequired] public string ActionKind { get; set; } = string.Empty;
+    [Parameter] public DateTimeOffset? EndsAtUtc { get; set; }
     [Parameter] public bool Disabled { get; set; }
 
     private ElementReference controllerElement;

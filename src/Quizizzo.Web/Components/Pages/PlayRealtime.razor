@@ -14,7 +14,7 @@
                          StateChanged="RefreshFromServerAsync"
                          ConnectionStatusChanged="SetConnectionStatus" />
 
-<section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") mx-auto" aria-label="Player controller">
+<section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") @(game?.Controller.Kind == PlayerControllerKind.Arcade ? "player-controller-arcade" : null) mx-auto" aria-label="Player controller">
     <header class="player-controller-header">
         <span class="player-room-chip">@player.RoomCode</span>
         <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
@@ -22,7 +22,7 @@
             <span class="player-connection-chip @ConnectionStatusClass" aria-live="polite">
                 <span aria-hidden="true"></span>@ConnectionLabel
             </span>
-            @if (game is not null)
+            @if (game is not null && game.Controller.Kind != PlayerControllerKind.Arcade)
             {
                 <span class="player-score-chip"
                       aria-label="@($"Party score {PlayerScore:N0}; {player.TotalWins} game wins")">
@@ -108,7 +108,7 @@
                     }
                 </section>
             }
-            @if (game.Controller.Kind != PlayerControllerKind.Drawing)
+            @if (game.Controller.Kind is not (PlayerControllerKind.Drawing or PlayerControllerKind.Arcade))
             {
                 <p class="lead player-game-instructions">@game.Instructions</p>
                 @if (gameView.PhaseEndsAtUtc is not null)
@@ -190,6 +190,7 @@
                                           Configuration="arcadeConfiguration"
                                           ConnectionKey="@partyConnection!.ConnectionKey"
                                           ActionKind="@game.Controller.ActionKind"
+                                          EndsAtUtc="gameView.PhaseEndsAtUtc"
                                           Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                           />
                     }

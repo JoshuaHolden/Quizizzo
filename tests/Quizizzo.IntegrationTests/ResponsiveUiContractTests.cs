@@ -122,12 +122,18 @@ public sealed class ResponsiveUiContractTests
         var controller = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Shared/ArcadeController.razor");
 
-        Assert.Contains("class=\"arcade-controller\"", controller, StringComparison.Ordinal);
+        Assert.Contains("class=\"arcade-controller ", controller, StringComparison.Ordinal);
         Assert.Contains("class=\"arcade-control-deck\"", controller, StringComparison.Ordinal);
         Assert.Contains("class=\"arcade-arena-canvas\"", controller, StringComparison.Ordinal);
         Assert.Contains("data-arcade-input", controller, StringComparison.Ordinal);
+        Assert.Contains("Configuration.Targets.Count > 1", controller, StringComparison.Ordinal);
+        Assert.Contains("class=\"arcade-deadline\"", controller, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .arcade-controller", css, StringComparison.Ordinal);
-        Assert.Contains("grid-template-rows: auto auto minmax(7rem, 1fr)", css,
+        Assert.Contains("grid-template-rows: auto auto minmax(7rem, 1fr) 52px", css,
+            StringComparison.Ordinal);
+        Assert.Contains(".arcade-controller.arcade-single-target", css,
+            StringComparison.Ordinal);
+        Assert.Contains("grid-template-columns: repeat(6, minmax(44px, 1fr))", css,
             StringComparison.Ordinal);
         Assert.Contains("@media (orientation: landscape) and (max-height: 500px)", css,
             StringComparison.Ordinal);

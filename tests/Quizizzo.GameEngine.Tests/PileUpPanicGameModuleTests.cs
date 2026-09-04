@@ -111,9 +111,11 @@ public sealed class PileUpPanicGameModuleTests
         Assert.DoesNotContain("\"grid\"", payload.State.GetRawText(), StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("\"upcoming\"", payload.State.GetRawText(), StringComparison.OrdinalIgnoreCase);
         Assert.Equal(PlayerControllerKind.Arcade, payload.Controller.Kind);
+        Assert.Equal("pts", payload.ScoreUnit);
         var controls = payload.Controller.Configuration.Deserialize<ArcadeControllerConfiguration>();
         Assert.Equal(6, controls!.Controls.Count);
         Assert.Equal(2, controls.Targets.Count);
+        Assert.All(controls.Targets, target => Assert.Null(target.Detail));
         Assert.Equal(0, controls.NextSequence);
         Assert.NotNull(controls.Arena);
         Assert.Equal(PileUpOptions.Columns, controls.Arena.Columns);
