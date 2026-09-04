@@ -762,6 +762,10 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Derive current hit streaks from elapsed and judged notes and flash bounded milestone callouts without trusting the display for scoring.
 - [x] Turn the song-complete Results phase into a ranked podium interstitial with total band score, named top scorer, cheering winner, crying last place, and dancing remaining players.
 - [x] Map audible MIDI notes back to their owning player target and add a main-display-only sour semitone sting plus continued detuning when that target is missed.
+- [x] Balance repeated and generically named uploaded MIDI tracks by note load after the first role placement so every supported player receives a non-empty part.
+- [x] Slow VoiceChoon dance cycles to span multiple beats and layer independent hand rotation plus opposing shoulder-height waves for an inflatable-air-dancer feel.
+- [x] Replace the radial VoiceChoon tunnel with outlined pastel marbling whose broad ribbons and smaller curls morph slowly under a subtle beat pulse, retaining additive sweeping spotlights.
+- [x] Continuously interpolate the pastel marbling through warm, cool, citrus, and finale palettes according to authoritative song progress.
 - [x] Preserve a static, readable presentation under reduced-motion preferences and add automated presentation contracts.
 
 ## Verification requirements

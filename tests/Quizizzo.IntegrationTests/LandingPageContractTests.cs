@@ -714,8 +714,20 @@ public sealed class LandingPageContractTests
         Assert.Contains("discoPoint", presentation, StringComparison.Ordinal);
         Assert.Contains("rubberRobot", presentation, StringComparison.Ordinal);
         Assert.Contains("action === \"dazed\"", rig, StringComparison.Ordinal);
+        Assert.Contains("const motion = beat * 1.25", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.handLeft", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.handRight", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.armLeft, y:", rig, StringComparison.Ordinal);
         Assert.Contains("★", rig, StringComparison.Ordinal);
-        Assert.Contains("strokeCircle", presentation, StringComparison.Ordinal);
+        Assert.Contains("drawVoiceChoonMarbling", presentation, StringComparison.Ordinal);
+        Assert.Contains("fillPoints(points, true)", presentation, StringComparison.Ordinal);
+        Assert.Contains("strokePoints(points, true)", presentation, StringComparison.Ordinal);
+        Assert.Contains("broadWave", presentation, StringComparison.Ordinal);
+        Assert.Contains("const palettePosition", presentation, StringComparison.Ordinal);
+        Assert.Contains("mixColour(colour", presentation, StringComparison.Ordinal);
+        Assert.Contains("elapsed / duration", presentation, StringComparison.Ordinal);
+        Assert.Contains("const visualElapsed = this.controller.reducedMotion ? 0 : elapsed", presentation,
+            StringComparison.Ordinal);
         Assert.Contains("fillTriangle", presentation, StringComparison.Ordinal);
         Assert.Contains("HIT STREAK", presentation, StringComparison.Ordinal);
         Assert.Contains("beatSeconds", presentation, StringComparison.Ordinal);

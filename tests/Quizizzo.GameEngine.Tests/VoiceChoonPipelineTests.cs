@@ -73,6 +73,31 @@ public sealed class VoiceChoonPipelineTests
         Assert.All(assignments, assignment => Assert.InRange(assignment.RecordingPrompts.Count, 1, 4));
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    public void Uploaded_generic_tracks_are_balanced_without_empty_players(int playerCount)
+    {
+        var tracks = Enumerable.Range(0, 4).Select(index => new RawMidiTrack(
+            index,
+            $"Meme track {index + 1}",
+            VoiceChoonTrackRole.Other,
+            false,
+            [new RawMidiNote(index * 96, 96, index, .5, 60 + index, 100, index)])).ToArray();
+        var song = new RawMidiSong("quizizzo_meme_meltdown_2to4players.mid", 96, 4, tracks, []);
+
+        var assignments = InstrumentAssignmentService.Assign(song, playerCount);
+
+        Assert.Equal(playerCount, assignments.Count);
+        Assert.All(assignments, assignment => Assert.NotEmpty(assignment.Tracks));
+        Assert.Equal(4, assignments.Sum(assignment => assignment.Tracks.Count));
+        Assert.InRange(
+            assignments.Max(assignment => assignment.Tracks.Count) -
+            assignments.Min(assignment => assignment.Tracks.Count),
+            0,
+            1);
+    }
+
     [Fact]
     public void Three_player_assignment_matches_the_cooperative_score_design()
     {

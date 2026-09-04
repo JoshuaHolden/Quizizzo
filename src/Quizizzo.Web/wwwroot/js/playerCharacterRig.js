@@ -112,6 +112,8 @@ window.quizizzoCharacterRig = (() => {
                 parts?.mouth?.setTexture(`${atlasPrefix}face`, variants.mouth);
                 parts?.armLeft?.setAngle(0);
                 parts?.armRight?.setAngle(0);
+                parts?.armLeft?.setY(218);
+                parts?.armRight?.setY(218);
                 parts?.handLeft?.setAngle(0);
                 parts?.handRight?.setAngle(0);
             }
@@ -299,57 +301,80 @@ window.quizizzoCharacterRig = (() => {
             }
             if (["bowLegged", "armFlap", "fistPump", "discoPoint", "rubberRobot"].includes(action)) {
                 const beat = Math.max(220, Math.min(760, Number(beatMs) || 480));
+                // One-way travel lasts a little over a beat, so a complete sway takes
+                // roughly two-and-a-half beats instead of the old frantic one-beat cycle.
+                const motion = beat * 1.25;
                 parts.mouth.setTexture(`${atlasPrefix}face`, "mouth_glad.png");
+                if (parts.handLeft && parts.handRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.handLeft, angle: { from: -34, to: 38 },
+                        duration: beat * .58, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.handRight, angle: { from: 31, to: -41 },
+                        duration: beat * .67, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
+                if (parts.armLeft && parts.armRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armLeft, y: { from: 204, to: 235 },
+                        duration: motion * .72, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.armRight, y: { from: 235, to: 201 },
+                        duration: motion * .83, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
                 const sway = (angle, lift = 10) => rememberTween(scene.tweens.add({
                     targets: target,
                     angle: { from: -angle, to: angle },
                     y: { from: origin.y, to: origin.y - lift },
-                    duration: beat / 2, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    duration: motion, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                 }));
                 if (action === "bowLegged") {
                     parts.armLeft?.setAngle(-38);
                     parts.armRight?.setAngle(38);
                     if (parts.armLeft && parts.armRight) {
                         rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: -65,
-                            duration: beat / 2, yoyo: true, repeat: -1 }));
+                            duration: motion, yoyo: true, repeat: -1 }));
                         rememberTween(scene.tweens.add({ targets: parts.armRight, angle: 65,
-                            duration: beat / 2, yoyo: true, repeat: -1 }));
+                            duration: motion, yoyo: true, repeat: -1 }));
                     }
                     rememberTween(scene.tweens.add({
                         targets: target,
                         scaleX: { from: origin.scaleX * .9, to: origin.scaleX * 1.08 },
                         scaleY: { from: origin.scaleY * 1.06, to: origin.scaleY * .94 },
-                        duration: beat / 2, yoyo: true, repeat: -1
+                        duration: motion, yoyo: true, repeat: -1
                     }));
                     sway(7, 5);
                 } else if (action === "armFlap") {
                     rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -105, to: 45 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
                     rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 105, to: -45 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
                     sway(3, 16);
                 } else if (action === "fistPump") {
                     parts.armLeft?.setAngle(18);
                     rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: -25, to: -145 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Back.easeOut" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Back.easeOut" }));
                     sway(4, 22);
                 } else if (action === "discoPoint") {
                     parts.armLeft?.setAngle(-115);
                     parts.armRight?.setAngle(42);
                     rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -125, to: -70 },
-                        duration: beat, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
+                        duration: motion * 1.15, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
                     rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 65, to: 15 },
-                        duration: beat, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
+                        duration: motion * 1.15, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
                     sway(10, 8);
                 } else {
                     parts.armLeft?.setAngle(-78);
                     parts.armRight?.setAngle(78);
                     rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -78, to: 24 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Stepped" }));
                     rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 24, to: 78 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Stepped" }));
                     rememberTween(scene.tweens.add({ targets: target, x: { from: origin.x - 16, to: origin.x + 16 },
-                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                        duration: motion, yoyo: true, repeat: -1, ease: "Stepped" }));
                 }
                 return;
             }

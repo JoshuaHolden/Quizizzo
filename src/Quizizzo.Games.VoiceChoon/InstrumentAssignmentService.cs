@@ -16,15 +16,20 @@ public sealed class InstrumentAssignmentService
         var assigned = Enumerable.Range(0, playerCount)
             .Select(_ => new List<RawMidiTrack>())
             .ToArray();
+        var rolesPlaced = new HashSet<VoiceChoonTrackRole>();
         foreach (var track in song.Tracks
                      .OrderBy(track => Priority(track.Role))
                      .ThenBy(track => track.Index))
         {
             var preferred = PreferredOwner(playerCount, track.Role);
-            var owner = preferred >= 0 && preferred < playerCount
+            var leastLoaded = Enumerable.Range(0, playerCount)
+                .MinBy(index => assigned[index].Sum(item => item.Notes.Count));
+            // Keep the authored role layout for the first track of each role, then spread
+            // duplicate or generically named uploaded tracks by note load. Otherwise four
+            // "Other" tracks all prefer the same owner and leave valid players empty.
+            var owner = preferred >= 0 && preferred < playerCount && rolesPlaced.Add(track.Role)
                 ? preferred
-                : Enumerable.Range(0, playerCount)
-                    .MinBy(index => assigned[index].Sum(item => item.Notes.Count));
+                : leastLoaded;
             assigned[owner].Add(track);
         }
 

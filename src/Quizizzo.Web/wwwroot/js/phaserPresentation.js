@@ -256,6 +256,54 @@ window.quizizzoPresentation = (() => {
         return ["#ff7aa4", "#ffe36d", "#67e8f9", "#86efac"][index % 4];
     }
 
+    function mixColour(from, to, amount) {
+        const mix = channel => Math.round(
+            ((from >> channel) & 0xff) * (1 - amount) + ((to >> channel) & 0xff) * amount);
+        return (mix(16) << 16) | (mix(8) << 8) | mix(0);
+    }
+
+    function drawVoiceChoonMarbling(graphics, elapsed, pulse = 0, songProgress = 0) {
+        const palettes = [
+            [0xf6c637, 0xef8db5, 0xf15d5d, 0x7ea3d3, 0xf4eadc, 0xd681b5, 0xf6c637],
+            [0x9ad8cf, 0xc9a7eb, 0xf49ac2, 0x789dda, 0xffe49b, 0x94d2e6, 0xc9a7eb],
+            [0xb7df72, 0xffa77a, 0xf56fa1, 0x77c9c2, 0xffefaa, 0xa993db, 0xb7df72],
+            [0xffcf4a, 0xff82b2, 0xff7167, 0x6ecce8, 0xfff1cf, 0xca8de0, 0xffcf4a]
+        ];
+        const palettePosition = Math.max(0, Math.min(1, songProgress)) * (palettes.length - 1);
+        const paletteIndex = Math.min(palettes.length - 2, Math.floor(palettePosition));
+        const paletteMix = palettePosition - paletteIndex;
+        const colours = palettes[paletteIndex].map((colour, index) =>
+            mixColour(colour, palettes[paletteIndex + 1][index], paletteMix));
+        const bands = colours.length;
+        const samples = 32;
+        const boundary = (index, y) => {
+            if (index <= 0) return -80;
+            if (index >= bands) return width + 80;
+            const normalizedY = y / height;
+            const base = index * width / bands;
+            const broadWave = Math.sin(normalizedY * Math.PI * 2.15 + elapsed * .18 + index * .72) * 155;
+            const curl = Math.sin(normalizedY * Math.PI * 4.6 - elapsed * .11 + index * 1.37) * 66;
+            const breathing = Math.sin(elapsed * .55 + index) * (15 + pulse * 13);
+            return base + broadWave + curl + breathing;
+        };
+        graphics.clear();
+        for (let band = 0; band < bands; band++) {
+            const points = [];
+            for (let sample = 0; sample <= samples; sample++) {
+                const y = sample * height / samples;
+                points.push({ x: boundary(band, y), y });
+            }
+            for (let sample = samples; sample >= 0; sample--) {
+                const y = sample * height / samples;
+                points.push({ x: boundary(band + 1, y), y });
+            }
+            graphics.fillStyle(colours[band], 1);
+            graphics.fillPoints(points, true);
+            graphics.lineStyle(3 + pulse * 1.5, 0x281a2b, .88);
+            graphics.strokePoints(points, true);
+        }
+    }
+
     class PartyPresentationScene extends Phaser.Scene {
         constructor(controller) {
             super({ key: `party-presentation-${controller.key}` });
@@ -974,9 +1022,7 @@ window.quizizzoPresentation = (() => {
                 }).setOrigin(1, 0));
 
             if (showingResults) {
-                psychedelic.fillStyle(0x17053b, 1).fillRect(0, 0, width, height);
-                psychedelic.lineStyle(24, 0xff2fa7, .18);
-                for (let ring = 0; ring < 8; ring++) psychedelic.strokeCircle(width / 2, 430, 90 + ring * 105);
+                drawVoiceChoonMarbling(psychedelic, 18, .35, 1);
                 const winner = rankedResults.length
                     ? players.find(player => normalizedId(player.playerId) === normalizedId(rankedResults[0].playerId))
                     : null;
@@ -1109,30 +1155,17 @@ window.quizizzoPresentation = (() => {
                     const duration = Number(field(state, "songDurationSeconds", 1));
                     const elapsed = Math.max(0, (Date.now() - started) / 1000);
                     progress.width = 1030 * Math.max(0, Math.min(1, elapsed / duration));
-                    const beatIndex = Math.floor(elapsed / beatSeconds);
                     const beatPhase = (elapsed % beatSeconds) / beatSeconds;
                     const pulse = 1 - Math.min(1, beatPhase * 2.4);
-                    const palettes = [[0x17053b, 0xff2fa7, 0x28e7ff], [0x061b49, 0x8b5cf6, 0xfde047],
-                        [0x28104e, 0x22d3ee, 0xfb7185], [0x071f1d, 0xa3e635, 0xf472b6]];
-                    const palette = palettes[Math.floor(beatIndex / 8) % palettes.length];
-                    psychedelic.clear().fillStyle(palette[0], 1).fillRect(0, 0, width, height);
-                    for (let ring = 0; ring < 9; ring++) {
-                        psychedelic.lineStyle(18 + pulse * 10, palette[1 + ring % 2], .18 + pulse * .13);
-                        psychedelic.strokeCircle(width / 2, height / 2,
-                            ((ring * 105 + elapsed * 95) % 900) + 35);
-                    }
-                    psychedelic.fillStyle(palette[2], .11 + pulse * .12);
-                    for (let slice = 0; slice < 12; slice++) {
-                        const angle = elapsed * .16 + slice * Math.PI / 6;
-                        psychedelic.fillTriangle(width / 2, height / 2,
-                            width / 2 + Math.cos(angle - .18) * 920, height / 2 + Math.sin(angle - .18) * 920,
-                            width / 2 + Math.cos(angle + .18) * 920, height / 2 + Math.sin(angle + .18) * 920);
-                    }
+                    const visualElapsed = this.controller.reducedMotion ? 0 : elapsed;
+                    const visualPulse = this.controller.reducedMotion ? 0 : pulse;
+                    drawVoiceChoonMarbling(psychedelic, visualElapsed, visualPulse, elapsed / duration);
+                    const spotlightColours = [0xfff1a8, 0xf9a8d4, 0x93c5fd, 0xffffff];
                     beams.clear();
                     [0, 1, 2, 3].forEach(index => {
                         const anchor = 100 + index * 360;
-                        const sweep = Math.sin(elapsed * (.62 + index * .08) + index) * 430;
-                        beams.fillStyle(index % 2 ? palette[1] : palette[2], .1 + pulse * .07);
+                        const sweep = Math.sin(visualElapsed * (.62 + index * .08) + index) * 430;
+                        beams.fillStyle(spotlightColours[index], .1 + visualPulse * .07);
                         beams.fillTriangle(anchor, -20, anchor - 42, -20, width / 2 + sweep, 710);
                     });
                     const sections = field(state, "sections", []);
