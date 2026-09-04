@@ -886,7 +886,7 @@ window.quizizzoPresentation = (() => {
                         targets: activeGraphics,
                         x: 0,
                         y: 0,
-                        duration: 180,
+                        duration: 60,
                         ease: "Cubic.easeOut"
                     });
                 }

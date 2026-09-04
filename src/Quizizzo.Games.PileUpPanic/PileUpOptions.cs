@@ -10,10 +10,9 @@ public sealed record PileUpOptions
     public int InputLimitPerSecond { get; init; } = 24;
     public TimeSpan HorizontalRepeat { get; init; } = TimeSpan.FromMilliseconds(110);
     public TimeSpan SoftDropRepeat { get; init; } = TimeSpan.FromMilliseconds(55);
-    public TimeSpan InitialFallInterval { get; init; } = TimeSpan.FromMilliseconds(850);
-    public TimeSpan MinimumFallInterval { get; init; } = TimeSpan.FromMilliseconds(180);
-    public TimeSpan SpeedUpEvery { get; init; } = TimeSpan.FromSeconds(25);
-    public TimeSpan SpeedUpBy { get; init; } = TimeSpan.FromMilliseconds(90);
+    public TimeSpan InitialFallInterval { get; init; } = TimeSpan.FromMilliseconds(1100);
+    public TimeSpan MinimumFallInterval { get; init; } = TimeSpan.FromMilliseconds(200);
+    public TimeSpan SpeedUpBy { get; init; } = TimeSpan.FromMilliseconds(100);
     public TimeSpan LockDelay { get; init; } = TimeSpan.FromMilliseconds(450);
     public int MaximumQueuedJunk { get; init; } = 4;
     public int MaximumJunkPerWindow { get; init; } = 2;
@@ -32,7 +31,6 @@ public sealed record PileUpOptions
         Positive(SoftDropRepeat, nameof(SoftDropRepeat));
         Positive(InitialFallInterval, nameof(InitialFallInterval));
         Positive(MinimumFallInterval, nameof(MinimumFallInterval));
-        Positive(SpeedUpEvery, nameof(SpeedUpEvery));
         Positive(SpeedUpBy, nameof(SpeedUpBy));
         Positive(LockDelay, nameof(LockDelay));
         Positive(JunkWindow, nameof(JunkWindow));
@@ -46,6 +44,13 @@ public sealed record PileUpOptions
                 nameof(MinimumFallInterval),
                 "The minimum fall interval cannot exceed the initial interval.");
         }
+    }
+
+    public TimeSpan FallIntervalFor(int completedCircuits)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(completedCircuits);
+        var interval = InitialFallInterval - (SpeedUpBy * completedCircuits);
+        return interval < MinimumFallInterval ? MinimumFallInterval : interval;
     }
 
     private static void Positive(int value, string name)

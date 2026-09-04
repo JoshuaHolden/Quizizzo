@@ -46,7 +46,30 @@ public sealed record ArcadeControllerConfiguration(
     IReadOnlyList<ControllerOption> Targets,
     string? SelectedTargetId,
     string? AvailableAbility,
-    int ChargePercent);
+    int ChargePercent,
+    ArcadeArenaConfiguration? Arena = null);
+
+public sealed record ArcadeArenaConfiguration(
+    int Columns,
+    int VisibleRows,
+    int HiddenRows,
+    IReadOnlyList<ArcadeArenaCell> SettledCells,
+    ArcadeActivePiece? ActivePiece,
+    IReadOnlyList<ArcadeUpcomingPiece> UpcomingPieces,
+    IReadOnlyDictionary<string, IReadOnlyList<ArcadeGridPoint>> PieceShapes);
+
+public sealed record ArcadeArenaCell(int X, int Y, string Material);
+
+public sealed record ArcadeActivePiece(
+    string PieceKey,
+    string Material,
+    int X,
+    int Y,
+    int Rotation);
+
+public sealed record ArcadeUpcomingPiece(string PieceKey, string Material);
+
+public sealed record ArcadeGridPoint(int X, int Y);
 
 public sealed record ArcadeControllerSubmission(
     long Sequence,

@@ -322,6 +322,8 @@
     private bool hostActionPending;
     private bool hostControlsOpen;
     private bool closeConfirmationRequested;
+    private bool realtimeRefreshInProgress;
+    private bool realtimeRefreshQueued;
     private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
     private PhaserPresentation? phaserPresentation;
     private bool phaserFailed;
@@ -355,8 +357,27 @@
 
     private async Task RefreshFromServerAsync(string reason)
     {
-        await LoadStateAsync();
-        await LoadHostStateAsync();
+        realtimeRefreshQueued = true;
+        if (realtimeRefreshInProgress)
+        {
+            return;
+        }
+
+        realtimeRefreshInProgress = true;
+        try
+        {
+            do
+            {
+                realtimeRefreshQueued = false;
+                await LoadStateAsync();
+                await LoadHostStateAsync();
+            }
+            while (realtimeRefreshQueued);
+        }
+        finally
+        {
+            realtimeRefreshInProgress = false;
+        }
     }
 
     private async Task LoadStateAsync()

@@ -8,14 +8,15 @@ public sealed class PileUpPanicRulesTests
     private static readonly DateTimeOffset Now = new(2026, 9, 3, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Catalogue_is_original_mixed_size_and_contains_twelve_clusters()
+    public void Playable_catalogue_excludes_the_most_obtuse_legacy_clusters()
     {
         Assert.Equal(12, ScrapClusterCatalogue.All.Count);
-        Assert.Contains(ScrapClusterCatalogue.All, cluster => cluster.Cells.Count == 2);
-        Assert.True(ScrapClusterCatalogue.All.Count(cluster => cluster.Cells.Count == 3) >= 3);
-        Assert.True(ScrapClusterCatalogue.All.Count(cluster => cluster.Cells.Count == 5) >= 2);
-        Assert.True(ScrapClusterCatalogue.All.Count(cluster => cluster.Cells.Count == 4) < 7);
-        Assert.All(ScrapClusterCatalogue.All, cluster =>
+        Assert.Equal(10, ScrapClusterCatalogue.Playable.Count);
+        Assert.DoesNotContain(ScrapClusterCatalogue.Playable, cluster => cluster.Key == "flag-post");
+        Assert.DoesNotContain(ScrapClusterCatalogue.Playable, cluster => cluster.Key == "split-anvil");
+        Assert.Contains(ScrapClusterCatalogue.Playable, cluster => cluster.Cells.Count == 2);
+        Assert.True(ScrapClusterCatalogue.Playable.Count(cluster => cluster.Cells.Count == 3) >= 3);
+        Assert.All(ScrapClusterCatalogue.Playable, cluster =>
             Assert.Equal(cluster.Cells.Count, cluster.Cells.Distinct().Count()));
     }
 
@@ -29,11 +30,21 @@ public sealed class PileUpPanicRulesTests
         Assert.Equal(sequence, Enumerable.Range(0, 24).Select(_ => second.Next()).ToArray());
         Assert.All(Enumerable.Range(4, sequence.Length - 4), index =>
             Assert.DoesNotContain(sequence[index].ClusterKey, sequence[(index - 4)..index].Select(item => item.ClusterKey)));
+        Assert.All(sequence, item =>
+            Assert.Contains(ScrapClusterCatalogue.Playable, cluster => cluster.Key == item.ClusterKey));
 
         var recoverable = new DeterministicScrapSequence(91);
         _ = Enumerable.Range(0, 7).Select(_ => recoverable.Next()).ToArray();
         var restored = new DeterministicScrapSequence(recoverable.Capture());
         Assert.Equal(recoverable.Next(), restored.Next());
+
+        var legacy = new DeterministicScrapSequence(new ScrapStreamState(
+            42,
+            [10, 11],
+            Enumerable.Range(0, MaterialPalette.All.Count).ToArray(),
+            MaterialPalette.All.Count));
+        Assert.Contains(ScrapClusterCatalogue.Playable,
+            cluster => cluster.Key == legacy.Next().ClusterKey);
     }
 
     [Fact]
@@ -50,7 +61,7 @@ public sealed class PileUpPanicRulesTests
     public void Rotation_uses_bounded_generic_correction_near_wall_and_rejects_blocked_result()
     {
         var clear = new ArenaGrid();
-        var nearWall = new ActiveScrap("flag-post", "copper", 7, 3, 0);
+        var nearWall = new ActiveScrap("long-hook", "copper", 7, 3, 0);
         var corrected = ScrapPhysics.TryRotateClockwise(clear, nearWall);
 
         Assert.NotNull(corrected);
@@ -92,7 +103,6 @@ public sealed class PileUpPanicRulesTests
         {
             InitialFallInterval = TimeSpan.FromMilliseconds(50),
             MinimumFallInterval = TimeSpan.FromMilliseconds(50),
-            SpeedUpEvery = TimeSpan.FromMinutes(1),
             LockDelay = TimeSpan.FromMilliseconds(200),
             SimulationStep = TimeSpan.FromMilliseconds(50)
         };
@@ -112,6 +122,44 @@ public sealed class PileUpPanicRulesTests
         Assert.Equal(
             JsonSerializer.Serialize(fixture.Match.CaptureState()),
             JsonSerializer.Serialize(restored.CaptureState()));
+    }
+
+    [Fact]
+    public void Fall_speed_starts_slow_and_accelerates_per_shared_circuit()
+    {
+        var options = new PileUpOptions();
+
+        Assert.Equal(TimeSpan.FromMilliseconds(1100), options.FallIntervalFor(0));
+        Assert.Equal(TimeSpan.FromMilliseconds(1000), options.FallIntervalFor(1));
+        Assert.Equal(TimeSpan.FromMilliseconds(600), options.FallIntervalFor(5));
+        Assert.Equal(TimeSpan.FromMilliseconds(200), options.FallIntervalFor(20));
+    }
+
+    [Fact]
+    public void One_players_completed_circuit_accelerates_every_arena_together()
+    {
+        var options = new PileUpOptions
+        {
+            InitialFallInterval = TimeSpan.FromMilliseconds(1000),
+            MinimumFallInterval = TimeSpan.FromMilliseconds(200),
+            SpeedUpBy = TimeSpan.FromMilliseconds(100),
+            SimulationStep = TimeSpan.FromMilliseconds(50)
+        };
+        var fixture = new MatchFixture(2, options);
+        var state = fixture.Match.CaptureState();
+        var players = state.Players.ToArray();
+        players[0] = players[0] with
+        {
+            Arena = players[0].Arena with { CircuitsCompleted = 1 }
+        };
+        var accelerated = PileUpMatch.Restore(state with { Players = players });
+        var startingRows = accelerated.Arenas.Values
+            .ToDictionary(arena => arena.PlayerId, arena => arena.Active!.Y);
+
+        accelerated.AdvanceSimulation(Now.AddMilliseconds(900));
+
+        Assert.All(accelerated.Arenas.Values, arena =>
+            Assert.Equal(startingRows[arena.PlayerId] + 1, arena.Active!.Y));
     }
 
     [Fact]

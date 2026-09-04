@@ -86,5 +86,13 @@ window.quizizzoRealtime = (() => {
         return await connection.invoke(method, ...(args || []));
     }
 
-    return { start, stop, invoke };
+    async function send(key, method, args) {
+        const connection = connections.get(key);
+        if (!connection || connection.state !== signalR.HubConnectionState.Connected) {
+            throw new Error("The realtime game connection is not ready.");
+        }
+        await connection.send(method, ...(args || []));
+    }
+
+    return { start, stop, invoke, send };
 })();

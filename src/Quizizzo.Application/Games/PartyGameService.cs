@@ -179,12 +179,27 @@ public sealed class PartyGameService(
         Guid commandId,
         string actionKind,
         JsonElement payload,
+        PlayerControllerKind? requiredControllerKind = null,
         CancellationToken cancellationToken = default)
     {
         var player = await players.GetByIdAsync(new PlayerId(playerId), cancellationToken)
             ?? throw new PlayerSessionNotFoundException();
         var party = await parties.GetByIdAsync(player.PartyId, cancellationToken)
             ?? throw new PartyNotFoundException();
+        if (requiredControllerKind is { } requiredKind)
+        {
+            var view = await GetViewAsync(
+                party,
+                GameAudienceRole.Player,
+                player.Id.Value.ToString("N"),
+                cancellationToken);
+            var playerView = view?.Data.Deserialize<PlayerGameViewPayload>();
+            if (playerView?.Controller.Kind != requiredKind ||
+                !string.Equals(playerView.Controller.ActionKind, actionKind, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("The action does not match the current player controller.");
+            }
+        }
         return await ExecuteAsync(
             party,
             GameActor.Player(player.Id.Value),

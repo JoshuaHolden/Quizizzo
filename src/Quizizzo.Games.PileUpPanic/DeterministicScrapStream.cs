@@ -11,6 +11,11 @@ public sealed record GeneratedScrap(string ClusterKey, string Material);
 public sealed class DeterministicScrapSequence
 {
     private const int RecentWindow = 4;
+    private static readonly int[] PlayableClusterIndices = ScrapClusterCatalogue.All
+        .Select((cluster, index) => new { cluster.Key, Index = index })
+        .Where(item => item.Key is not ("flag-post" or "split-anvil"))
+        .Select(item => item.Index)
+        .ToArray();
     private ulong randomState;
     private readonly Queue<int> recent;
     private int[] materialOrder;
@@ -44,13 +49,13 @@ public sealed class DeterministicScrapSequence
 
     public GeneratedScrap Next()
     {
-        var available = Enumerable.Range(0, ScrapClusterCatalogue.All.Count)
+        var available = PlayableClusterIndices
             .Where(index => !recent.Contains(index))
             .ToArray();
         if (available.Length == 0)
         {
             recent.Clear();
-            available = Enumerable.Range(0, ScrapClusterCatalogue.All.Count).ToArray();
+            available = PlayableClusterIndices;
         }
 
         var clusterIndex = available[NextInt(available.Length)];

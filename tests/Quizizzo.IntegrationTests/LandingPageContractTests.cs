@@ -468,12 +468,17 @@ public sealed class LandingPageContractTests
         var styles = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/app.css");
 
         Assert.Contains("case PlayerControllerKind.Arcade", playerPage, StringComparison.Ordinal);
-        Assert.Contains("Submitted=\"SubmitArcadeAsync\"", playerPage, StringComparison.Ordinal);
-        Assert.Contains("partyConnection.InvokeAsync(", playerPage, StringComparison.Ordinal);
-        Assert.Contains("@onpointerdown=\"() => StartHold(control)\"", controller,
+        Assert.Contains("ConnectionKey=\"@partyConnection!.ConnectionKey\"", playerPage,
             StringComparison.Ordinal);
+        Assert.DoesNotContain("Submitted=\"SubmitArcadeAsync\"", playerPage, StringComparison.Ordinal);
+        Assert.Contains("./js/arcadeController.js", controller, StringComparison.Ordinal);
+        Assert.Contains("data-arcade-input", controller, StringComparison.Ordinal);
+        Assert.Contains("data-arcade-arena", controller, StringComparison.Ordinal);
+        Assert.Contains("pendingInputs", ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/arcadeController.js"), StringComparison.Ordinal);
+        Assert.Contains("SubmitArcadeAction", ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/arcadeController.js"), StringComparison.Ordinal);
         Assert.Contains("HoldRepeatMilliseconds", controller, StringComparison.Ordinal);
-        Assert.Contains("nextSequence++", controller, StringComparison.Ordinal);
         Assert.Contains("role=\"progressbar\"", controller, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .arcade-control-deck", styles,
             StringComparison.Ordinal);
@@ -662,7 +667,7 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("field(arena, \"grid\", []).forEach(cell => drawCell(graphics, cell))", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("duration: 180", presentation, StringComparison.Ordinal);
+        Assert.Contains("duration: 60", presentation, StringComparison.Ordinal);
         Assert.Contains("previousActive", presentation, StringComparison.Ordinal);
         Assert.Contains("const cellSize = Math.min(count === 2", presentation,
             StringComparison.Ordinal);

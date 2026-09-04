@@ -1,10 +1,9 @@
 @using Quizizzo.GameContracts
 @implements IAsyncDisposable
+@inject IJSRuntime JavaScript
 
 <section class="arcade-controller" aria-label="Arcade controls" tabindex="0"
-         @onkeydown="HandleKeyDownAsync" @onkeydown:preventDefault="true"
-         @onkeyup="HandleKeyUp" @onkeyup:preventDefault="true"
-         @onblur="StopKeyboardHolds">
+         @ref="controllerElement">
     <header class="arcade-status-strip">
         <div>
             <span>Chaos charge</span>
@@ -29,7 +28,7 @@
                         class="@(target.Id == selectedTargetId ? "selected" : null)"
                         disabled="@Disabled"
                         aria-pressed="@(target.Id == selectedTargetId)"
-                        @onclick="() => SelectTargetAsync(target.Id)">
+                    data-arcade-target="@target.Id">
                     <strong>@target.Label</strong>
                     @if (!string.IsNullOrWhiteSpace(target.Detail))
                     {
@@ -40,6 +39,14 @@
         </fieldset>
     }
 
+    @if (Configuration.Arena is not null)
+    {
+        <section class="arcade-arena-shell" aria-label="Your scrapyard">
+            <canvas class="arcade-arena-canvas" width="270" height="510" data-arcade-arena></canvas>
+            <div class="arcade-next-pieces" data-arcade-next aria-label="Upcoming pieces"></div>
+        </section>
+    }
+
     <div class="arcade-control-deck">
         @foreach (var control in MovementControls)
         {
@@ -47,11 +54,8 @@
                     class="arcade-control arcade-control-@ControlClass(control.Input)"
                     disabled="@Disabled"
                     aria-label="@control.AccessibleLabel"
-                    @onpointerdown="() => StartHold(control)"
-                    @onpointerup="StopHold"
-                    @onpointercancel="StopHold"
-                    @onpointerleave="StopHold"
-                    @onclick="() => SendAsync(control.Input)">
+                    data-arcade-input="@control.Input"
+                    data-arcade-repeat="@control.HoldRepeatMilliseconds">
                 <span aria-hidden="true">@control.Label</span>
             </button>
         }
@@ -61,7 +65,7 @@
                     class="arcade-control arcade-control-ability"
                     disabled="@(Disabled || Configuration.AvailableAbility is null)"
                     aria-label="@ability.AccessibleLabel"
-                    @onclick="() => SendAsync(ability.Input)">
+                    data-arcade-input="@ability.Input">
                 <span aria-hidden="true">@ability.Label</span>
                 <small>@(Configuration.AvailableAbility ?? "CHARGING")</small>
             </button>
@@ -74,14 +78,14 @@
 
 @code {
     [Parameter, EditorRequired] public ArcadeControllerConfiguration Configuration { get; set; } = default!;
+    [Parameter, EditorRequired] public string ConnectionKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ActionKind { get; set; } = string.Empty;
     [Parameter] public bool Disabled { get; set; }
-    [Parameter, EditorRequired] public EventCallback<ArcadeControllerSubmission> Submitted { get; set; }
 
-    private long nextSequence;
+    private ElementReference controllerElement;
+    private IJSObjectReference? module;
+    private IJSObjectReference? controller;
     private string? selectedTargetId;
-    private CancellationTokenSource? holdCancellation;
-    private readonly Dictionary<string, CancellationTokenSource> keyboardHolds =
-        new(StringComparer.Ordinal);
     private int ChargePercent => Math.Clamp(Configuration.ChargePercent, 0, 100);
     private IEnumerable<ArcadeControl> MovementControls =>
         Configuration.Controls.Where(control => control.Input != "ActivateAbility");
@@ -90,7 +94,6 @@
 
     protected override void OnParametersSet()
     {
-        nextSequence = Math.Max(nextSequence, Configuration.NextSequence);
         if (selectedTargetId is null || Configuration.Targets.All(target => target.Id != selectedTargetId))
         {
             selectedTargetId = Configuration.SelectedTargetId is { } selected &&
@@ -100,109 +103,26 @@
         }
     }
 
-    private async Task SelectTargetAsync(string targetId)
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        selectedTargetId = targetId;
-        await SendAsync("SelectTarget", targetId);
-    }
-
-    private async Task SendAsync(string input, string? targetOverride = null)
-    {
-        if (Disabled)
+        if (firstRender)
         {
-            return;
+            module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./js/arcadeController.js");
+            controller = await module.InvokeAsync<IJSObjectReference>(
+                "create", controllerElement, ConnectionKey, ActionKind, ControllerState());
         }
-        var target = targetOverride ?? selectedTargetId;
-        var submission = new ArcadeControllerSubmission(
-            nextSequence++,
-            input,
-            target,
-            DateTimeOffset.UtcNow);
-        await Submitted.InvokeAsync(submission);
-    }
-
-    private void StartHold(ArcadeControl control)
-    {
-        StopHold();
-        if (Disabled || control.HoldRepeatMilliseconds is not { } repeat)
+        else if (controller is not null)
         {
-            return;
-        }
-        holdCancellation = new CancellationTokenSource();
-        _ = RepeatAsync(control.Input, Math.Clamp(repeat, 40, 500), holdCancellation.Token);
-    }
-
-    private void StopHold()
-    {
-        holdCancellation?.Cancel();
-        holdCancellation?.Dispose();
-        holdCancellation = null;
-    }
-
-    private async Task RepeatAsync(string input, int repeatMilliseconds, CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(TimeSpan.FromMilliseconds(300), cancellationToken);
-            while (!cancellationToken.IsCancellationRequested)
-            {
-                await InvokeAsync(() => SendAsync(input));
-                await Task.Delay(TimeSpan.FromMilliseconds(repeatMilliseconds), cancellationToken);
-            }
-        }
-        catch (OperationCanceledException)
-        {
+            await controller.InvokeVoidAsync("update", ControllerState());
         }
     }
 
-    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    private object ControllerState() => new
     {
-        if (Disabled || args.Repeat || KeyboardInput(args.Key) is not { } input ||
-            keyboardHolds.ContainsKey(args.Key))
-        {
-            return;
-        }
-
-        await SendAsync(input);
-        var control = Configuration.Controls.FirstOrDefault(candidate => candidate.Input == input);
-        if (control?.HoldRepeatMilliseconds is not { } repeat)
-        {
-            return;
-        }
-
-        var cancellation = new CancellationTokenSource();
-        keyboardHolds[args.Key] = cancellation;
-        _ = RepeatAsync(input, Math.Clamp(repeat, 40, 500), cancellation.Token);
-    }
-
-    private void HandleKeyUp(KeyboardEventArgs args)
-    {
-        if (keyboardHolds.Remove(args.Key, out var cancellation))
-        {
-            cancellation.Cancel();
-            cancellation.Dispose();
-        }
-    }
-
-    private void StopKeyboardHolds()
-    {
-        foreach (var cancellation in keyboardHolds.Values)
-        {
-            cancellation.Cancel();
-            cancellation.Dispose();
-        }
-        keyboardHolds.Clear();
-    }
-
-    private static string? KeyboardInput(string key) => key switch
-    {
-        "ArrowLeft" or "a" or "A" => "MoveLeft",
-        "ArrowRight" or "d" or "D" => "MoveRight",
-        "ArrowUp" or "w" or "W" => "RotateClockwise",
-        "ArrowDown" or "s" or "S" => "SoftDrop",
-        " " or "Enter" => "InstantDrop",
-        "Shift" or "x" or "X" => "ActivateAbility",
-        _ => null
+        Configuration.NextSequence,
+        SelectedTargetId = selectedTargetId,
+        Disabled,
+        Configuration.Arena
     };
 
     private static string ControlClass(string input) => input switch
@@ -215,10 +135,22 @@
         _ => "action"
     };
 
-    public ValueTask DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
-        StopHold();
-        StopKeyboardHolds();
-        return ValueTask.CompletedTask;
+        try
+        {
+            if (controller is not null)
+            {
+                await controller.InvokeVoidAsync("dispose");
+                await controller.DisposeAsync();
+            }
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
     }
 }

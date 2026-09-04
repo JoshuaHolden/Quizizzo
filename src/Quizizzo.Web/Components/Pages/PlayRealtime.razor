@@ -188,8 +188,10 @@
                     {
                         <ArcadeController @key="ControllerRenderKey"
                                           Configuration="arcadeConfiguration"
+                                          ConnectionKey="@partyConnection!.ConnectionKey"
+                                          ActionKind="@game.Controller.ActionKind"
                                           Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
-                                          Submitted="SubmitArcadeAsync" />
+                                          />
                     }
                     break;
                 case PlayerControllerKind.Waiting:
@@ -222,6 +224,8 @@
     private bool focusHeadingAfterRender;
     private bool reactionsOpen;
     private long loadVersion;
+    private bool realtimeRefreshInProgress;
+    private bool realtimeRefreshQueued;
     private int PlayerScore => gameView?.Scores.TryGetValue(player.PlayerId, out var score) == true
         ? score
         : player.Score;
@@ -285,35 +289,6 @@
         }
     }
 
-    private async Task SubmitArcadeAsync(ArcadeControllerSubmission submission)
-    {
-        if (partyConnection is null ||
-            game?.Controller.ActionKind is not { Length: > 0 } actionKind ||
-            connectionStatus != "Connected")
-        {
-            return;
-        }
-
-        try
-        {
-            await partyConnection.InvokeAsync(
-                "SubmitPlayerAction",
-                Guid.NewGuid(),
-                actionKind,
-                new
-                {
-                    sequence = submission.Sequence,
-                    input = submission.Input,
-                    targetPlayerId = submission.TargetPlayerId,
-                    clientTimestamp = submission.ClientTimestamp
-                });
-        }
-        catch (Exception exception) when (exception is JSException or InvalidOperationException)
-        {
-            ShowTransientError(exception);
-        }
-    }
-
     private async Task SendReactionAsync(string reaction)
     {
         if (partyConnection is null)
@@ -365,7 +340,29 @@
         }
     }
 
-    private async Task RefreshFromServerAsync(string reason) => await LoadAsync();
+    private async Task RefreshFromServerAsync(string reason)
+    {
+        realtimeRefreshQueued = true;
+        if (realtimeRefreshInProgress)
+        {
+            return;
+        }
+
+        realtimeRefreshInProgress = true;
+        try
+        {
+            do
+            {
+                realtimeRefreshQueued = false;
+                await LoadAsync();
+            }
+            while (realtimeRefreshQueued);
+        }
+        finally
+        {
+            realtimeRefreshInProgress = false;
+        }
+    }
 
     private async Task DrawingSubmittedAsync() => await LoadAsync();
 

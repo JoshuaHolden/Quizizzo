@@ -42,6 +42,10 @@ public static class ScrapClusterCatalogue
         Define("split-anvil", (0, 0), (2, 0), (0, 1), (1, 1), (1, 2))
     ];
 
+    public static IReadOnlyList<ScrapClusterDefinition> Playable { get; } = All
+        .Where(cluster => cluster.Key is not ("flag-post" or "split-anvil"))
+        .ToArray();
+
     public static ScrapClusterDefinition Get(string key) =>
         All.Single(cluster => string.Equals(cluster.Key, key, StringComparison.Ordinal));
 

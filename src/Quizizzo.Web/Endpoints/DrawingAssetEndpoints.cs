@@ -116,7 +116,7 @@ public static class DrawingAssetEndpoints
                 commandId,
                 SubmitAnimationAction.ActionKind,
                 GameJson.From(new { frameAssetIds = registered.Select(asset => asset.Id).ToArray() }),
-                context.RequestAborted);
+                cancellationToken: context.RequestAborted);
             if (!result.Applied)
             {
                 return Results.BadRequest(result.ErrorMessage ?? "The drawing submission was rejected.");

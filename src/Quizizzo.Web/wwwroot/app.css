@@ -2995,11 +2995,62 @@ body:has(.phone-controller-shell) {
     display: grid;
     flex: 1 1 auto;
     gap: .4rem;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(7rem, 1fr) minmax(5.5rem, .55fr);
     min-height: 0;
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
+}
+
+.phone-controller-shell .arcade-arena-shell {
+    align-items: stretch;
+    display: flex;
+    gap: .35rem;
+    justify-content: center;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.phone-controller-shell .arcade-arena-canvas {
+    aspect-ratio: 9 / 17;
+    border: 2px solid rgb(55 217 245 / 55%);
+    border-radius: .45rem;
+    box-shadow: 0 .4rem 1.2rem rgb(0 0 0 / 35%);
+    height: 100%;
+    max-width: calc(100% - 4.5rem);
+    object-fit: contain;
+    width: auto;
+}
+
+.phone-controller-shell .arcade-next-pieces {
+    display: flex;
+    flex: 0 0 4rem;
+    flex-direction: column;
+    gap: .3rem;
+    justify-content: flex-start;
+    overflow: hidden;
+}
+
+.phone-controller-shell .arcade-next-pieces::before {
+    color: #c8bfdf;
+    content: "NEXT";
+    font-size: .6rem;
+    font-weight: 900;
+}
+
+.phone-controller-shell .arcade-next-pieces span {
+    align-items: center;
+    background: rgb(255 255 255 / 9%);
+    border-left: .3rem solid var(--piece-colour);
+    border-radius: .4rem;
+    color: #fff;
+    display: flex;
+    font-size: .58rem;
+    line-height: 1.05;
+    min-height: 2rem;
+    overflow: hidden;
+    padding: .25rem;
+    text-transform: uppercase;
 }
 
 .phone-controller-shell .arcade-controller:focus-visible {
@@ -3022,8 +3073,25 @@ body:has(.phone-controller-shell) {
     }
 
     .phone-controller-shell .arcade-controller {
-        grid-template-rows: auto auto minmax(0, 1fr) auto;
+        grid-template-rows: auto auto minmax(7rem, 1fr) minmax(5.5rem, .55fr) auto;
     }
+}
+
+@media (orientation: landscape) and (max-height: 500px) {
+    .phone-controller-shell .arcade-controller {
+        grid-template-areas:
+            "arena status"
+            "arena targets"
+            "arena controls";
+        grid-template-columns: minmax(7rem, .7fr) minmax(15rem, 1.3fr);
+        grid-template-rows: auto auto minmax(5.5rem, 1fr);
+    }
+
+    .phone-controller-shell .arcade-status-strip { grid-area: status; }
+    .phone-controller-shell .arcade-targets { grid-area: targets; }
+    .phone-controller-shell .arcade-arena-shell { grid-area: arena; }
+    .phone-controller-shell .arcade-control-deck { grid-area: controls; }
+    .phone-controller-shell .arcade-keyboard-hint { display: none; }
 }
 
 .phone-controller-shell .arcade-status-strip {

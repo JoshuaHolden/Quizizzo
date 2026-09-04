@@ -115,6 +115,11 @@ public sealed class PileUpPanicGameModuleTests
         Assert.Equal(6, controls!.Controls.Count);
         Assert.Equal(2, controls.Targets.Count);
         Assert.Equal(0, controls.NextSequence);
+        Assert.NotNull(controls.Arena);
+        Assert.Equal(PileUpOptions.Columns, controls.Arena.Columns);
+        Assert.Equal(PileUpOptions.VisibleRows, controls.Arena.VisibleRows);
+        Assert.Equal(2, controls.Arena.UpcomingPieces.Count);
+        Assert.Equal(ScrapClusterCatalogue.All.Count, controls.Arena.PieceShapes.Count);
         Assert.All(playerState.Opponents, opponent => Assert.False(opponent.IsOverloaded));
 
         var display = await runtime.GetViewAsync(gameId, GameViewRequest.Display("display"));

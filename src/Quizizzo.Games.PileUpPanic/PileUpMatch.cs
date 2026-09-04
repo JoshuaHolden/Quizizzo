@@ -293,6 +293,8 @@ public sealed class PileUpMatch
 
     private void SimulateStep(DateTimeOffset now)
     {
+        var fallInterval = options.FallIntervalFor(
+            runtimes.Values.Sum(item => item.Arena.CircuitsCompleted));
         foreach (var runtime in runtimes.Values.Where(item => !item.Arena.IsOverloaded))
         {
             if (!runtime.IsConnected &&
@@ -303,7 +305,6 @@ public sealed class PileUpMatch
                 continue;
             }
 
-            var interval = CurrentFallInterval(now);
             if (runtime.GroundedSinceAtUtc is { } groundedAt)
             {
                 if (runtime.Arena.CanMove(0, 1))
@@ -316,7 +317,7 @@ public sealed class PileUpMatch
                     continue;
                 }
             }
-            if (now - runtime.LastFallAtUtc < interval)
+            if (now - runtime.LastFallAtUtc < fallInterval)
             {
                 continue;
             }
@@ -509,13 +510,6 @@ public sealed class PileUpMatch
             .ThenBy(runtime => runtime.Arena.PlayerId)
             .First().Arena.PlayerId;
         events.Add(new PileMatchEvent("RoundCompleted", RoundWinnerId));
-    }
-
-    private TimeSpan CurrentFallInterval(DateTimeOffset now)
-    {
-        var progressions = (int)((now - StartedAtUtc).Ticks / options.SpeedUpEvery.Ticks);
-        var interval = options.InitialFallInterval - (options.SpeedUpBy * progressions);
-        return interval < options.MinimumFallInterval ? options.MinimumFallInterval : interval;
     }
 
     private void TrimJunkWindow(PlayerRuntime runtime, DateTimeOffset now)

@@ -124,15 +124,14 @@ public sealed class ResponsiveUiContractTests
 
         Assert.Contains("class=\"arcade-controller\"", controller, StringComparison.Ordinal);
         Assert.Contains("class=\"arcade-control-deck\"", controller, StringComparison.Ordinal);
-        Assert.Contains("@onpointercancel=\"StopHold\"", controller, StringComparison.Ordinal);
-        Assert.Contains("@onkeydown=\"HandleKeyDownAsync\"", controller, StringComparison.Ordinal);
-        Assert.Contains("\"ArrowLeft\" or \"a\" or \"A\"", controller, StringComparison.Ordinal);
+        Assert.Contains("class=\"arcade-arena-canvas\"", controller, StringComparison.Ordinal);
+        Assert.Contains("data-arcade-input", controller, StringComparison.Ordinal);
         Assert.Contains(".phone-controller-shell .arcade-controller", css, StringComparison.Ordinal);
-        Assert.Contains("grid-template-rows: auto auto minmax(0, 1fr)", css,
+        Assert.Contains("grid-template-rows: auto auto minmax(7rem, 1fr)", css,
             StringComparison.Ordinal);
-        Assert.Contains("@media (max-height: 430px) and (orientation: landscape)", css,
+        Assert.Contains("@media (orientation: landscape) and (max-height: 500px)", css,
             StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: minmax(12rem, .65fr) minmax(0, 1.35fr)", css,
+        Assert.Contains("grid-template-columns: minmax(7rem, .7fr) minmax(15rem, 1.3fr)", css,
             StringComparison.Ordinal);
     }
 

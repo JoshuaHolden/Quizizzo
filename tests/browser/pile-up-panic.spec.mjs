@@ -99,6 +99,9 @@ for (const playerCount of [2, 3, 4]) {
                 await expect(player.locator(".arcade-controller")).toBeVisible({ timeout: 20_000 });
                 await assertControllerFits(player);
             }
+            const presentation = host.locator(".phaser-presentation");
+            await expect(presentation).toHaveAttribute("data-game-key", "pile-up-panic", { timeout: 20_000 });
+            await expect(presentation).toHaveAttribute("data-phase", "Playing", { timeout: 20_000 });
 
             const heldControl = players[0].getByRole("button", { name: "Move left" });
             await heldControl.dispatchEvent("pointerdown", { pointerId: 1, pointerType: "touch" });
@@ -111,7 +114,12 @@ for (const playerCount of [2, 3, 4]) {
             await assertControllerFits(players[0]);
             await host.reload({ waitUntil: "domcontentloaded" });
             await expect(host.locator(".phaser-presentation canvas")).toBeVisible({ timeout: 20_000 });
+            await expect(host.locator(".phaser-presentation"))
+                .toHaveAttribute("data-game-key", "pile-up-panic", { timeout: 20_000 });
+            await expect(host.locator(".phaser-presentation"))
+                .toHaveAttribute("data-phase", "Playing", { timeout: 20_000 });
             await expect(host.getByRole("button", { name: "Host controls" })).toBeVisible();
+            await host.waitForTimeout(500);
 
             await host.screenshot({
                 path: testInfo.outputPath(`pile-up-${playerCount}-display.png`),

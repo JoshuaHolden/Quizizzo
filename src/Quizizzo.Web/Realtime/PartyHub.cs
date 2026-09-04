@@ -19,6 +19,8 @@ public sealed class PartyHub(
     PlayerReactionLimiter reactionLimiter,
     TimeProvider timeProvider) : Hub<IPartyClient>
 {
+    private const string ConnectedPlayerIdKey = "Quizizzo.PlayerId";
+
     public async Task ConnectHost(Guid partyId)
     {
         var hostUserId = Context.User?.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -42,6 +44,7 @@ public sealed class PartyHub(
         await Groups.AddToGroupAsync(Context.ConnectionId, RealtimeGroups.Players(player.PartyId));
         await connections.RegisterAsync(
             Context.ConnectionId, player.PartyId, RealtimeRole.Player, player.PlayerId.ToString(), Context.ConnectionAborted);
+        Context.Items[ConnectedPlayerIdKey] = player.PlayerId;
     }
 
     public async Task ConnectDisplay()
@@ -82,12 +85,35 @@ public sealed class PartyHub(
             commandId,
             actionKind,
             payload,
-            Context.ConnectionAborted);
+            cancellationToken: Context.ConnectionAborted);
         if (!result.Applied)
         {
             throw new HubException(result.ErrorMessage ?? "The game action was rejected.");
         }
         return result;
+    }
+
+    public async Task SubmitArcadeAction(
+        Guid commandId,
+        string actionKind,
+        JsonElement payload)
+    {
+        if (!Context.Items.TryGetValue(ConnectedPlayerIdKey, out var value) || value is not Guid playerId)
+        {
+            throw new HubException("Connect this player before sending arcade input.");
+        }
+
+        var result = await games.ExecutePlayerActionAsync(
+            playerId,
+            commandId,
+            actionKind,
+            payload,
+            PlayerControllerKind.Arcade,
+            Context.ConnectionAborted);
+        if (!result.Applied)
+        {
+            throw new HubException(result.ErrorMessage ?? "The arcade input was rejected.");
+        }
     }
 
     public async Task SendReaction(string reaction)

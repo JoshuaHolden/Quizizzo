@@ -13,6 +13,8 @@
     private readonly string connectionKey = Guid.NewGuid().ToString("N");
     private DotNetObjectReference<PartyRealtimeConnection>? reference;
 
+    public string ConnectionKey => connectionKey;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender)

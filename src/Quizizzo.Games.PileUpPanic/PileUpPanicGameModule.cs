@@ -563,7 +563,28 @@ public sealed class PileUpPanicGameModule(
                 targets,
                 own.TargetPlayerId?.ToString("N"),
                 own.Arena.AvailableAbility?.ToString(),
-                own.Arena.ChaosCharge)));
+                own.Arena.ChaosCharge,
+                new ArcadeArenaConfiguration(
+                    PileUpOptions.Columns,
+                    PileUpOptions.VisibleRows,
+                    PileUpOptions.HiddenRows,
+                    own.Arena.Grid.Select(cell =>
+                        new ArcadeArenaCell(cell.X, cell.Y, cell.Material)).ToArray(),
+                    own.Arena.Active is { } active
+                        ? new ArcadeActivePiece(
+                            active.ClusterKey,
+                            active.Material,
+                            active.X,
+                            active.Y,
+                            active.Rotation)
+                        : null,
+                    own.Arena.Upcoming.Select(item =>
+                        new ArcadeUpcomingPiece(item.ClusterKey, item.Material)).ToArray(),
+                    ScrapClusterCatalogue.All.ToDictionary(
+                        cluster => cluster.Key,
+                        cluster => (IReadOnlyList<ArcadeGridPoint>)cluster.Cells
+                            .Select(cell => new ArcadeGridPoint(cell.X, cell.Y))
+                            .ToArray())))));
     }
 
     private static string PlayerInstructions(

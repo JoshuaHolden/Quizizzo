@@ -651,6 +651,24 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Register Pile-Up Panic for production quick play and playlists only after exact 2/3/4-player Edge journeys passed at 320×568 and 667×375 with held input plus controller/display refresh recovery.
 - [x] Prevent high-frequency simulation hints from repeatedly re-pairing displays, verify clean error-only container logs, pass all 22 client tests, pass a zero-warning strict Release build, and pass all 309 .NET tests.
 
+### Pile-Up Panic low-latency phone arena (completed 2026-09-04)
+
+- [x] Render each player's own reconstructable 9×17 scrapyard and upcoming queue on their phone while retaining every arena on the shared display.
+- [x] Move pointer and keyboard arcade input out of Blazor event callbacks and send it directly over the existing authenticated SignalR connection.
+- [x] Bind the fast hub path to the durable player connection identity and authorize it only against the current server-provided Arcade controller and action kind.
+- [x] Predict active-piece movement, rotation correction, soft drop, and hard drop locally without moving locks, circuits, junk, abilities, scoring, time, or winners out of the server.
+- [x] Reconcile local pending inputs through the authoritative last-accepted sequence and reconstruct cleanly after refresh, rejection, gravity, lock, junk, or reconnect.
+- [x] Coalesce bursty player/display refresh hints and shorten the shared-display correction tween from 180 ms to 60 ms.
+- [x] Add behavioral prediction, role-secrecy, responsive-layout, controller-transport, and display-presentation coverage.
+
+### Pile-Up Panic shape and gravity tuning (completed 2026-09-04)
+
+- [x] Remove the awkward five-cell `flag-post` and `split-anvil` clusters from new generation while retaining their definitions for active-snapshot recovery.
+- [x] Slow initial gravity from 850 ms to 1,100 ms per row and remove elapsed-time acceleration.
+- [x] Advance one shared match speed by 100 ms for every circuit completed by any player, applying it to all arenas together down to a 200 ms floor.
+- [x] Cover the playable subset, deterministic generation, legacy recent-history recovery, shared gravity, and the bounded speed curve.
+- [x] Pass all 25 client tests, the analyzer style gate, a zero-warning strict Release build, and all 311 .NET tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
