@@ -225,6 +225,36 @@ public sealed class VoiceChoonGameModuleTests
     }
 
     [Fact]
+    public void Wubquake_song_selection_reconstructs_song_and_player_guidance()
+    {
+        var module = new VoiceChoonGameModule(FastFlow());
+        var gameId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
+        var player = Participants()[0];
+        var started = module.Start(new GameStartContext(
+            gameId,
+            partyId,
+            "host",
+            [player],
+            Now,
+            GameJson.From(new VoiceChoonGameConfiguration(
+                VoiceChoonDifficulty.Medium,
+                true,
+                VoiceChoonSongCatalog.WubquakeSongKey))));
+        var game = started.Data.Deserialize<VoiceChoonGameState>()!;
+        var payload = module.CreateView(
+            started,
+            new GameViewContext(GameAudienceRole.Player, player.PlayerId.ToString("N"), player.PlayerId))
+            .Data.Deserialize<PlayerGameViewPayload>()!;
+
+        Assert.Equal(VoiceChoonSongCatalog.WubquakeSongKey, game.SongKey);
+        Assert.Equal("quizizzo_wubquake.mid", game.SongName);
+        Assert.Contains("bass-heavy", payload.Instructions, StringComparison.OrdinalIgnoreCase);
+        Assert.All(game.Charts.SelectMany(chart => chart.RecordingPrompts), prompt =>
+            Assert.Contains("mouth", prompt.Guidance, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Invalid_difficulty_is_rejected_server_side()
     {
         var module = new VoiceChoonGameModule();
@@ -235,6 +265,23 @@ public sealed class VoiceChoonGameModuleTests
             Participants(),
             Now,
             GameJson.From(new VoiceChoonGameConfiguration((VoiceChoonDifficulty)99)));
+
+        var error = Assert.Throws<GameRuleViolationException>(() => module.Start(context));
+
+        Assert.Equal("invalid-configuration", error.Code);
+    }
+
+    [Fact]
+    public void Unknown_song_is_rejected_server_side()
+    {
+        var module = new VoiceChoonGameModule();
+        var context = new GameStartContext(
+            GameInstanceId.New(),
+            Guid.NewGuid(),
+            "host",
+            Participants(),
+            Now,
+            GameJson.From(new VoiceChoonGameConfiguration(SongKey: "missing-song")));
 
         var error = Assert.Throws<GameRuleViolationException>(() => module.Start(context));
 

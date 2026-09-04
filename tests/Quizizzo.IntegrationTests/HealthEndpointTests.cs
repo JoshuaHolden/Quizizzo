@@ -42,6 +42,9 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
         Assert.Equal("Healthy", await response.Content.ReadAsStringAsync());
         Assert.Equal("nosniff", response.Headers.GetValues("X-Content-Type-Options").Single());
         Assert.Equal("DENY", response.Headers.GetValues("X-Frame-Options").Single());
+        Assert.Equal(
+            "camera=(), microphone=(self), geolocation=()",
+            response.Headers.GetValues("Permissions-Policy").Single());
     }
 
     [Theory]

@@ -107,14 +107,24 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
     }
 
     async function ensureStream() {
+        if (!globalThis.isSecureContext) {
+            throw new Error("Microphone recording requires HTTPS on iPhone. Open Quizizzo using its secure HTTPS address.");
+        }
         if (!navigator.mediaDevices?.getUserMedia || !globalThis.MediaRecorder) {
             throw new Error("This browser cannot record microphone audio.");
         }
         if (!stream || stream.getTracks().every(track => track.readyState === "ended")) {
-            stream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-                video: false
-            });
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+                    video: false
+                });
+            } catch (error) {
+                if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
+                    throw new Error("Microphone access was blocked. Allow Microphone for Quizizzo in iPhone Settings, then reload this page.");
+                }
+                throw error;
+            }
         }
         return stream;
     }

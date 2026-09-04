@@ -2,7 +2,10 @@ namespace Quizizzo.Games.VoiceChoon;
 
 public sealed class InstrumentAssignmentService
 {
-    public static IReadOnlyList<InstrumentAssignment> Assign(RawMidiSong song, int playerCount)
+    public static IReadOnlyList<InstrumentAssignment> Assign(
+        RawMidiSong song,
+        int playerCount,
+        Func<VoiceChoonTrackRole, IReadOnlyList<SoundRecordingPrompt>>? promptFactory = null)
     {
         ArgumentNullException.ThrowIfNull(song);
         if (playerCount is < 1 or > 8)
@@ -27,7 +30,7 @@ public sealed class InstrumentAssignmentService
 
         return assigned.Select((tracks, playerIndex) =>
         {
-            var prompts = tracks.SelectMany(track => InstrumentSoundGuide.For(track.Role))
+            var prompts = tracks.SelectMany(track => (promptFactory ?? InstrumentSoundGuide.For)(track.Role))
                 .DistinctBy(prompt => prompt.Key);
             return new InstrumentAssignment(
                 playerIndex,

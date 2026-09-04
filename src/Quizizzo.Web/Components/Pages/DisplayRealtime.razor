@@ -212,6 +212,14 @@
                                                         <option value="@VoiceChoonDifficulty.Medium">Medium</option>
                                                         <option value="@VoiceChoonDifficulty.Hard">Hard</option>
                                                     </select>
+                                                    <label for="voicechoon-song">Song</label>
+                                                    <select id="voicechoon-song" @bind="voiceChoonSongKey">
+                                                        @foreach (var song in VoiceChoonSongCatalog.Available)
+                                                        {
+                                                            <option value="@song.Key">@song.DisplayName</option>
+                                                        }
+                                                    </select>
+                                                    <small>@VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).RecordingMessage</small>
                                                     <small>Changes note density and timing windows, not the song.</small>
                                                     <label class="display-host-game-test-mode">
                                                         <input type="checkbox" @bind="voiceChoonSoloAutoplayTest" />
@@ -347,6 +355,7 @@
     private bool realtimeRefreshQueued;
     private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
     private VoiceChoonDifficulty voiceChoonDifficulty = VoiceChoonDifficulty.Medium;
+        private string voiceChoonSongKey = VoiceChoonSongCatalog.DefaultSongKey;
     private bool voiceChoonSoloAutoplayTest;
     private PhaserPresentation? phaserPresentation;
     private bool phaserFailed;
@@ -500,7 +509,8 @@
             VoiceChoonGameDefinition.GameKey =>
                 GameJson.From(new VoiceChoonGameConfiguration(
                     voiceChoonDifficulty,
-                    voiceChoonSoloAutoplayTest)),
+                    voiceChoonSoloAutoplayTest,
+                    voiceChoonSongKey)),
             _ => GameJson.Empty
         };
 
@@ -564,9 +574,8 @@
                 var configuration = JsonSerializer.Deserialize<VoiceChoonGameConfiguration>(item.ConfigurationJson);
                 return configuration is null
                     ? "Medium difficulty"
-                    : configuration.SoloAutoplayTest
-                        ? $"{configuration.Difficulty} · solo autoplay test"
-                        : $"{configuration.Difficulty} difficulty";
+                                        : $"{VoiceChoonSongCatalog.GetDefinition(configuration.SongKey).DisplayName} · {configuration.Difficulty}"
+                                            + (configuration.SoloAutoplayTest ? " · solo autoplay test" : string.Empty);
             }
             catch (JsonException)
             {

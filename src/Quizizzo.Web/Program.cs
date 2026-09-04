@@ -286,7 +286,7 @@ app.Use(async (context, next) =>
         context.Response.Headers.XContentTypeOptions = "nosniff";
         context.Response.Headers.XFrameOptions = "DENY";
         context.Response.Headers.Append("Referrer-Policy", "same-origin");
-        context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+        context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
         if (HttpMethods.IsGet(context.Request.Method) &&
             (context.Request.Path.StartsWithSegments("/media/audio", StringComparison.OrdinalIgnoreCase) ||
              context.Request.Path.StartsWithSegments(

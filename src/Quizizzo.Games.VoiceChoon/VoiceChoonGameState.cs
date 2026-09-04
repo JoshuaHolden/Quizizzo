@@ -43,7 +43,8 @@ public sealed record VoiceChoonGameState(
     int EnergyPercent,
     IReadOnlyList<VoiceChoonResult> Results,
     VoiceChoonDifficulty Difficulty = VoiceChoonDifficulty.Medium,
-    bool SoloAutoplayTest = false);
+    bool SoloAutoplayTest = false,
+    string SongKey = VoiceChoonSongCatalog.DefaultSongKey);
 
 public sealed record VoiceChoonPlayerState(
     string InstrumentName,

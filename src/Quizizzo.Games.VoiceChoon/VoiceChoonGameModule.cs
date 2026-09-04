@@ -54,8 +54,14 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         }
 
         var difficulty = DifficultySettings.For(configuration.Difficulty);
-        var song = VoiceChoonSongCatalog.LoadDefaultSong();
-        var assignments = InstrumentAssignmentService.Assign(song, context.Participants.Count);
+        var songDefinition = VoiceChoonSongCatalog.GetDefinition(configuration.SongKey);
+        var song = VoiceChoonSongCatalog.Load(songDefinition.Key);
+        var assignments = InstrumentAssignmentService.Assign(
+            song,
+            context.Participants.Count,
+            role => string.Equals(songDefinition.Key, VoiceChoonSongCatalog.WubquakeSongKey, StringComparison.Ordinal)
+                ? InstrumentSoundGuide.For(role).Select(prompt => prompt with { Guidance = songDefinition.RecordingMessage }).ToArray()
+                : InstrumentSoundGuide.For(role));
         var charts = new ChartGenerator(difficulty.ChartOptions).Generate(assignments);
         var participants = context.Participants.Select((participant, index) =>
             new VoiceChoonParticipant(participant.PlayerId, participant.DisplayName, index)).ToArray();
@@ -81,7 +87,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             50,
             [],
             configuration.Difficulty,
-            configuration.SoloAutoplayTest);
+            configuration.SoloAutoplayTest,
+            songDefinition.Key);
         return ModuleState(BriefingPhase, context.StartedAtUtc.Add(flowOptions.BriefingDuration), false, state);
     }
 
@@ -469,7 +476,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         };
         return new PlayerGameViewPayload(
             chart.InstrumentName,
-            PlayerInstructions(current, recordingReady, controllerReady),
+            PlayerInstructions(current, game, recordingReady, controllerReady),
             controller,
             GameJson.From(new VoiceChoonPlayerState(
                 chart.InstrumentName,
@@ -588,12 +595,18 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                 result?.Score ?? 0);
         }).ToArray();
 
-    private static string PlayerInstructions(GameModuleState current, bool recordingReady, bool controllerReady) =>
-        current.Phase switch
+    private static string PlayerInstructions(
+        GameModuleState current,
+        VoiceChoonGameState game,
+        bool recordingReady,
+        bool controllerReady)
+    {
+        var song = VoiceChoonSongCatalog.GetDefinition(game.SongKey);
+        return current.Phase switch
         {
-            BriefingPhase => "Your phone is about to become an instrument.",
+            BriefingPhase => song.BriefingMessage,
             RecordingPhase when recordingReady => "Sounds locked. Waiting for the rest of the band.",
-            RecordingPhase => "Record the noises shown for your assigned parts.",
+            RecordingPhase => song.RecordingMessage,
             ControllerReadyPhase when controllerReady => "Pads ready. Waiting for the rest of the band.",
             ControllerReadyPhase => "Turn your phone sideways and check all four pads.",
             CountdownPhase => "Hands ready. The performance is about to begin.",
@@ -601,6 +614,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             ResultsPhase => "The band survived. Results are on the main screen.",
             _ => "VoiceChoon complete."
         };
+    }
 
     private static string PhaseMessage(GameModuleState current, VoiceChoonGameState game) => current.Phase switch
     {
@@ -698,7 +712,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         try
         {
             var value = configuration.Deserialize<VoiceChoonGameConfiguration>();
-            if (value is null || !Enum.IsDefined(value.Difficulty))
+            if (value is null || !Enum.IsDefined(value.Difficulty) || !VoiceChoonSongCatalog.IsKnownKey(value.SongKey))
             {
                 throw new JsonException();
             }
@@ -707,7 +721,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         catch (JsonException)
         {
             throw new GameRuleViolationException(
-                "invalid-configuration", "VoiceChoon difficulty must be Easy, Medium or Hard.");
+                "invalid-configuration", "VoiceChoon requires a supported song and Easy, Medium or Hard difficulty.");
         }
     }
 

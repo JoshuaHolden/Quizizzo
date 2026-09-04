@@ -710,6 +710,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Silence the generic shared-display game soundtrack throughout VoiceChoon without muting private recorded-note playback or changing lobby and other-game music.
 - [x] Pass all 30 client tests, 33 focused VoiceChoon tests, and a zero-warning strict Release Web build; deploy locally and confirm a healthy service with no display background audio.
 
+### VoiceChoon song catalogue (completed 2026-09-04)
+
+- [x] Embed `quizizzo_wubquake.mid` as a second selectable song while retaining Co-op Showdown as the default.
+- [x] Persist the selected song key through host configuration, playlists, authoritative state, refresh, and recovery; reject unknown keys server-side.
+- [x] Configure song-specific briefing and mouth-noise guidance in the catalog and show the selected guidance in host controls and player views.
+- [x] Document the repeatable MIDI import, catalog, guidance, validation, and deployment workflow in `docs/architecture/voicechoon-songs.md`.
+- [x] Pass 35 focused VoiceChoon tests, 30 client tests, a zero-warning strict Release Web build, and live host-selector verification.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
