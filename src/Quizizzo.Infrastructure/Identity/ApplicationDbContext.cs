@@ -4,6 +4,7 @@ using Quizizzo.Domain.Displays;
 using Quizizzo.Domain.Parties;
 using Quizizzo.Domain.Players;
 using Quizizzo.Domain.Drawings;
+using Quizizzo.Domain.Voice;
 using Quizizzo.Infrastructure.Games;
 
 namespace Quizizzo.Infrastructure.Identity;
@@ -14,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DisplaySession> DisplaySessions => Set<DisplaySession>();
     public DbSet<Player> Players => Set<Player>();
     public DbSet<DrawingAssetMetadata> DrawingAssets => Set<DrawingAssetMetadata>();
+    public DbSet<VoiceSampleMetadata> VoiceSamples => Set<VoiceSampleMetadata>();
     internal DbSet<GameRuntimeSnapshotRecord> GameRuntimeSnapshots => Set<GameRuntimeSnapshotRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)

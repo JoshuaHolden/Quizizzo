@@ -328,6 +328,23 @@ test("background transitions and one-shot cues never leave two long-form tracks 
     controller.destroy();
 });
 
+test("VoiceChoon silences shared-display background music", async () => {
+    const controller = audio.create(() => { }, {
+        fadeInMilliseconds: 0,
+        fadeOutMilliseconds: 1000,
+        crossfadeMilliseconds: 1000
+    });
+    controller.update({ mode: "Game", gameKey: "estimate", phase: "Answering" });
+    await nextTurn();
+    assert.equal(controller.activeTrackKey, "game");
+
+    controller.update({ mode: "Game", gameKey: "VoiceChoon", phase: "Playing" });
+    assert.equal(controller.activeTrackKey, null);
+    assert.equal(controller.backgrounds.filter(track => !track.paused).length, 0);
+    assert.equal(controller.cue.paused, true);
+    controller.destroy();
+});
+
 test("AniMates keeps its existing deadline soundtrack behavior", async () => {
     const controller = createController();
     controller.update({

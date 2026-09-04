@@ -33,6 +33,10 @@ window.quizizzoPresentation = (() => {
         return String(value || "").replaceAll("-", "").toLowerCase();
     }
 
+    function laneColoursForVoice(index) {
+        return ["#ff7aa4", "#ffe36d", "#67e8f9", "#86efac"][index % 4];
+    }
+
     class PartyPresentationScene extends Phaser.Scene {
         constructor(controller) {
             super({ key: `party-presentation-${controller.key}` });
@@ -66,6 +70,9 @@ window.quizizzoPresentation = (() => {
             this.pileDeadlineTimer = null;
             this.pileCountdownTimer = null;
             this.pileEffectSignature = null;
+            this.voiceContainer = null;
+            this.voiceSignature = null;
+            this.voiceTimer = null;
         }
 
         preload() {
@@ -213,11 +220,12 @@ window.quizizzoPresentation = (() => {
             const currentIds = new Set((snapshot.players || []).map(player => player.playerId));
             const showRoundRanking = Boolean(snapshot.showRoundRanking && snapshot.results?.length);
             const pileUp = snapshot.gameKey === "pile-up-panic";
+            const voiceChoon = snapshot.gameKey === "voicechoon";
             const pileFullCharacters = pileUp && [
                 "Introduction", "ControllerReady", "RoundResult", "Standings",
                 "FinalWinner", "WinnerCelebration", "Completed"
             ].includes(snapshot.phase);
-            const characterMode = showRoundRanking || pileFullCharacters ? "full" : "portrait";
+            const characterMode = showRoundRanking || pileFullCharacters || voiceChoon ? "full" : "portrait";
             this.drawBackground(snapshot.gameKey, snapshot.phase);
             this.applyScreenChrome(snapshot);
             if (!initial && this.previous?.phase !== snapshot.phase && !showRoundRanking) {
@@ -262,6 +270,17 @@ window.quizizzoPresentation = (() => {
             }
 
             this.applyPileUp(null);
+            if (voiceChoon) {
+                this.stopRoundRanking();
+                this.renderPodium({ ...snapshot, showRoundRanking: false });
+                this.applyPresenter(null);
+                this.applyTutorial(null);
+                this.applyDrawing(null);
+                this.applyVoiceChoon(snapshot, initial);
+                this.previous = cloneSnapshot(snapshot);
+                return;
+            }
+            this.applyVoiceChoon(null);
 
             if (showRoundRanking) {
                 this.applyTutorial(null);
@@ -659,6 +678,121 @@ window.quizizzoPresentation = (() => {
                 avatar.remove.setVisible(this.controller.canManagePlayers && snapshot.mode === "Lobby");
                 avatar.pileAction = null;
             }
+        }
+
+        applyVoiceChoon(snapshot, initial = false) {
+            const signature = snapshot ? JSON.stringify({
+                phase: snapshot.phase,
+                phaseEndsAtUtc: snapshot.phaseEndsAtUtc,
+                phaseMessage: snapshot.phaseMessage,
+                entries: snapshot.entries,
+                results: snapshot.results,
+                gameState: snapshot.gameState
+            }) : null;
+            if (signature === this.voiceSignature) return;
+            this.voiceSignature = signature;
+            this.voiceTimer?.remove(false);
+            this.voiceTimer = null;
+            this.voiceContainer?.destroy(true);
+            this.voiceContainer = null;
+            if (!snapshot) {
+                this.restorePileAvatars();
+                return;
+            }
+
+            const state = snapshot.gameState || {};
+            const players = snapshot.players || [];
+            const entries = snapshot.entries || [];
+            const items = [];
+            items.push(
+                this.add.text(width / 2, 74, snapshot.phase === "Playing" ? "VOICECHOON LIVE" : "VOICECHOON", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "44px", fontStyle: "bold",
+                    stroke: "#130828", strokeThickness: 9
+                }).setOrigin(.5),
+                this.add.text(width / 2, 120, snapshot.phaseMessage || snapshot.phase, {
+                    color: "#fff36e", fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
+                }).setOrigin(.5));
+
+            const stage = this.add.graphics();
+            stage.fillStyle(0x050719, .68);
+            stage.fillRoundedRect(45, 145, 1190, 485, 24);
+            stage.lineStyle(4, 0x4ce0ff, .38);
+            stage.strokeRoundedRect(45, 145, 1190, 485, 24);
+            stage.fillStyle(0xff4f86, .5);
+            stage.fillRect(70, 590, 1140, 9);
+            items.push(stage);
+
+            players.forEach((player, index) => {
+                const avatar = this.avatars.get(player.playerId);
+                if (!avatar) return;
+                this.tweens.killTweensOf(avatar.container);
+                const columns = Math.min(4, players.length);
+                const rows = Math.ceil(players.length / columns);
+                const row = Math.floor(index / columns);
+                const rowCount = Math.min(columns, players.length - row * columns);
+                const column = index % columns;
+                const x = width / 2 + (column - (rowCount - 1) / 2) * Math.min(245, 940 / rowCount);
+                const y = rows === 1 ? 520 : 350 + row * 245;
+                avatar.container.setVisible(true).setDepth(48).setPosition(x, y).setScale(rows === 1 ? .72 : .5);
+                avatar.card.setVisible(false);
+                avatar.cardShadow.setVisible(false);
+                avatar.shadow.setVisible(true);
+                avatar.presence.setVisible(player.status === "Disconnected");
+                avatar.name.setVisible(true).setY(42);
+                avatar.score.setVisible(snapshot.phase === "Playing" || snapshot.phase === "Results").setY(74);
+                avatar.wins.setVisible(false);
+                avatar.activity.setVisible(false);
+                avatar.remove.setVisible(false);
+                if (this.controller.reducedMotion) avatar.rig?.stop();
+                else avatar.rig?.play(snapshot.phase === "Results" && snapshot.results?.[index]?.rank === 1
+                    ? "celebrate" : "idle");
+                items.push(this.add.text(x, y - (rows === 1 ? 190 : 130), entries[index]?.value || "Band member", {
+                    color: laneColoursForVoice(index), backgroundColor: "#171936",
+                    padding: { x: 11, y: 6 }, fontFamily: displayFont, fontSize: rows === 1 ? "19px" : "15px",
+                    fontStyle: "bold", align: "center",
+                    wordWrap: { width: rows === 1 ? 240 : 180 }
+                }).setOrigin(.5));
+            });
+
+            if (snapshot.phase === "Playing") {
+                const sectionText = this.add.text(95, 175, "INTRO", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "30px", fontStyle: "bold"
+                });
+                const comboText = this.add.text(1185, 175, "", {
+                    color: "#fff36e", fontFamily: displayFont, fontSize: "25px", fontStyle: "bold"
+                }).setOrigin(1, 0);
+                const progress = this.add.rectangle(100, 615, 0, 12, 0x4ce0ff, 1).setOrigin(0, .5);
+                const energy = this.add.rectangle(280, 137, 0, 10, 0xff4f86, 1).setOrigin(0, .5);
+                items.push(
+                    sectionText,
+                    comboText,
+                    this.add.rectangle(640, 615, 1080, 12, 0xffffff, .16),
+                    progress,
+                    this.add.rectangle(640, 137, 720, 10, 0xffffff, .15),
+                    energy);
+                const update = () => {
+                    const started = Date.parse(field(state, "songStartsAtUtc", new Date().toISOString()));
+                    const duration = Number(field(state, "songDurationSeconds", 1));
+                    const elapsed = Math.max(0, (Date.now() - started) / 1000);
+                    progress.width = 1080 * Math.max(0, Math.min(1, elapsed / duration));
+                    energy.width = 720 * Math.max(0, Math.min(1, Number(field(state, "energyPercent", 0)) / 100));
+                    comboText.setText(`${Number(field(state, "bandCombo", 0))}× COMBO`);
+                    const sections = field(state, "sections", []);
+                    const current = [...sections].reverse().find(item =>
+                        Number(field(item, "startTimeSeconds", 0)) <= elapsed);
+                    sectionText.setText(field(current, "name", "INTRO"));
+                };
+                update();
+                this.voiceTimer = this.time.addEvent({ delay: 100, loop: true, callback: update });
+            } else if (snapshot.phase === "Results") {
+                items.push(this.add.text(width / 2, 135,
+                    `${Number(field(state, "bandScore", 0)).toLocaleString()} BAND POINTS`, {
+                        color: "#fff36e", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
+                    }).setOrigin(.5));
+            }
+
+            this.voiceContainer = this.add.container(0, 0, items).setDepth(42);
+            this.voiceContainer.setAlpha(1);
         }
 
         playPileAvatar(avatar, action) {
@@ -1122,7 +1256,7 @@ window.quizizzoPresentation = (() => {
             this.screenChromeContainer?.destroy(true);
             this.screenChromeContainer = null;
 
-            if (snapshot.gameKey === "pile-up-panic") return;
+            if (["pile-up-panic", "voicechoon"].includes(snapshot.gameKey)) return;
             if (snapshot.showRoundRanking || snapshot.presenterMessage) return;
             const items = [];
             if (snapshot.mode === "Pairing") {

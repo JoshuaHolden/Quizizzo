@@ -116,6 +116,29 @@ public sealed class PartyHub(
         }
     }
 
+    public async Task SubmitRhythmAction(
+        Guid commandId,
+        string actionKind,
+        JsonElement payload)
+    {
+        if (!Context.Items.TryGetValue(ConnectedPlayerIdKey, out var value) || value is not Guid playerId)
+        {
+            throw new HubException("Connect this player before sending rhythm input.");
+        }
+
+        var result = await games.ExecutePlayerActionAsync(
+            playerId,
+            commandId,
+            actionKind,
+            payload,
+            PlayerControllerKind.Rhythm,
+            Context.ConnectionAborted);
+        if (!result.Applied)
+        {
+            throw new HubException(result.ErrorMessage ?? "The rhythm input was rejected.");
+        }
+    }
+
     public async Task SendReaction(string reaction)
     {
         var allowed = new[]

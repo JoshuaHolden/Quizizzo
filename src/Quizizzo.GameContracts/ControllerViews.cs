@@ -10,6 +10,8 @@ public enum PlayerControllerKind
     Number,
     Vote,
     Drawing,
+    Recording,
+    Rhythm,
     Arcade
 }
 
@@ -33,6 +35,44 @@ public sealed record DrawingControllerConfiguration(
     int FrameCount,
     string DraftScope,
     bool OnionSkinEnabled = true);
+
+public sealed record RecordingPromptConfiguration(
+    string Key,
+    string Label,
+    string Example,
+    string Style,
+    int RootMidiNote,
+    string Guidance,
+    Guid? AssetId);
+
+public sealed record RecordingControllerConfiguration(
+    IReadOnlyList<RecordingPromptConfiguration> Prompts,
+    string UploadEndpoint,
+    int MaximumDurationSeconds,
+    long MaximumBytesPerSample);
+
+public sealed record RhythmControllerNote(
+    Guid Id,
+    int Lane,
+    double StartTimeSeconds,
+    double DurationSeconds,
+    string Type,
+    Guid? SampleAssetId,
+    double PlaybackRate,
+    bool Loop,
+    double? LoopStartSeconds,
+    double? LoopEndSeconds);
+
+public sealed record RhythmControllerConfiguration(
+    DateTimeOffset SongStartsAtUtc,
+    double SongDurationSeconds,
+    IReadOnlyList<RhythmControllerNote> Notes,
+    long NextSequence,
+    double NoteTravelSeconds = 2,
+    double GoodWindowSeconds = 0.2,
+    double GreatWindowSeconds = 0.12,
+    double PerfectWindowSeconds = 0.06,
+    bool Autoplay = false);
 
 public sealed record ArcadeControl(
     string Input,

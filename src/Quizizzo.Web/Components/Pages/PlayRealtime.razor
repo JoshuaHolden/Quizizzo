@@ -15,6 +15,7 @@
                          ConnectionStatusChanged="SetConnectionStatus" />
 
 <section class="join-panel player-controller-page @(game is null ? "player-controller-lobby" : "player-controller-active") @(game?.Controller.Kind == PlayerControllerKind.Arcade ? "player-controller-arcade" : null) mx-auto" aria-label="Player controller">
+    <AntiforgeryToken />
     <header class="player-controller-header">
         <span class="player-room-chip">@player.RoomCode</span>
         <h1 @ref="pageHeading" tabindex="-1">@(game is null ? $"You're in, {player.DisplayName}!" : game.Heading)</h1>
@@ -108,7 +109,7 @@
                     }
                 </section>
             }
-            @if (game.Controller.Kind is not (PlayerControllerKind.Drawing or PlayerControllerKind.Arcade))
+            @if (game.Controller.Kind is not (PlayerControllerKind.Drawing or PlayerControllerKind.Recording or PlayerControllerKind.Rhythm or PlayerControllerKind.Arcade))
             {
                 <p class="lead player-game-instructions">@game.Instructions</p>
                 @if (gameView.PhaseEndsAtUtc is not null)
@@ -142,6 +143,29 @@
                                            SubmitLabel="@game.Controller.SubmitLabel"
                                            Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
                                            Submitted="DrawingSubmittedAsync" />
+                    }
+                    break;
+                case PlayerControllerKind.Recording:
+                    var recordingConfiguration = game.Controller.Configuration.Deserialize<RecordingControllerConfiguration>();
+                    if (recordingConfiguration is not null)
+                    {
+                        <RecordingController @key="ControllerRenderKey"
+                                             Configuration="recordingConfiguration"
+                                             GameInstanceId="gameView.GameInstanceId"
+                                             EndsAtUtc="gameView.PhaseEndsAtUtc"
+                                             Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)"
+                                             Confirmed="() => SubmitPlayerActionAsync(game.Controller.ActionKind, new { })" />
+                    }
+                    break;
+                case PlayerControllerKind.Rhythm:
+                    var rhythmConfiguration = game.Controller.Configuration.Deserialize<RhythmControllerConfiguration>();
+                    if (rhythmConfiguration is not null)
+                    {
+                        <RhythmController @key="ControllerRenderKey"
+                                          Configuration="rhythmConfiguration"
+                                          ConnectionKey="@partyConnection!.ConnectionKey"
+                                          ActionKind="@game.Controller.ActionKind"
+                                          Disabled="@(connectionStatus != "Connected" || !game.Controller.IsEnabled)" />
                     }
                     break;
                 case PlayerControllerKind.Text:

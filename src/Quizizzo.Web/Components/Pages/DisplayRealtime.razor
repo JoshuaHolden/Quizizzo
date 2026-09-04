@@ -10,6 +10,7 @@
 @using Quizizzo.GameContracts
 @using Quizizzo.Games.AniMates
 @using Quizizzo.Games.PileUpPanic
+@using Quizizzo.Games.VoiceChoon
 @using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
 @inject DisplayRealtimeStateLoader StateLoader
@@ -176,7 +177,7 @@
                                                 <span class="display-host-game-style">@availableGame.PlayStyle</span>
                                                 <h4>@availableGame.DisplayName</h4>
                                             </div>
-                                            <span class="display-host-game-players">@availableGame.MinimumPlayers–@availableGame.MaximumPlayers players</span>
+                                            <span class="display-host-game-players">@PlayerRangeLabel(availableGame)</span>
                                         </header>
                                         <p>@availableGame.Description</p>
                                         @if (availableGame.Key == AniMatesGameModule.GameKey)
@@ -197,6 +198,26 @@
                                                             · 5 frames: @FormatDuration(AniMatesGameModule.RoundTwoFrameCount * aniMatesDrawingSecondsPerFrame)
                                                         </small>
                                                     </div>
+                                                </div>
+                                            </details>
+                                        }
+                                        @if (availableGame.Key == VoiceChoonGameDefinition.GameKey)
+                                        {
+                                            <details class="display-host-game-setting">
+                                                <summary>Difficulty · @voiceChoonDifficulty</summary>
+                                                <div class="display-host-game-setting-body">
+                                                    <label for="voicechoon-difficulty">Chart difficulty</label>
+                                                    <select id="voicechoon-difficulty" @bind="voiceChoonDifficulty">
+                                                        <option value="@VoiceChoonDifficulty.Easy">Easy</option>
+                                                        <option value="@VoiceChoonDifficulty.Medium">Medium</option>
+                                                        <option value="@VoiceChoonDifficulty.Hard">Hard</option>
+                                                    </select>
+                                                    <small>Changes note density and timing windows, not the song.</small>
+                                                    <label class="display-host-game-test-mode">
+                                                        <input type="checkbox" @bind="voiceChoonSoloAutoplayTest" />
+                                                        Solo autoplay test
+                                                    </label>
+                                                    <small>One player records every sound; the performance then plays perfectly without pad input.</small>
                                                 </div>
                                             </details>
                                         }
@@ -325,6 +346,8 @@
     private bool realtimeRefreshInProgress;
     private bool realtimeRefreshQueued;
     private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
+    private VoiceChoonDifficulty voiceChoonDifficulty = VoiceChoonDifficulty.Medium;
+    private bool voiceChoonSoloAutoplayTest;
     private PhaserPresentation? phaserPresentation;
     private bool phaserFailed;
     private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
@@ -470,9 +493,16 @@
     });
 
     private JsonElement ConfigurationFor(string gameKey) =>
-        gameKey == AniMatesGameModule.GameKey
-            ? GameJson.From(new AniMatesGameConfiguration(aniMatesDrawingSecondsPerFrame))
-            : GameJson.Empty;
+        gameKey switch
+        {
+            AniMatesGameModule.GameKey =>
+                GameJson.From(new AniMatesGameConfiguration(aniMatesDrawingSecondsPerFrame)),
+            VoiceChoonGameDefinition.GameKey =>
+                GameJson.From(new VoiceChoonGameConfiguration(
+                    voiceChoonDifficulty,
+                    voiceChoonSoloAutoplayTest)),
+            _ => GameJson.Empty
+        };
 
     private static PartyGameQueueRequest ToQueueRequest(PartyGameQueueItem item)
     {
@@ -485,8 +515,19 @@
 
     private bool CanPlay(GameDescriptor game) =>
         hostParty?.Status == PartyStatus.Lobby &&
-        players.Count >= game.MinimumPlayers &&
+        (game.Key != VoiceChoonGameDefinition.GameKey || !voiceChoonSoloAutoplayTest || players.Count == 1) &&
+        players.Count >= MinimumPlayersForCurrentSetup(game) &&
         players.Count <= game.MaximumPlayers;
+
+    private int MinimumPlayersForCurrentSetup(GameDescriptor game) =>
+        game.Key == VoiceChoonGameDefinition.GameKey && !voiceChoonSoloAutoplayTest
+            ? VoiceChoonGameDefinition.NormalMinimumPlayers
+            : game.MinimumPlayers;
+
+    private string PlayerRangeLabel(GameDescriptor game) =>
+        game.Key == VoiceChoonGameDefinition.GameKey
+            ? "3–8 players · 1-player test"
+            : $"{game.MinimumPlayers}–{game.MaximumPlayers} players";
 
     private bool PlaylistCanStart => hostParty is { Status: PartyStatus.Lobby, GameQueue.Count: > 0 } &&
         hostParty.GameQueue.All(item => FindGame(item.GameKey) is { } game && CanPlay(game));
@@ -494,8 +535,11 @@
     private string StartPlaylistLabel =>
         $"Start playlist · {hostParty!.GameQueue.Count} game{(hostParty.GameQueue.Count == 1 ? string.Empty : "s")}";
 
-    private string GameAvailability(GameDescriptor game) => players.Count < game.MinimumPlayers
-        ? $"Needs {game.MinimumPlayers - players.Count} more player{(game.MinimumPlayers - players.Count == 1 ? string.Empty : "s")}"
+    private string GameAvailability(GameDescriptor game) =>
+        game.Key == VoiceChoonGameDefinition.GameKey && voiceChoonSoloAutoplayTest && players.Count != 1
+            ? "Solo autoplay test requires exactly one joined player"
+            : players.Count < MinimumPlayersForCurrentSetup(game)
+        ? $"Needs {MinimumPlayersForCurrentSetup(game) - players.Count} more player{(MinimumPlayersForCurrentSetup(game) - players.Count == 1 ? string.Empty : "s")}"
         : $"Supports up to {game.MaximumPlayers} players";
 
     private static string GameThemeClass(string gameKey) => $"game-theme-{gameKey}";
@@ -513,6 +557,22 @@
 
     private static string QueueConfigurationSummary(PartyGameQueueItem item)
     {
+        if (item.GameKey == VoiceChoonGameDefinition.GameKey)
+        {
+            try
+            {
+                var configuration = JsonSerializer.Deserialize<VoiceChoonGameConfiguration>(item.ConfigurationJson);
+                return configuration is null
+                    ? "Medium difficulty"
+                    : configuration.SoloAutoplayTest
+                        ? $"{configuration.Difficulty} · solo autoplay test"
+                        : $"{configuration.Difficulty} difficulty";
+            }
+            catch (JsonException)
+            {
+                return "Custom setup";
+            }
+        }
         if (item.GameKey != AniMatesGameModule.GameKey)
         {
             return "Standard setup";

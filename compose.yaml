@@ -12,12 +12,15 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env};Maximum Pool Size=32;Connection Idle Lifetime=60"
       ConnectionStrings__Redis: "redis:6379,password=${QUIZIZZO_REDIS_PASSWORD:?Set QUIZIZZO_REDIS_PASSWORD in .env},abortConnect=false"
       DrawingAssets__RootPath: /app/assets/drawings
+      VoiceSamples__RootPath: /app/assets/voice-samples
       DataProtection__KeyPath: /app/data-protection
       Logging__LogLevel__Default: Error
       Logging__LogLevel__Microsoft.AspNetCore: Error
     ports:
       - "127.0.0.1:${QUIZIZZO_HTTP_PORT:-8081}:8080"
     depends_on:
+      asset-volumes:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -30,9 +33,27 @@ services:
         max-file: "3"
     volumes:
       - quizizzo-drawing-assets:/app/assets/drawings
+      - quizizzo-voice-samples:/app/assets/voice-samples
       - quizizzo-data-protection:/app/data-protection
     networks:
       - quizizzo-private
+
+  asset-volumes:
+    image: ${QUIZIZZO_IMAGE:-quizizzo:local}
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["chown -R app:app /app/assets/drawings /app/assets/voice-samples /app/data-protection"]
+    network_mode: none
+    restart: "no"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    volumes:
+      - quizizzo-drawing-assets:/app/assets/drawings
+      - quizizzo-voice-samples:/app/assets/voice-samples
+      - quizizzo-data-protection:/app/data-protection
 
   migrate:
     image: ${QUIZIZZO_IMAGE:-quizizzo:local}
@@ -103,6 +124,8 @@ volumes:
     name: quizizzo-postgres-data
   quizizzo-drawing-assets:
     name: quizizzo-drawing-assets
+  quizizzo-voice-samples:
+    name: quizizzo-voice-samples
   quizizzo-data-protection:
     name: quizizzo-data-protection
 

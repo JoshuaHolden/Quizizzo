@@ -450,7 +450,10 @@ public sealed class LandingPageContractTests
         var playerPage = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Pages/PlayRealtime.razor");
 
-        Assert.Equal(5, CountOccurrences(playerPage, "@key=\"ControllerRenderKey\""));
+        Assert.Equal(7, CountOccurrences(playerPage, "@key=\"ControllerRenderKey\""));
+        Assert.Contains("case PlayerControllerKind.Recording", playerPage, StringComparison.Ordinal);
+        Assert.Contains("case PlayerControllerKind.Rhythm", playerPage, StringComparison.Ordinal);
+        Assert.Contains("<AntiforgeryToken />", playerPage, StringComparison.Ordinal);
         Assert.Contains("gameView.GameInstanceId.ToString(\"N\")", playerPage,
             StringComparison.Ordinal);
         Assert.Contains("gameView.Phase", playerPage, StringComparison.Ordinal);
@@ -510,6 +513,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("Play now", page, StringComparison.Ordinal);
         Assert.Contains("Host controls", page, StringComparison.Ordinal);
         Assert.Contains("Close party", page, StringComparison.Ordinal);
+        Assert.Contains("Chart difficulty", page, StringComparison.Ordinal);
+        Assert.Contains("Solo autoplay test", page, StringComparison.Ordinal);
+        Assert.Contains("requires exactly one joined player", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
         Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);

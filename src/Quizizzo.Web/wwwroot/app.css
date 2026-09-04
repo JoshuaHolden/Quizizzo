@@ -1,3 +1,194 @@
+.voice-recording-controller {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 0.65rem;
+    min-height: 0;
+    height: 100%;
+}
+
+.voice-recording-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid rgba(76, 224, 255, 0.35);
+    border-radius: 8px;
+    background: rgba(7, 10, 35, 0.72);
+}
+
+.voice-recording-header div,
+.voice-recording-copy {
+    display: grid;
+}
+
+.voice-recording-header span,
+.voice-recording-copy span,
+.voice-recording-copy small {
+    color: #bcd6e8;
+}
+
+.voice-recording-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    min-height: 0;
+    overflow: auto;
+}
+
+.voice-recording-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.6rem;
+    min-width: 0;
+    padding: 0.65rem;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(18, 20, 53, 0.9);
+}
+
+.voice-recording-card.accepted {
+    border-color: #52e6a8;
+}
+
+.voice-recording-copy strong {
+    color: #fff36e;
+    font-family: "Fredoka", sans-serif;
+    font-size: clamp(1.25rem, 4vh, 2rem);
+    letter-spacing: 0;
+}
+
+.voice-recording-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.voice-recording-actions button,
+.voice-lock-button {
+    min-height: 44px;
+    border: 0;
+    border-radius: 7px;
+    padding: 0.45rem 0.7rem;
+    font-weight: 800;
+}
+
+.voice-record-button,
+.voice-record-stop {
+    color: white;
+    background: #d72f68;
+}
+
+.voice-preview-button {
+    color: #071224;
+    background: #4ce0ff;
+}
+
+.voice-use-button,
+.voice-lock-button {
+    color: #071224;
+    background: #52e6a8;
+}
+
+.voice-lock-button:disabled,
+.voice-recording-actions button:disabled {
+    opacity: 0.48;
+}
+
+.rhythm-controller {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 0.35rem;
+    height: 100%;
+    min-height: 0;
+    touch-action: none;
+    user-select: none;
+}
+
+.rhythm-status {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgba(76, 224, 255, 0.32);
+    border-radius: 8px;
+    background: rgba(5, 7, 25, 0.88);
+    color: #bcd6e8;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.rhythm-status strong {
+    color: #fff36e;
+    font-family: "Fredoka", sans-serif;
+    font-size: 1.05rem;
+    letter-spacing: 0;
+}
+
+.rhythm-status span:last-child {
+    justify-self: end;
+}
+
+.rhythm-highway {
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    background: #050719;
+}
+
+.rhythm-pads {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(44px, 1fr));
+    gap: 0.4rem;
+}
+
+.rhythm-pad {
+    min-width: 44px;
+    min-height: clamp(64px, 18dvh, 112px);
+    border: 0;
+    border-bottom: 8px solid rgba(0, 0, 0, 0.35);
+    border-radius: 8px;
+    color: #071224;
+    font-family: "Fredoka", sans-serif;
+    font-size: clamp(1.5rem, 7dvh, 3rem);
+    font-weight: 700;
+    touch-action: none;
+}
+
+.rhythm-pad-0 { background: #ff4f86; }
+.rhythm-pad-1 { background: #ffd84d; }
+.rhythm-pad-2 { background: #4ce0ff; }
+.rhythm-pad-3 { background: #7cf2a5; }
+
+.rhythm-pad.pressed,
+.rhythm-pad:active {
+    translate: 0 5px;
+    border-bottom-width: 3px;
+    filter: brightness(1.2);
+}
+
+.rhythm-keyboard-hint {
+    margin: 0;
+    color: #8ba9bd;
+    text-align: center;
+    font-size: 0.72rem;
+}
+
+@media (max-width: 520px) {
+    .voice-recording-list {
+        grid-template-columns: 1fr;
+    }
+
+    .voice-recording-card {
+        padding: 0.5rem;
+    }
+}
 *,
 *::before,
 *::after {
@@ -839,7 +1030,8 @@ fieldset {
     gap: .5rem;
 }
 
-.display-host-game-setting input {
+.display-host-game-setting input,
+.display-host-game-setting select {
     border: 2px solid #bca8e0;
     border-radius: .65rem;
     background: #130925;
@@ -849,6 +1041,22 @@ fieldset {
     max-width: 6rem;
     min-height: 2.75rem;
     padding: .4rem .6rem;
+}
+
+.display-host-game-setting select {
+    max-width: 12rem;
+}
+
+.display-host-game-test-mode {
+    align-items: center;
+    display: flex;
+    gap: .5rem;
+    min-height: 44px;
+}
+
+.display-host-game-test-mode input {
+    min-height: 24px;
+    min-width: 24px;
 }
 
 .display-host-game-setting small {

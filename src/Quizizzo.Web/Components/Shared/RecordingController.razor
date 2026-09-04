@@ -1,0 +1,218 @@
+@using Quizizzo.GameContracts
+@implements IAsyncDisposable
+@inject IJSRuntime JavaScript
+
+<section class="voice-recording-controller" aria-label="VoiceChoon sound recorder">
+    <header class="voice-recording-header">
+        <div>
+            <span>Build your instrument</span>
+            <strong>@AcceptedCount / @Configuration.Prompts.Count sounds ready</strong>
+        </div>
+        @if (EndsAtUtc is not null)
+        {
+            <span class="voice-recording-timer"><DeadlineCountdown EndsAtUtc="EndsAtUtc" /></span>
+        }
+    </header>
+
+    <div class="voice-recording-list">
+        @foreach (var prompt in Configuration.Prompts)
+        {
+            var state = StateFor(prompt);
+            <article class="voice-recording-card @(state.AssetId is not null ? "accepted" : null)">
+                <div class="voice-recording-copy">
+                    <span class="voice-recording-label">@prompt.Label</span>
+                    <strong>@prompt.Example</strong>
+                    <small>@prompt.Guidance</small>
+                </div>
+                <div class="voice-recording-actions">
+                    @if (state.Status == "recording")
+                    {
+                        <button type="button" class="voice-record-stop" @onclick="() => StopAsync(prompt.Key)">
+                            <span aria-hidden="true">■</span> Stop
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="voice-record-button"
+                                disabled="@(Disabled || recordingKey is not null || state.AssetId is not null)"
+                                @onclick="() => StartAsync(prompt.Key)"
+                                aria-label="Record @prompt.Example">
+                            <span aria-hidden="true">●</span> @(state.HasRecording ? "Redo" : "Record")
+                        </button>
+                    }
+                    @if (state.HasRecording && state.Status != "recording")
+                    {
+                        <button type="button" class="voice-preview-button" @onclick="() => PreviewAsync(prompt.Key)">
+                            <span aria-hidden="true">▶</span> Play
+                        </button>
+                        <button type="button"
+                                class="voice-use-button"
+                                disabled="@(Disabled || state.Status == "uploading" || state.AssetId is not null)"
+                                @onclick="() => UploadAsync(prompt.Key)">
+                            @(state.Status == "uploading" ? "Sending…" : state.AssetId is not null ? "Ready ✓" : "Use sound")
+                        </button>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(error))
+    {
+        <p class="controller-notice" role="alert">@error</p>
+    }
+    <button type="button"
+            class="voice-lock-button"
+            disabled="@(Disabled || AcceptedCount != Configuration.Prompts.Count || confirming)"
+            @onclick="ConfirmAsync">
+        @(confirming ? "Locking in…" : "Lock in my sounds")
+    </button>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public RecordingControllerConfiguration Configuration { get; set; } = default!;
+    [Parameter, EditorRequired] public Guid GameInstanceId { get; set; }
+    [Parameter] public DateTimeOffset? EndsAtUtc { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback Confirmed { get; set; }
+
+    private readonly Dictionary<string, RecordingUiState> states = new(StringComparer.Ordinal);
+    private IJSObjectReference? module;
+    private IJSObjectReference? controller;
+    private DotNetObjectReference<RecordingController>? dotNetReference;
+    private string? recordingKey;
+    private string? error;
+    private bool confirming;
+    private int AcceptedCount => Configuration.Prompts.Count(prompt => StateFor(prompt).AssetId is not null);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+        foreach (var prompt in Configuration.Prompts)
+        {
+            states[prompt.Key] = new RecordingUiState(prompt.AssetId is not null, prompt.AssetId, "idle");
+        }
+        module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./js/voiceRecorder.js");
+        dotNetReference = DotNetObjectReference.Create(this);
+        controller = await module.InvokeAsync<IJSObjectReference>(
+            "createVoiceRecorder",
+            dotNetReference,
+            Configuration.MaximumDurationSeconds,
+            Configuration.MaximumBytesPerSample);
+    }
+
+    [JSInvokable]
+    public async Task RecordingChanged(string promptKey, bool hasRecording, string status)
+    {
+        var previous = states.GetValueOrDefault(promptKey) ?? new RecordingUiState(false, null, "idle");
+        states[promptKey] = previous with { HasRecording = hasRecording, Status = status };
+        if (status != "recording" && recordingKey == promptKey)
+        {
+            recordingKey = null;
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private RecordingUiState StateFor(RecordingPromptConfiguration prompt) =>
+        states.GetValueOrDefault(prompt.Key)
+        ?? new RecordingUiState(prompt.AssetId is not null, prompt.AssetId, "idle");
+
+    private async Task StartAsync(string promptKey)
+    {
+        if (controller is null)
+        {
+            return;
+        }
+        error = null;
+        try
+        {
+            recordingKey = promptKey;
+            await controller.InvokeVoidAsync("start", promptKey);
+            states[promptKey] = new RecordingUiState(false, null, "recording");
+        }
+        catch (JSException exception)
+        {
+            recordingKey = null;
+            error = exception.Message;
+        }
+    }
+
+    private async Task StopAsync(string promptKey)
+    {
+        if (controller is not null)
+        {
+            await controller.InvokeVoidAsync("stop", promptKey);
+        }
+    }
+
+    private async Task PreviewAsync(string promptKey)
+    {
+        if (controller is not null)
+        {
+            await controller.InvokeVoidAsync("play", promptKey);
+        }
+    }
+
+    private async Task UploadAsync(string promptKey)
+    {
+        if (controller is null)
+        {
+            return;
+        }
+        error = null;
+        states[promptKey] = states[promptKey] with { Status = "uploading" };
+        try
+        {
+            var assetId = await controller.InvokeAsync<Guid>(
+                "upload",
+                promptKey,
+                Configuration.UploadEndpoint,
+                GameInstanceId.ToString("D"));
+            states[promptKey] = new RecordingUiState(true, assetId, "ready");
+        }
+        catch (JSException exception)
+        {
+            states[promptKey] = states[promptKey] with { Status = "ready" };
+            error = exception.Message;
+        }
+    }
+
+    private async Task ConfirmAsync()
+    {
+        confirming = true;
+        try
+        {
+            await Confirmed.InvokeAsync();
+        }
+        finally
+        {
+            confirming = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (controller is not null)
+            {
+                await controller.InvokeVoidAsync("dispose");
+                await controller.DisposeAsync();
+            }
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+        dotNetReference?.Dispose();
+    }
+
+    private sealed record RecordingUiState(bool HasRecording, Guid? AssetId, string Status);
+}

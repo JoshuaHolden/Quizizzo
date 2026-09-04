@@ -16,6 +16,7 @@ using Quizizzo.Games.Estimate;
 using Quizizzo.Games.AniMates;
 using Quizizzo.Games.MajorityRules;
 using Quizizzo.Games.PileUpPanic;
+using Quizizzo.Games.VoiceChoon;
 using Quizizzo.Games.SlopMachine;
 using Quizizzo.Games.Bullshit;
 using Quizizzo.Web.Components;
@@ -24,6 +25,7 @@ using Quizizzo.Infrastructure.Health;
 using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Infrastructure.Drawings;
 using Quizizzo.Infrastructure.Games;
+using Quizizzo.Infrastructure.Voice;
 using Quizizzo.Web.Endpoints;
 using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
@@ -118,6 +120,22 @@ builder.Services.AddOptions<DrawingAssetStoreOptions>()
             options.CleanupInterval <= TimeSpan.FromDays(1),
         "Drawing asset cleanup interval must be between one minute and one day.")
     .ValidateOnStart();
+builder.Services.AddOptions<VoiceSampleStoreOptions>()
+    .Bind(builder.Configuration.GetSection(VoiceSampleStoreOptions.SectionName))
+    .Validate(options => !string.IsNullOrWhiteSpace(options.RootPath), "Voice sample root path is required.")
+    .Validate(
+        options => options.MaximumAssetBytes is >= VoiceSampleStoreOptions.MinimumAssetBytes and
+            <= VoiceSampleStoreOptions.MaximumConfiguredAssetBytes,
+        "Voice sample size limit is outside the supported range.")
+    .Validate(
+        options => options.RetentionPeriod >= TimeSpan.FromMinutes(1) &&
+            options.RetentionPeriod <= TimeSpan.FromDays(30),
+        "Voice sample retention must be between one minute and 30 days.")
+    .Validate(
+        options => options.CleanupInterval >= TimeSpan.FromMinutes(1) &&
+            options.CleanupInterval <= TimeSpan.FromDays(1),
+        "Voice sample cleanup interval must be between one minute and one day.")
+    .ValidateOnStart();
 builder.Services.AddOptions<GameStateStoreOptions>()
     .Bind(builder.Configuration.GetSection(GameStateStoreOptions.SectionName))
     .Validate(
@@ -141,6 +159,7 @@ builder.Services.AddSingleton<IGameModule, MajorityRulesGameModule>();
 builder.Services.AddSingleton<IGameModule, BullshitGameModule>();
 builder.Services.AddSingleton<IGameModule, SlopMachineGameModule>();
 builder.Services.AddSingleton<IGameModule, PileUpPanicGameModule>();
+builder.Services.AddSingleton<IGameModule, VoiceChoonGameModule>();
 builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
 builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
@@ -178,6 +197,24 @@ builder.Services.AddRateLimiter(options =>
                 QueueProcessingOrder = QueueProcessingOrder.OldestFirst
             }));
     options.AddPolicy("drawing-assets", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            RequestPartitionKey.RemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
+    options.AddPolicy("voice-sample-submit", context =>
+        RateLimitPartition.GetConcurrencyLimiter(
+            RequestPartitionKey.RemoteAddress(context),
+            _ => new ConcurrencyLimiterOptions
+            {
+                PermitLimit = 2,
+                QueueLimit = 8,
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst
+            }));
+    options.AddPolicy("voice-samples", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             RequestPartitionKey.RemoteAddress(context),
             _ => new FixedWindowRateLimiterOptions
@@ -332,6 +369,7 @@ app.MapAdditionalIdentityEndpoints();
 app.MapPlayerSessionEndpoints();
 app.MapHostDisplayEndpoints();
 app.MapDrawingAssetEndpoints();
+app.MapVoiceSampleEndpoints();
 app.MapHub<PartyHub>("/hubs/party");
 app.MapHealthChecks("/health/live", new() { Predicate = check => check.Tags.Contains("live") });
 app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Contains("ready") });

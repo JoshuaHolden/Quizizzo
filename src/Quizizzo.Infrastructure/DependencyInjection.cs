@@ -9,6 +9,7 @@ using Quizizzo.Infrastructure.Games;
 using Quizizzo.GameEngine;
 using Quizizzo.Infrastructure.Parties;
 using Quizizzo.Infrastructure.Players;
+using Quizizzo.Infrastructure.Voice;
 
 namespace Quizizzo.Infrastructure;
 
@@ -34,13 +35,16 @@ public static class DependencyInjection
         services.AddScoped<IDisplaySessionRepository, DisplaySessionRepository>();
         services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<IDrawingAssetMetadataRepository, DrawingAssetMetadataRepository>();
+        services.AddScoped<IVoiceSampleMetadataRepository, VoiceSampleMetadataRepository>();
         services.AddSingleton<IGameStateStore, PostgreSqlGameStateStore>();
         services.AddSingleton<IRoomCodeGenerator, CryptographicRoomCodeGenerator>();
         services.AddSingleton<IDisplayCredentialService, DisplayCredentialService>();
         services.AddSingleton<IPlayerCredentialService, PlayerCredentialService>();
         services.AddSingleton<ICharacterGenerator, RandomCharacterGenerator>();
         services.AddSingleton<IDrawingAssetStore, FileSystemDrawingAssetStore>();
+        services.AddSingleton<IVoiceSampleStore, FileSystemVoiceSampleStore>();
         services.AddHostedService<DrawingAssetCleanupService>();
+        services.AddHostedService<VoiceSampleCleanupService>();
         services.AddHostedService<GameSnapshotCleanupService>();
         return services;
     }

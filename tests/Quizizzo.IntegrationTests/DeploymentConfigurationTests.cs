@@ -110,9 +110,9 @@ public sealed class DeploymentConfigurationTests
         Assert.Equal(2, CountOccurrences(compose, "Logging__LogLevel__Default: Error"));
         Assert.Equal(2,
             CountOccurrences(compose, "Logging__LogLevel__Microsoft.AspNetCore: Error"));
-        Assert.Equal(4, CountOccurrences(compose, "driver: json-file"));
-        Assert.Equal(4, CountOccurrences(compose, "max-size: \"10m\""));
-        Assert.Equal(4, CountOccurrences(compose, "max-file: \"3\""));
+        Assert.Equal(5, CountOccurrences(compose, "driver: json-file"));
+        Assert.Equal(5, CountOccurrences(compose, "max-size: \"10m\""));
+        Assert.Equal(5, CountOccurrences(compose, "max-file: \"3\""));
     }
 
     [Fact]

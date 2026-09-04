@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Quizizzo.Games.AniMates\Quizizzo.Games.AniMates.csproj" />
     <ProjectReference Include="..\..\src\Quizizzo.Games.SlopMachine\Quizizzo.Games.SlopMachine.csproj" />
     <ProjectReference Include="..\..\src\Quizizzo.Games.PileUpPanic\Quizizzo.Games.PileUpPanic.csproj" />
+    <ProjectReference Include="..\..\src\Quizizzo.Games.VoiceChoon\Quizizzo.Games.VoiceChoon.csproj" />
   </ItemGroup>
 
 </Project>

@@ -669,6 +669,47 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Cover the playable subset, deterministic generation, legacy recent-history recovery, shared gravity, and the bounded speed curve.
 - [x] Pass all 25 client tests, the analyzer style gate, a zero-warning strict Release build, and all 311 .NET tests.
 
+### VoiceChoon MIDI pipeline foundation (completed 2026-09-04)
+
+- [x] Add an isolated, unregistered 3–8 player VoiceChoon project using the supplied original `quizizzo_coop_showdown.mid` as its embedded default song.
+- [x] Parse arbitrary readable Standard MIDI streams with tempo-aware note timing, track names, markers, percussion channels, and deterministic fallback roles.
+- [x] Assign the eight preferred logical parts across three to eight players while load-balancing unknown or duplicate tracks instead of discarding them.
+- [x] Generate deterministic four-lane charts with semantic drum mapping, ordered melodic pitch bands, 500 ms holds, two-pad chord limits, and bounded input density.
+- [x] Preserve every original target MIDI note independently from its gameplay lane so recorded samples can reproduce the composition through pitch shifting.
+- [x] Define low/high melodic, sustained, percussion, and fallback recording prompts including the noises expected for each instrument role.
+- [x] Add nearest-root selection, plus/minus 18-semitone octave folding, Web Audio playback-rate plans, and sustained 30–70 percent loop metadata.
+- [x] Record the complete mechanics, timing, scoring, recording, privacy, recovery, display, future-MIDI, and staged-delivery decisions in `docs/architecture/voicechoon.md`.
+- [x] Cover the supplied two-minute song, an unrelated synthetic MIDI, all party sizes, chart constraints, drum semantics, sound prompts, and pitch plans with focused tests.
+- [x] Keep VoiceChoon out of the production catalogue until its server runtime, secure recording flow, phone/Web Audio controller, and shared-display presentation are complete.
+
+### VoiceChoon complete product runtime (completed 2026-09-04)
+
+- [x] Add reconstructable Briefing → Recording → Controller Ready → Countdown → Playing → Results → Completed phases with server-owned UTC deadlines.
+- [x] Persist immutable per-player charts, accepted judgements, monotonic input sequences, cooperative score, combo, energy, and terminal score awards.
+- [x] Add a reusable Recording controller contract with server-issued prompts, microphone capture, silence trimming, normalization, fades, replay, replace, and explicit lock-in.
+- [x] Store bounded browser audio behind opaque player-owned metadata, private delivery, idempotent registration, one-day retention, and isolated persistent storage.
+- [x] Add a reusable Rhythm controller with a four-lane canvas, Pointer Events multi-touch, keyboard controls, authoritative UTC positioning, direct authenticated SignalR input, and reconnect sequencing.
+- [x] Retain original MIDI pitch in every chart note and play accepted samples through server-described playback-rate and sustained-loop plans.
+- [x] Add a dedicated Phaser band stage with full-body avatars, assigned instruments, marker-driven sections, progress, score, combo, energy, recording readiness, and results.
+- [x] Register VoiceChoon for production only after the runtime, secure recording, phone audio, and shared-display surfaces were complete.
+
+### VoiceChoon difficulty and solo test mode (completed 2026-09-04)
+
+- [x] Add server-owned Easy, Medium, and Hard profiles with progressively bounded note density, same-lane spacing, simultaneous pads, and judgement windows.
+- [x] Preserve MIDI tempo, sections, target pitch, duration, recorded timbre, and playback-rate plans across every difficulty.
+- [x] Persist difficulty in quick-play, playlist, game-state, and phone-controller snapshots with Medium as the default.
+- [x] Add an explicit temporary one-player autoplay test mode while retaining the normal three-to-eight-player rule when it is disabled.
+- [x] Assign all eight MIDI tracks and all 18 recording prompts to the solo tester, extend recording time, and hide manual pads during playback.
+- [x] Award every generated note a server-owned Perfect judgement and schedule the private samples from the authoritative song clock through an audio context unlocked during recording.
+
+### VoiceChoon rhythm readability and soundtrack polish (completed 2026-09-04)
+
+- [x] Keep the four scrolling lanes aligned with every audible solo-autoplay MIDI note while merging dense same-lane runs into bounded hold bars.
+- [x] Collapse qualifying rapid same-lane tap runs into one sustained hold target on Easy and Medium while retaining the original tap-heavy Hard chart.
+- [x] Keep burst compression deterministic, profile-owned, and server-authoritative for scoring and recovery.
+- [x] Silence the generic shared-display game soundtrack throughout VoiceChoon without muting private recorded-note playback or changing lobby and other-game music.
+- [x] Pass all 30 client tests, 33 focused VoiceChoon tests, and a zero-warning strict Release Web build; deploy locally and confirm a healthy service with no display background audio.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

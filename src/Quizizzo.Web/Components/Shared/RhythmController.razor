@@ -1,0 +1,79 @@
+@using Quizizzo.GameContracts
+@implements IAsyncDisposable
+@inject IJSRuntime JavaScript
+
+<section class="rhythm-controller @(Configuration.Autoplay ? "rhythm-autoplay" : null)" aria-label="Four-lane rhythm controller" tabindex="0" @ref="controllerElement">
+    <header class="rhythm-status">
+        <span>VOICECHOON LIVE</span>
+        <strong data-rhythm-feedback>@(Configuration.Autoplay ? "AUTO-PERFORMING" : "GET READY")</strong>
+        <span><DeadlineCountdown EndsAtUtc="Configuration.SongStartsAtUtc.AddSeconds(Configuration.SongDurationSeconds)" /></span>
+    </header>
+        <canvas class="rhythm-highway" width="720" height="620" data-rhythm-canvas aria-label="Upcoming notes in four lanes"></canvas>
+    @if (Configuration.Autoplay)
+    {
+        <p class="rhythm-keyboard-hint">Solo test mode is playing every note perfectly.</p>
+    }
+    else
+    {
+        <div class="rhythm-pads" aria-label="Instrument pads">
+            @for (var lane = 0; lane < 4; lane++)
+            {
+                var selectedLane = lane;
+                <button type="button"
+                        class="rhythm-pad rhythm-pad-@lane"
+                        disabled="@Disabled"
+                        data-rhythm-lane="@selectedLane"
+                        aria-label="Play lane @(selectedLane + 1)">
+                    <span>@(selectedLane + 1)</span>
+                </button>
+            }
+        </div>
+        <p class="rhythm-keyboard-hint">Keyboard: D F J K</p>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public RhythmControllerConfiguration Configuration { get; set; } = default!;
+    [Parameter, EditorRequired] public string ConnectionKey { get; set; } = string.Empty;
+    [Parameter, EditorRequired] public string ActionKind { get; set; } = string.Empty;
+    [Parameter] public bool Disabled { get; set; }
+
+    private ElementReference controllerElement;
+    private IJSObjectReference? module;
+    private IJSObjectReference? controller;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./js/rhythmController.js");
+            controller = await module.InvokeAsync<IJSObjectReference>(
+                "createRhythmController", controllerElement, ConnectionKey, ActionKind, State());
+        }
+        else if (controller is not null)
+        {
+            await controller.InvokeVoidAsync("update", State());
+        }
+    }
+
+    private object State() => new { Configuration, Disabled };
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            if (controller is not null)
+            {
+                await controller.InvokeVoidAsync("dispose");
+                await controller.DisposeAsync();
+            }
+            if (module is not null)
+            {
+                await module.DisposeAsync();
+            }
+        }
+        catch (Exception exception) when (exception is JSDisconnectedException or TaskCanceledException)
+        {
+        }
+    }
+}

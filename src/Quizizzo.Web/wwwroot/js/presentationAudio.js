@@ -184,6 +184,7 @@ window.quizizzoPresentationAudio = (() => {
         }
         if (snapshot.mode === "Lobby") return { trackKey: "lobby", sessionKey: "lobby" };
         if (snapshot.mode !== "Game") return null;
+        if (snapshot.gameKey?.toLowerCase() === "voicechoon") return null;
         if (snapshot.gameKey === "slop-machine") return slopBackground(snapshot);
         if (snapshot.gameKey === "pile-up-panic") {
             return snapshot.phase === "Completed" ? null : {
@@ -301,6 +302,12 @@ window.quizizzoPresentationAudio = (() => {
             this.countdownTimer = null;
             if (this.destroyed || this.muted || !this.snapshot) {
                 this.pauseAll();
+                this.notify();
+                return;
+            }
+            if (this.snapshot.mode === "Game" &&
+                this.snapshot.gameKey?.toLowerCase() === "voicechoon") {
+                this.silence();
                 this.notify();
                 return;
             }
@@ -519,6 +526,12 @@ window.quizizzoPresentationAudio = (() => {
         pauseAll() {
             this.backgrounds.forEach(element => element.pause());
             this.cue.pause();
+        }
+
+        silence() {
+            this.pauseAll();
+            this.currentBackground = null;
+            this.currentCue = null;
         }
 
         notify() {
