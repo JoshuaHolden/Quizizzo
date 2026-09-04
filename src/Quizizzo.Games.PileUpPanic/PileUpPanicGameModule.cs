@@ -556,6 +556,7 @@ public sealed class PileUpPanicGameModule(
                     new("RotateClockwise", "↻", "Rotate clockwise"),
                     new("SoftDrop", "↓", "Soft drop", (int)matchOptions.SoftDropRepeat.TotalMilliseconds),
                     new("InstantDrop", "⇊", "Instant drop"),
+                    new("Stash", "S", "Stash or swap the active brick"),
                     new("ActivateAbility", "⚡", "Activate chaos ability")
                 ],
                 own.LastSequence + 1,
@@ -583,7 +584,11 @@ public sealed class PileUpPanicGameModule(
                         cluster => cluster.Key,
                         cluster => (IReadOnlyList<ArcadeGridPoint>)cluster.Cells
                             .Select(cell => new ArcadeGridPoint(cell.X, cell.Y))
-                            .ToArray())))));
+                            .ToArray())),
+                own.Arena.StashAvailable,
+                own.Arena.Stashed is { } stashed
+                    ? new ArcadeUpcomingPiece(stashed.ClusterKey, stashed.Material)
+                    : null)));
     }
 
     private static string PlayerInstructions(

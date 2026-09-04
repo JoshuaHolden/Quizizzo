@@ -18,10 +18,11 @@ The shared engine now has one small opt-in extension: modules implementing `IGam
 ## Implemented rules core
 
 - A server-owned 9×20 grid: 17 visible rows plus three hidden spawn rows.
-- Twelve original scrap clusters: one two-cell, three three-cell, four four-cell, and four five-cell definitions.
+- Thirteen original scrap clusters, including a single-cell scrap, plus two-, three-, four-, and five-cell definitions.
 - An eight-material palette shuffled separately from cluster selection.
 - A deterministic generator with serializable random state and a four-cluster recent exclusion window.
 - One active cluster, two queued clusters, horizontal movement, clockwise rotation, soft drop, instant drop, collision, locking, circuit detection, circuit collapse, and spawn/hidden-row overload detection.
+- Each player has one recoverable stash slot. `Stash` swaps the active cluster with the slot, or moves the active cluster into an empty slot and draws the next cluster; it is available once per drop and resets after locking.
 - A generic eight-position rotation correction search that is unrelated to named third-party rotation systems.
 - Circuit rewards of 100/400/900/1600 views for one/two/three/four simultaneous circuits; ordinary locks award five views. Drop movement gives small survival/activity views.
 - Chaos charge of 34/65/90/100 for one/two/three/four-or-more simultaneous circuits. A player stores at most one deterministically dealt ability.
@@ -32,7 +33,7 @@ The shared engine now has one small opt-in extension: modules implementing `IGam
 
 `PileUpMatch` accepts an authenticated durable player ID separately from the payload. Inputs carry match ID, monotonic sequence, intention, optional target, and a diagnostic-only client timestamp. Duplicate, stale, wrong-match, disconnected, eliminated, and rate-exceeding inputs are rejected. Client clocks never advance simulation.
 
-`AdvanceSimulation` is driven by that scheduler. Gravity accelerates at server-defined intervals and a grounded cluster observes the configured server-owned lock delay. Complete persisted state includes grids, active and queued clusters, generator/deck state, views, circuits, chaos state, status, target, connectivity, input and junk windows, grounded/lock timing, last accepted sequence, round deadline, and simulation cursor. It round-trips through JSON and resumes with the same future cluster stream. Disconnects preserve natural gravity during a configurable grace period and become overload forfeits after expiry. Timeout ranking orders by operational state, lower stack, more circuits, then more views.
+`AdvanceSimulation` is driven by that scheduler. Gravity accelerates at server-defined intervals and a grounded cluster observes the configured server-owned lock delay. Complete persisted state includes grids, active, queued, and stashed clusters, stash availability, generator/deck state, views, circuits, chaos state, status, target, connectivity, input and junk windows, grounded/lock timing, last accepted sequence, round deadline, and simulation cursor. It round-trips through JSON and resumes with the same future cluster stream. Disconnects preserve natural gravity during a configurable grace period and become overload forfeits after expiry. A round never ends by timeout ranking; it completes only when one operational player remains.
 
 `PileUpPanicGameModule` supplies the standard descriptor, semantic input decoding, role-specific views, automatic recurring ticks, automatic phase deadlines, up-to-three rounds, and first-to-two match completion. Phone views contain only the player's status, score, charge, ability, target, input sequence, and bounded opponent summaries; they never receive grid or upcoming-cluster data. The display view receives the complete match snapshot required to render every arena. Actor release/recovery retains the accepted input sequence, rejects replays, resumes simulation, and can complete the match without host interaction.
 
@@ -42,7 +43,7 @@ Semantic event hooks currently include match/round start and completion, input r
 
 ## Configuration defaults
 
-`PileUpOptions` centralizes input rate, horizontal and soft-drop repeat, initial/minimum fall intervals, speed progression, lock delay, queued/time-window junk caps, ability cooldown, disconnect grace, 150-second round duration, and 50 ms simulation step. Validation rejects non-positive or inconsistent values.
+`PileUpOptions` centralizes input rate, horizontal and soft-drop repeat, initial/minimum fall intervals, 50 ms per-circuit speed progression, lock delay, queued/time-window junk caps, ability cooldown, disconnect grace, 150-second round duration, and 50 ms simulation step. Validation rejects non-positive or inconsistent values.
 
 Lock delay is active in the server simulation. Horizontal and soft-drop repeat values drive the ordinary web-controller cadence; every repeated intention still passes through monotonic sequence and server rate validation.
 
@@ -58,7 +59,7 @@ The display payload now carries an opaque game-specific state field through the 
 
 Phaser owns a dedicated industrial stage rather than forcing the game through the generic quiz layout. Two-, three-, and four-player matches receive responsive 9×17 visible arenas with settled cells, the active cluster, two material previews, live views, circuit count, chaos charge, ready ability, shield, queued junk, connection, and overload treatment. The three hidden spawn rows stay in state for authority but are clipped from the TV grid.
 
-Introduction and controller-ready scenes use the shared production character rig. Round results, standings, final survivor, and winner celebration use match-local ordering on full-body podiums, with winner celebration, loser crying, idle breathing, confetti, and reduced-motion-safe static presentation. Active view gains and newly overloaded piles have semantic display effects; no scoring or collision decision is made in Phaser. Authoritative phase and round deadlines drive the on-screen clocks after refresh.
+Introduction and controller-ready scenes use the shared production character rig. Round results, standings, final survivor, and winner celebration use match-local ordering on full-body podiums, with winner celebration, loser crying, idle breathing, confetti, a line-wide circuit flash/ring/debris explosion, and reduced-motion-safe static presentation. The winner interstitial flies a `PLAYER NAME WINS` banner in and out. Active view gains and newly overloaded piles have semantic display effects; no scoring or collision decision is made in Phaser. Authoritative phase and round deadlines drive the on-screen clocks after refresh.
 
 The supplied `Falling Blocks Fever.mp3` is stored as a game-owned immutable media asset and plays as one looping background session across every non-completed Pile-Up phase. Reconstructable phase and revision refreshes do not restart it; a new game instance receives a fresh audio session, and the shared display mute/autoplay behavior remains unchanged.
 

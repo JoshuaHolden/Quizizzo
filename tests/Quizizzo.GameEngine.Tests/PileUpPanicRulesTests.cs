@@ -10,8 +10,8 @@ public sealed class PileUpPanicRulesTests
     [Fact]
     public void Playable_catalogue_excludes_the_most_obtuse_legacy_clusters()
     {
-        Assert.Equal(12, ScrapClusterCatalogue.All.Count);
-        Assert.Equal(10, ScrapClusterCatalogue.Playable.Count);
+        Assert.Equal(13, ScrapClusterCatalogue.All.Count);
+        Assert.Equal(11, ScrapClusterCatalogue.Playable.Count);
         Assert.DoesNotContain(ScrapClusterCatalogue.Playable, cluster => cluster.Key == "flag-post");
         Assert.DoesNotContain(ScrapClusterCatalogue.Playable, cluster => cluster.Key == "split-anvil");
         Assert.Contains(ScrapClusterCatalogue.Playable, cluster => cluster.Cells.Count == 2);
@@ -94,6 +94,24 @@ public sealed class PileUpPanicRulesTests
         Assert.True(arena.Grid.OccupiedCells().Count >= activeCells.Count);
         Assert.NotNull(arena.Active);
         Assert.Equal(2, arena.Upcoming.Count);
+    }
+
+    [Fact]
+    public void Stash_swaps_once_per_drop_and_restores_availability_after_lock()
+    {
+        var arena = new PileArena(Guid.NewGuid(), "Ada", 5);
+        var original = arena.Active!;
+
+        Assert.True(arena.StashActive());
+        Assert.False(arena.StashAvailable);
+        Assert.Equal(original.ClusterKey, arena.Stashed!.ClusterKey);
+        Assert.False(arena.StashActive());
+
+        arena.InstantDrop();
+        arena.LockActive();
+
+        Assert.True(arena.StashAvailable);
+        Assert.NotNull(arena.Active);
     }
 
     [Fact]

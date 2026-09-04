@@ -4,6 +4,7 @@ const keyboardInputs = new Map([
     ["ArrowUp", "RotateClockwise"], ["w", "RotateClockwise"],
     ["ArrowDown", "SoftDrop"], ["s", "SoftDrop"],
     [" ", "InstantDrop"], ["Enter", "InstantDrop"],
+    ["c", "Stash"],
     ["Shift", "ActivateAbility"], ["x", "ActivateAbility"]
 ]);
 

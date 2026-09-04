@@ -6,6 +6,7 @@ public static class VoiceChoonSongCatalog
 {
     public const string DefaultSongKey = "coop-showdown";
     public const string WubquakeSongKey = "wubquake";
+    public const string GreensleevesSongKey = "greensleeves";
     public const string DefaultSongName = "quizizzo_coop_showdown.mid";
     private const string WubquakeSongName = "quizizzo_wubquake.mid";
 
@@ -24,7 +25,14 @@ public static class VoiceChoonSongCatalog
             WubquakeSongName,
             "Build a ridiculous bass-heavy dubstep band.",
             "For bass and chord prompts, make a low, steady buzz or vowel. For drums, use short punchy mouth hits. For leads and stabs, use bright, sharp syllables.",
-            "Quizizzo.Games.VoiceChoon.Assets.quizizzo_wubquake.mid")
+            "Quizizzo.Games.VoiceChoon.Assets.quizizzo_wubquake.mid"),
+        new(
+            GreensleevesSongKey,
+            "Greensleeves",
+            "gs.mid",
+            "Turn Greensleeves into a tiny live mouth-noise ensemble.",
+            "This song only uses melody, chords, bass, and light percussion. Record a clear bright lead, a steady held vowel for chords, a low rounded bass sound, and short light rhythmic clicks.",
+            "Quizizzo.Games.VoiceChoon.Assets.gs.mid")
     ];
 
     public static IReadOnlyList<VoiceChoonSongDefinition> Available => Definitions;

@@ -98,6 +98,30 @@ public sealed class VoiceChoonPipelineTests
     }
 
     [Fact]
+    public void Greensleeves_uses_only_the_four_instrument_families_present_in_the_midi()
+    {
+        var song = VoiceChoonSongCatalog.Load(VoiceChoonSongCatalog.GreensleevesSongKey);
+
+        Assert.Equal("gs.mid", song.SourceName);
+        Assert.Equal(
+            [
+                VoiceChoonTrackRole.LeadA,
+                VoiceChoonTrackRole.Chords,
+                VoiceChoonTrackRole.Bass,
+                VoiceChoonTrackRole.Drums
+            ],
+            song.Tracks.Select(track => track.Role));
+
+        var assignments = InstrumentAssignmentService.Assign(song, 4);
+        Assert.Equal(4, assignments.Count);
+        Assert.All(assignments, assignment => Assert.NotEmpty(assignment.RecordingPrompts));
+        Assert.DoesNotContain(assignments.SelectMany(assignment => assignment.RecordingPrompts), prompt =>
+            prompt.Key.StartsWith("arp-", StringComparison.Ordinal) ||
+            prompt.Key.StartsWith("lead-b-", StringComparison.Ordinal) ||
+            prompt.Key.StartsWith("stabs-", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void Generated_charts_retain_target_pitch_and_bound_lanes_chords_and_density()
     {
         var assignments = InstrumentAssignmentService.Assign(VoiceChoonSongCatalog.LoadDefaultSong(), 3);

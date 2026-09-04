@@ -16,6 +16,8 @@ VoiceChoon songs are embedded MIDI assets selected when a host starts a game. Th
 4. If the song needs different sound advice, update the catalog/profile guidance rather than putting song-specific logic in the UI. Keep prompt keys stable when possible so the recording and asset APIs remain generic.
 5. Add the song key to the catalog tests and add a game-module test that verifies the selected MIDI name, briefing, and recording guidance.
 
+Before adding guidance, inspect the parsed track names and inferred roles. The recording prompt set is derived from the roles actually assigned to each player's tracks; it does not ask for unused instrument families. For example, `gs.mid` contains melody, chords, bass, and light percussion, so it does not request arp, vocal-stab, or second-lead sounds.
+
 The project file embeds every `Assets/*.mid` file automatically. `MidiParser` accepts Standard MIDI files with ticks-per-quarter-note timing. Track roles are inferred by the parser and assigned across one to eight players by `InstrumentAssignmentService`.
 
 ## Host selection

@@ -29,6 +29,8 @@ public sealed record PileArenaState(
     IReadOnlyList<ArenaCell> Grid,
     ActiveScrap? Active,
     IReadOnlyList<GeneratedScrap> Upcoming,
+    GeneratedScrap? Stashed,
+    bool StashAvailable,
     int Views,
     int CircuitsCompleted,
     int ChaosCharge,
@@ -87,6 +89,7 @@ public sealed class PileArena
             ValidateGeneratedScrap(item);
             upcoming.Enqueue(item);
         }
+        if (state.Stashed is { } stashed) ValidateGeneratedScrap(stashed);
         if (state.AvailableAbility is { } availableAbility && !Enum.IsDefined(availableAbility))
         {
             throw new InvalidDataException("The restored available ability is invalid.");
@@ -121,6 +124,8 @@ public sealed class PileArena
         Shielded = state.Shielded;
         IsOverloaded = state.IsOverloaded;
         QueuedJunk = state.QueuedJunk;
+        Stashed = state.Stashed;
+        StashAvailable = state.StashAvailable;
     }
 
     public Guid PlayerId { get; }
@@ -128,6 +133,8 @@ public sealed class PileArena
     public ArenaGrid Grid { get; }
     public ActiveScrap? Active { get; private set; }
     public IReadOnlyList<GeneratedScrap> Upcoming => upcoming.ToArray();
+    public GeneratedScrap? Stashed { get; private set; }
+    public bool StashAvailable { get; private set; } = true;
     public int Views { get; private set; }
     public int CircuitsCompleted { get; private set; }
     public int ChaosCharge { get; private set; }
@@ -211,6 +218,30 @@ public sealed class PileArena
             overloaded);
     }
 
+    public bool StashActive()
+    {
+        if (Active is not { } active || IsOverloaded || !StashAvailable)
+        {
+            return false;
+        }
+
+        var current = new GeneratedScrap(active.ClusterKey, active.Material);
+        var replacement = Stashed ?? upcoming.Dequeue();
+        RefillUpcoming();
+        var definition = ScrapClusterCatalogue.Get(replacement.ClusterKey);
+        var width = definition.CellsAt(0).Max(cell => cell.X) + 1;
+        var candidate = new ActiveScrap(replacement.ClusterKey, replacement.Material,
+            (PileUpOptions.Columns - width) / 2, 0, 0);
+        if (!Grid.CanOccupy(candidate.OccupiedCells()))
+        {
+            return false;
+        }
+        Active = candidate;
+        Stashed = current;
+        StashAvailable = false;
+        return true;
+    }
+
     public int QueueJunk(int count, int maximumQueued)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(count);
@@ -267,6 +298,8 @@ public sealed class PileArena
         Grid.OccupiedCells(),
         Active,
         upcoming.ToArray(),
+        Stashed,
+        StashAvailable,
         Views,
         CircuitsCompleted,
         ChaosCharge,
@@ -290,6 +323,7 @@ public sealed class PileArena
             return false;
         }
         Active = candidate;
+        StashAvailable = true;
         return true;
     }
 

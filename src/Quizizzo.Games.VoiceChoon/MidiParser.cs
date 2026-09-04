@@ -85,10 +85,10 @@ public sealed class MidiParser
         IReadOnlyList<RawMidiNote> notes)
     {
         var normalized = new string(name.Where(char.IsLetterOrDigit).Select(char.ToLowerInvariant).ToArray());
-        if (isPercussion || ContainsAny(normalized, "drum", "beatbox", "kit")) return VoiceChoonTrackRole.Drums;
+        if (isPercussion || ContainsAny(normalized, "drum", "beatbox", "kit", "percussion")) return VoiceChoonTrackRole.Drums;
         if (ContainsAny(normalized, "bass")) return VoiceChoonTrackRole.Bass;
         if (ContainsAny(normalized, "chord", "pad", "hum")) return VoiceChoonTrackRole.Chords;
-        if (ContainsAny(normalized, "leada", "lead1", "melodya")) return VoiceChoonTrackRole.LeadA;
+        if (ContainsAny(normalized, "leada", "lead1", "melodya", "melody")) return VoiceChoonTrackRole.LeadA;
         if (ContainsAny(normalized, "leadb", "lead2", "response", "melodyb")) return VoiceChoonTrackRole.LeadB;
         if (ContainsAny(normalized, "percfx", "percussionfx", "fx")) return VoiceChoonTrackRole.PercussionFx;
         if (ContainsAny(normalized, "arp", "sparkle")) return VoiceChoonTrackRole.Arp;

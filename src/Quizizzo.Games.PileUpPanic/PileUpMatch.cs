@@ -7,6 +7,7 @@ public enum PileInputType
     RotateClockwise,
     SoftDrop,
     InstantDrop,
+    Stash,
     ActivateAbility,
     SelectTarget
 }
@@ -174,6 +175,7 @@ public sealed class PileUpMatch
             PileInputType.RotateClockwise => Rotate(runtime, receivedAtUtc),
             PileInputType.SoftDrop => SoftDrop(runtime, receivedAtUtc),
             PileInputType.InstantDrop => InstantDrop(runtime, receivedAtUtc),
+            PileInputType.Stash => Stash(runtime),
             PileInputType.SelectTarget => SelectTarget(runtime, command.TargetPlayerId),
             PileInputType.ActivateAbility => ActivateAbility(runtime, command.TargetPlayerId, receivedAtUtc),
             _ => false
@@ -184,6 +186,7 @@ public sealed class PileUpMatch
             {
                 PileInputType.RotateClockwise => "ClusterRotated",
                 PileInputType.InstantDrop => "ClusterDropped",
+                PileInputType.Stash => "ClusterStashed",
                 _ => "ClusterMoved"
             };
             events.Add(new PileMatchEvent(eventKind, authenticatedPlayerId));
@@ -270,7 +273,9 @@ public sealed class PileUpMatch
             runtime.DisconnectedAtUtc,
             runtime.LastFallAtUtc,
             runtime.AbilityReadyAtUtc,
-            runtime.GroundedSinceAtUtc)).ToArray());
+            runtime.GroundedSinceAtUtc,
+            runtime.Arena.Stashed,
+            runtime.Arena.StashAvailable)).ToArray());
 
     public IReadOnlyList<PileMatchEvent> DrainEvents()
     {
@@ -369,6 +374,8 @@ public sealed class PileUpMatch
         Lock(runtime, now);
         return true;
     }
+
+    private static bool Stash(PlayerRuntime runtime) => runtime.Arena.StashActive();
 
     private void Lock(PlayerRuntime runtime, DateTimeOffset now)
     {
@@ -584,4 +591,6 @@ public sealed record PilePlayerRuntimeState(
     DateTimeOffset? DisconnectedAtUtc,
     DateTimeOffset LastFallAtUtc,
     DateTimeOffset AbilityReadyAtUtc,
-    DateTimeOffset? GroundedSinceAtUtc);
+    DateTimeOffset? GroundedSinceAtUtc,
+    GeneratedScrap? Stashed,
+    bool StashAvailable);

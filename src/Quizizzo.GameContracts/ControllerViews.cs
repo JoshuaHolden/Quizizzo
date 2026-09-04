@@ -97,7 +97,9 @@ public sealed record ArcadeControllerConfiguration(
     string? SelectedTargetId,
     string? AvailableAbility,
     int ChargePercent,
-    ArcadeArenaConfiguration? Arena = null);
+    ArcadeArenaConfiguration? Arena = null,
+    bool StashAvailable = false,
+    ArcadeUpcomingPiece? StashedPiece = null);
 
 public sealed record ArcadeArenaConfiguration(
     int Columns,

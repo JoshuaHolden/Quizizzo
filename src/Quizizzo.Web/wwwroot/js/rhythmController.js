@@ -65,8 +65,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     const pressedPointers = new Map();
     const pressedKeys = new Set();
     const playedNotes = new Set();
-    const audioBuffers = new Map();
-    let audioContext = null;
     let animationFrame = 0;
     let configuration = initialState.configuration;
     let visualNotes = configuration.autoplay ? autoplayVisualNotes(configuration.notes) : configuration.notes;
@@ -75,72 +73,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
     const tapPulseTimers = new Map();
     const laneHitEffects = new Map();
-
-    function ensureAudioContext() {
-        const AudioContextType = globalThis.AudioContext ?? globalThis.webkitAudioContext;
-        if (!AudioContextType) return null;
-        if (!audioContext || audioContext.state === "closed") {
-            audioContext = globalThis.quizizzoVoiceAudioContext?.state !== "closed"
-                ? globalThis.quizizzoVoiceAudioContext
-                : null;
-            audioContext ??= new AudioContextType({ latencyHint: "interactive" });
-        }
-        globalThis.quizizzoVoiceAudioContext = audioContext;
-        if (audioContext.state === "suspended") void audioContext.resume();
-        return audioContext;
-    }
-
-    async function loadSample(assetId) {
-        if (!assetId) return null;
-        if (audioBuffers.has(assetId)) return audioBuffers.get(assetId);
-        const activeContext = ensureAudioContext();
-        if (!activeContext) return null;
-        const response = await fetch(`/api/voicechoon/samples/${assetId}`, { credentials: "same-origin" });
-        if (!response.ok) return null;
-        const buffer = await activeContext.decodeAudioData(await response.arrayBuffer());
-        audioBuffers.set(assetId, buffer);
-        return buffer;
-    }
-
-    function preload() {
-        const unique = new Set(configuration.notes.map(note => note.sampleAssetId).filter(Boolean));
-        for (const assetId of unique) void loadSample(assetId);
-    }
-
-    function sampleGain(buffer) {
-        const channel = buffer.getChannelData(0);
-        const stride = Math.max(1, Math.floor(channel.length / 2000));
-        let sum = 0;
-        for (let index = 0; index < channel.length; index += stride) sum += channel[index] * channel[index];
-        const rms = Math.sqrt(sum / Math.ceil(channel.length / stride));
-        return Math.max(0.55, Math.min(1.8, 0.55 / Math.max(0.08, rms)));
-    }
-
-    async function playNote(note) {
-        const activeContext = ensureAudioContext();
-        const buffer = await loadSample(note.sampleAssetId);
-        if (!activeContext || !buffer) return;
-        const source = activeContext.createBufferSource();
-        const gain = activeContext.createGain();
-        const hold = String(note.type || "").toLowerCase() === "hold";
-        source.buffer = buffer;
-        source.playbackRate.value = Number(note.playbackRate);
-        source.loop = Boolean(note.loop) || hold;
-        if (source.loop) {
-            source.loopStart = Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration);
-            source.loopEnd = Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration);
-        }
-        const duration = Math.max(
-            Number(note.durationSeconds),
-            source.loop ? 0 : buffer.duration / Math.max(0.01, Number(note.playbackRate)));
-        const level = Math.min(1.2, sampleGain(buffer));
-        gain.gain.setValueAtTime(level, activeContext.currentTime);
-        gain.gain.setValueAtTime(level, activeContext.currentTime + Math.max(0, duration - 0.03));
-        gain.gain.linearRampToValueAtTime(0, activeContext.currentTime + Math.max(0.03, duration));
-        source.connect(gain).connect(activeContext.destination);
-        source.start();
-        source.stop(activeContext.currentTime + Math.max(0.05, duration) + 0.02);
-    }
 
     function judgeLabel(errorSeconds) {
         const error = Math.abs(errorSeconds);
@@ -171,7 +103,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             });
             feedback.textContent = judgeLabel(position - Number(note.startTimeSeconds));
             feedback.style.color = laneColours[lane];
-            void playNote(note);
         } else {
             feedback.textContent = "TOO SOON";
             feedback.style.color = "#ff7d96";
@@ -221,7 +152,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         if (configuration.autoplay) {
             for (const note of dueAutoplayNotes(configuration.notes, lastAutoplayPosition, position, playedNotes)) {
                 playedNotes.add(note.id);
-                void playNote(note);
             }
             lastAutoplayPosition = position;
         }
@@ -331,7 +261,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         releasePadFeedback(lane);
     }, { signal: abort.signal });
 
-    preload();
     draw();
     return {
         update(state) {
@@ -339,7 +268,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             visualNotes = configuration.autoplay ? autoplayVisualNotes(configuration.notes) : configuration.notes;
             disabled = Boolean(state.disabled);
             nextSequence = Math.max(nextSequence, Number(configuration.nextSequence ?? 1));
-            preload();
         },
         dispose() {
             abort.abort();
@@ -347,7 +275,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             tapPulseTimers.clear();
             laneHitEffects.clear();
             cancelAnimationFrame(animationFrame);
-            if (audioContext) void audioContext.close();
         }
     };
 }

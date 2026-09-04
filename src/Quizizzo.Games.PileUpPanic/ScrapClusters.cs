@@ -28,6 +28,7 @@ public static class ScrapClusterCatalogue
 {
     public static IReadOnlyList<ScrapClusterDefinition> All { get; } =
     [
+        Define("single-scrap", (0, 0)),
         Define("bolt", (0, 0), (1, 0)),
         Define("corner-chip", (0, 0), (0, 1), (1, 1)),
         Define("short-rail", (0, 0), (1, 0), (2, 0)),

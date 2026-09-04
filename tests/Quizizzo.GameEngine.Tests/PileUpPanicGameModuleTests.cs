@@ -112,7 +112,7 @@ public sealed class PileUpPanicGameModuleTests
         Assert.Equal(PlayerControllerKind.Arcade, payload.Controller.Kind);
         Assert.Equal("pts", payload.ScoreUnit);
         var controls = payload.Controller.Configuration.Deserialize<ArcadeControllerConfiguration>();
-        Assert.Equal(6, controls!.Controls.Count);
+        Assert.Equal(7, controls!.Controls.Count);
         Assert.Equal(2, controls.Targets.Count);
         Assert.All(controls.Targets, target => Assert.Null(target.Detail));
         Assert.Equal(0, controls.NextSequence);

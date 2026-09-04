@@ -717,6 +717,8 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Configure song-specific briefing and mouth-noise guidance in the catalog and show the selected guidance in host controls and player views.
 - [x] Document the repeatable MIDI import, catalog, guidance, validation, and deployment workflow in `docs/architecture/voicechoon-songs.md`.
 - [x] Pass 35 focused VoiceChoon tests, 30 client tests, a zero-warning strict Release Web build, and live host-selector verification.
+- [x] Embed `gs.mid` as a third selectable song, analyze its five-track MIDI as melody/chords/bass/light percussion, and request only those instrument prompt families.
+- [x] Pass 36 focused VoiceChoon tests, a zero-warning strict Release Web build, deploy the song, and verify Greensleeves appears in the live host selector.
 
 ### Pile-Up Panic speed and survivor celebration (completed 2026-09-04)
 

@@ -1227,6 +1227,10 @@ window.quizizzoPresentation = (() => {
                 if (previousArena && Number(field(arena, "views", 0)) > Number(field(previousArena, "views", 0))) {
                     this.burst(x, gridTop + gridHeight * .55, 18);
                 }
+                if (previousArena && Number(field(arena, "circuitsCompleted", 0)) >
+                    Number(field(previousArena, "circuitsCompleted", 0))) {
+                    this.pileCircuitExplosion(x, gridTop + gridHeight * .55, gridWidth, items);
+                }
                 if (!this.controller.reducedMotion && previousArena && overloaded &&
                     !Boolean(field(previousArena, "isOverloaded", false))) {
                     this.cameras.main.shake(160, .004);
@@ -1244,6 +1248,22 @@ window.quizizzoPresentation = (() => {
                 this.pileCountdownTimer = this.time.addEvent({ delay: 150, loop: true, callback: update });
                 items.push(countdown);
             }
+        }
+
+        pileCircuitExplosion(x, y, gridWidth, items) {
+            const flash = this.add.rectangle(x, y, gridWidth, 18, 0xfff36e, .9).setDepth(60);
+            const ring = this.add.circle(x, y, 18, 0xffc51b, 0).setStrokeStyle(6, 0xfff36e, .95).setDepth(60);
+            items.push(flash, ring);
+            if (this.controller.reducedMotion) {
+                flash.setAlpha(.35);
+                ring.setRadius(70).setAlpha(0);
+                return;
+            }
+            this.tweens.add({ targets: flash, alpha: 0, scaleX: 1.08, duration: 360,
+                ease: "Cubic.easeOut", onComplete: () => flash.destroy() });
+            this.tweens.add({ targets: ring, radius: Math.max(90, gridWidth * .42), alpha: 0,
+                duration: 520, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
+            this.burst(x, y, 34);
         }
 
         addPileStandings(snapshot, state, arenas, items) {
@@ -2700,7 +2720,7 @@ window.quizizzoPresentation = (() => {
             dotNetReference,
             canManagePlayers,
             audio: null
-            ,voiceAudio: null
+            , voiceAudio: null
         };
         controller.ready = new Promise(resolve => { controller.readyResolve = resolve; });
         controller.audio = window.quizizzoPresentationAudio?.create((muted, blocked) => {
