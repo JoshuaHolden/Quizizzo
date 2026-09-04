@@ -133,18 +133,18 @@ window.quizizzoPresentation = (() => {
                     ? [0x080914, 0x51248a, 0xffb11b]
                     : [0x080914, 0x102d4f, 0x6a2a78]
                 : slop
-                ? phase?.includes("ScoreReview") || phase === "WinnerCelebration"
-                    ? [0x120507, 0x7a160c, 0xffd400]
-                    : [0x071519, 0x7d1616, 0x00e7d7]
-                : briefing
-                ? [0x071a2e, 0x0f766e, 0x7c3aed]
-                : results ? [0x2e1065, 0x7c2d92, 0xf59e0b]
-                : choosing ? [0x111827, 0x312e81, 0xdb2777]
-                : drawing ? [0x082f49, 0x0e7490, 0xf97316]
-                : showdown ? [0x2e1065, 0x86198f, 0x0891b2]
-                : gameKey === "estimate"
-                ? [0x160b32, 0x39156b, 0x7132a8]
-                : [0x101735, 0x272a68, 0x513487];
+                    ? phase?.includes("ScoreReview") || phase === "WinnerCelebration"
+                        ? [0x120507, 0x7a160c, 0xffd400]
+                        : [0x071519, 0x7d1616, 0x00e7d7]
+                    : briefing
+                        ? [0x071a2e, 0x0f766e, 0x7c3aed]
+                        : results ? [0x2e1065, 0x7c2d92, 0xf59e0b]
+                            : choosing ? [0x111827, 0x312e81, 0xdb2777]
+                                : drawing ? [0x082f49, 0x0e7490, 0xf97316]
+                                    : showdown ? [0x2e1065, 0x86198f, 0x0891b2]
+                                        : gameKey === "estimate"
+                                            ? [0x160b32, 0x39156b, 0x7132a8]
+                                            : [0x101735, 0x272a68, 0x513487];
             this.background.clear();
             this.background.fillGradientStyle(
                 palette[1], palette[2], palette[0], palette[1], 1);
@@ -364,12 +364,16 @@ window.quizizzoPresentation = (() => {
                 [host.container, bubble, speech]).setDepth(70);
             if (!this.controller.reducedMotion) {
                 this.presenterContainer.x = -500;
-                this.tweens.add({ targets: this.presenterContainer, x: width / 2,
-                    duration: 700, ease: "Back.easeOut" });
+                this.tweens.add({
+                    targets: this.presenterContainer, x: width / 2,
+                    duration: 700, ease: "Back.easeOut"
+                });
                 host.rig.play(isBriefing ? "talk" : "idle");
                 if (isBriefing) {
-                    this.tweens.add({ targets: [bubble, speech], scale: { from: .985, to: 1.015 },
-                        duration: 1150, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                    this.tweens.add({
+                        targets: [bubble, speech], scale: { from: .985, to: 1.015 },
+                        duration: 1150, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    });
                 }
             }
         }
@@ -427,11 +431,15 @@ window.quizizzoPresentation = (() => {
             this.tutorialContainer = this.add.container(width / 2, 555, items).setDepth(65);
             if (!this.controller.reducedMotion) {
                 this.tutorialContainer.setAlpha(0).setScale(.92);
-                this.tweens.add({ targets: this.tutorialContainer, alpha: 1, scale: 1,
-                    duration: 600, delay: 420, ease: "Back.easeOut" });
+                this.tweens.add({
+                    targets: this.tutorialContainer, alpha: 1, scale: 1,
+                    duration: 600, delay: 420, ease: "Back.easeOut"
+                });
                 const firstCard = items[2];
-                this.tweens.add({ targets: firstCard, scale: 1.08, duration: 450,
-                    yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                this.tweens.add({
+                    targets: firstCard, scale: 1.08, duration: 450,
+                    yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                });
             }
         }
 
@@ -505,8 +513,10 @@ window.quizizzoPresentation = (() => {
                 .setDepth(12).setScale(targetScale);
             if (!this.controller.reducedMotion) {
                 this.drawingContainer.setScale(targetScale * .82).setAlpha(0).setAngle(-2);
-                this.tweens.add({ targets: this.drawingContainer, scale: targetScale, alpha: 1, angle: 0,
-                    duration: 520, ease: "Back.easeOut" });
+                this.tweens.add({
+                    targets: this.drawingContainer, scale: targetScale, alpha: 1, angle: 0,
+                    duration: 520, ease: "Back.easeOut"
+                });
             }
 
             const show = () => {
@@ -579,8 +589,10 @@ window.quizizzoPresentation = (() => {
                 items).setDepth(12);
             if (!this.controller.reducedMotion) {
                 this.drawingContainer.setAlpha(0).setScale(.94);
-                this.tweens.add({ targets: this.drawingContainer, alpha: 1, scale: 1,
-                    duration: 420, ease: "Back.easeOut" });
+                this.tweens.add({
+                    targets: this.drawingContainer, alpha: 1, scale: 1,
+                    duration: 420, ease: "Back.easeOut"
+                });
             }
             const show = () => cards.forEach(card => {
                 const url = card.animation.frameUrls[card.frameIndex];
@@ -787,8 +799,8 @@ window.quizizzoPresentation = (() => {
             } else if (snapshot.phase === "Results") {
                 items.push(this.add.text(width / 2, 135,
                     `${Number(field(state, "bandScore", 0)).toLocaleString()} BAND POINTS`, {
-                        color: "#fff36e", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
-                    }).setOrigin(.5));
+                    color: "#fff36e", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
+                }).setOrigin(.5));
             }
 
             this.voiceContainer = this.add.container(0, 0, items).setDepth(42);
@@ -901,16 +913,16 @@ window.quizizzoPresentation = (() => {
             items.push(
                 this.add.text(width / 2, 132,
                     isReady ? "CONTROLLERS ONLINE" : "WELCOME TO THE SCRAPYARD", {
-                        color: "#ffffff", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold",
-                        stroke: "#ff4fa3", strokeThickness: 8
-                    }).setOrigin(.5),
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold",
+                    stroke: "#ff4fa3", strokeThickness: 8
+                }).setOrigin(.5),
                 this.add.text(width / 2, 196,
                     isReady
                         ? "Open your controls, then ready up."
                         : "Build complete circuits. Charge chaos. Be the last pile standing.", {
-                        color: "#cdefff", fontFamily: bodyFont, fontSize: "24px", fontStyle: "bold",
-                        align: "center", wordWrap: { width: 960 }
-                    }).setOrigin(.5)
+                    color: "#cdefff", fontFamily: bodyFont, fontSize: "24px", fontStyle: "bold",
+                    align: "center", wordWrap: { width: 960 }
+                }).setOrigin(.5)
             );
 
             const count = Math.max(1, arenas.length);
@@ -1036,15 +1048,15 @@ window.quizizzoPresentation = (() => {
                 items.push(
                     this.add.text(x - cardWidth / 2 + 62, cardTop + 19,
                         field(arena, "displayName", player?.displayName || "Player"), {
-                            color: "#ffffff", fontFamily: displayFont,
-                            fontSize: count === 4 ? "16px" : "20px", fontStyle: "bold",
-                            stroke: "#080914", strokeThickness: 4
-                        }).setOrigin(0, .5),
+                        color: "#ffffff", fontFamily: displayFont,
+                        fontSize: count === 4 ? "16px" : "20px", fontStyle: "bold",
+                        stroke: "#080914", strokeThickness: 4
+                    }).setOrigin(0, .5),
                     this.add.text(x + cardWidth / 2 - 12, cardTop + 19,
                         `${Number(field(arena, "views", 0)).toLocaleString()} views`, {
-                            color: "#ffe86a", fontFamily: displayFont,
-                            fontSize: count === 4 ? "13px" : "15px", fontStyle: "bold"
-                        }).setOrigin(1, .5)
+                        color: "#ffe86a", fontFamily: displayFont,
+                        fontSize: count === 4 ? "13px" : "15px", fontStyle: "bold"
+                    }).setOrigin(1, .5)
                 );
                 upcoming.slice(0, 2).forEach((scrap, queueIndex) => {
                     items.push(this.add.circle(
@@ -1068,10 +1080,10 @@ window.quizizzoPresentation = (() => {
                 items.push(chargeBackground, chargeBar);
                 const status = overloaded ? "⚠ OVERLOADED"
                     : !connected ? "OFFLINE"
-                    : ability !== null ? `CHAOS READY · ${this.pileAbilityLabel(ability)}`
-                    : shielded ? "SHIELD ACTIVE"
-                    : field(arena, "queuedJunk", 0) > 0 ? `${field(arena, "queuedJunk", 0)} JUNK QUEUED`
-                    : `${field(arena, "circuitsCompleted", 0)} CIRCUITS · CHAOS ${charge}%`;
+                        : ability !== null ? `CHAOS READY · ${this.pileAbilityLabel(ability)}`
+                            : shielded ? "SHIELD ACTIVE"
+                                : field(arena, "queuedJunk", 0) > 0 ? `${field(arena, "queuedJunk", 0)} JUNK QUEUED`
+                                    : `${field(arena, "circuitsCompleted", 0)} CIRCUITS · CHAOS ${charge}%`;
                 items.push(this.add.text(x, footerY + 31, status, {
                     color: overloaded || !connected ? "#ff8ba0" : shielded ? "#6effbd" : "#cdefff",
                     fontFamily: displayFont, fontSize: count === 4 ? "11px" : "13px",
@@ -1128,9 +1140,9 @@ window.quizizzoPresentation = (() => {
 
             const heading = snapshot.phase === "RoundResult" ? "ROUND RESULT"
                 : snapshot.phase === "Standings" ? "MATCH STANDINGS"
-                : snapshot.phase === "WinnerCelebration" ? "THE LAST PILE STANDING!"
-                : snapshot.phase === "Completed" ? "FINAL SCRAPYARD RESULTS"
-                : "FINAL SURVIVOR";
+                    : snapshot.phase === "WinnerCelebration" ? "THE LAST PILE STANDING!"
+                        : snapshot.phase === "Completed" ? "FINAL SCRAPYARD RESULTS"
+                            : "FINAL SURVIVOR";
             items.push(this.add.text(width / 2, 118, heading, {
                 color: "#ffffff", fontFamily: displayFont, fontSize: "48px", fontStyle: "bold",
                 stroke: "#ff4fa3", strokeThickness: 9
@@ -1168,9 +1180,9 @@ window.quizizzoPresentation = (() => {
                         finalPhase
                             ? `${entry.wins} ${entry.wins === 1 ? "WIN" : "WINS"} · ${entry.points} RP`
                             : `+${entry.placementPoints} ROUND POINTS`, {
-                            color: "#251139", fontFamily: displayFont, fontSize: "14px", fontStyle: "bold",
-                            align: "center", wordWrap: { width: spacing - 32 }
-                        }).setOrigin(.5),
+                        color: "#251139", fontFamily: displayFont, fontSize: "14px", fontStyle: "bold",
+                        align: "center", wordWrap: { width: spacing - 32 }
+                    }).setOrigin(.5),
                     this.add.text(x, 628, `#${rank}`, {
                         color: "#251139", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold"
                     }).setOrigin(.5, 1)
@@ -1178,8 +1190,8 @@ window.quizizzoPresentation = (() => {
                 if (finalPhase) {
                     items.push(this.add.text(x, podiumTop + 106,
                         `${entry.finalViews.toLocaleString()} total views`, {
-                            color: "#251139", fontFamily: bodyFont, fontSize: "14px", fontStyle: "bold"
-                        }).setOrigin(.5));
+                        color: "#251139", fontFamily: bodyFont, fontSize: "14px", fontStyle: "bold"
+                    }).setOrigin(.5));
                 }
             });
 
@@ -1217,11 +1229,13 @@ window.quizizzoPresentation = (() => {
                 stroke: "#db2777", strokeThickness: 8
             }).setOrigin(.5);
             this.phaseChrome = this.add.container(width + 760, height / 2, [band, text]).setDepth(100).setAngle(-3);
-            this.tweens.add({ targets: this.phaseChrome, x: width / 2, duration: 360, ease: "Back.easeOut",
+            this.tweens.add({
+                targets: this.phaseChrome, x: width / 2, duration: 360, ease: "Back.easeOut",
                 hold: 520, yoyo: true, onComplete: () => {
                     this.phaseChrome?.destroy(true);
                     this.phaseChrome = null;
-                } });
+                }
+            });
             this.cameras.main.shake(120, .004);
         }
 
@@ -1270,8 +1284,8 @@ window.quizizzoPresentation = (() => {
                     }).setOrigin(.5),
                     this.add.text(width / 2, 375,
                         "Sign in at quizizzo.com and open Host display", {
-                            color: "#ffffff", fontFamily: bodyFont, fontSize: "27px", fontStyle: "bold"
-                        }).setOrigin(.5)
+                        color: "#ffffff", fontFamily: bodyFont, fontSize: "27px", fontStyle: "bold"
+                    }).setOrigin(.5)
                 );
                 this.screenChromeContainer = this.add.container(0, 0, items).setDepth(55);
                 return;
@@ -1471,9 +1485,9 @@ window.quizizzoPresentation = (() => {
                 if (media.badge) {
                     items.push(this.add.text(x + cardWidth / 2 - 14, y - cardHeight / 2 + 14,
                         media.badge, {
-                            color: "#ffffff", backgroundColor: "#ef2b6e", padding: { x: 8, y: 4 },
-                            fontFamily: displayFont, fontSize: "12px", fontStyle: "bold"
-                        }).setOrigin(1, 0));
+                        color: "#ffffff", backgroundColor: "#ef2b6e", padding: { x: 8, y: 4 },
+                        fontFamily: displayFont, fontSize: "12px", fontStyle: "bold"
+                    }).setOrigin(1, 0));
                 }
             });
         }
@@ -1514,19 +1528,19 @@ window.quizizzoPresentation = (() => {
                     rows === 1 ? 82 : 64, 0xffffff, .1).setStrokeStyle(2, 0xffffff, .16);
                 const comment = this.add.text(x - cardWidth / 2 + 30, bubbleY,
                     media.body || "", {
-                        color: "#f8fafc", fontFamily: bodyFont,
-                        fontSize: rows === 1 ? "18px" : "14px", fontStyle: "bold",
-                        wordWrap: { width: cardWidth - 60 }
-                    }).setOrigin(0, .5);
+                    color: "#f8fafc", fontFamily: bodyFont,
+                    fontSize: rows === 1 ? "18px" : "14px", fontStyle: "bold",
+                    wordWrap: { width: cardWidth - 60 }
+                }).setOrigin(0, .5);
                 items.push(bubble, comment);
                 if (media.badge) {
                     items.push(this.add.text(x + cardWidth / 2 - 18, y - cardHeight / 2 + 14,
                         media.badge, {
-                            color: media.badge === "PINNED COMMENT" ? "#24123f" : "#ffffff",
-                            backgroundColor: media.badge === "PINNED COMMENT" ? "#ffd400" : "#ef2b6e",
-                            padding: { x: 8, y: 4 }, fontFamily: displayFont,
-                            fontSize: "11px", fontStyle: "bold"
-                        }).setOrigin(1, 0));
+                        color: media.badge === "PINNED COMMENT" ? "#24123f" : "#ffffff",
+                        backgroundColor: media.badge === "PINNED COMMENT" ? "#ffd400" : "#ef2b6e",
+                        padding: { x: 8, y: 4 }, fontFamily: displayFont,
+                        fontSize: "11px", fontStyle: "bold"
+                    }).setOrigin(1, 0));
                 }
             });
         }
@@ -1599,8 +1613,8 @@ window.quizizzoPresentation = (() => {
                 if (entry.rank != null) {
                     items.push(this.add.text(x, y + cardHeight / 2 - 13,
                         `#${entry.rank} · +${this.scoreLabel(entry.pointsAwarded, snapshot)}`, {
-                            color: "#7c2d92", fontFamily: displayFont, fontSize: "15px", fontStyle: "bold"
-                        }).setOrigin(.5, 1));
+                        color: "#7c2d92", fontFamily: displayFont, fontSize: "15px", fontStyle: "bold"
+                    }).setOrigin(.5, 1));
                 }
             });
         }
@@ -1627,9 +1641,9 @@ window.quizizzoPresentation = (() => {
             const kicker = this.add.text(centreX - boardWidth / 2 + 24,
                 centreY - boardHeight / 2 + 18,
                 snapshot.phase === "Results" ? "THE ANSWERS" : "PICK YOUR ANSWER", {
-                    color: "#fff4a8", fontFamily: displayFont, fontSize: "18px",
-                    fontStyle: "bold", letterSpacing: 2
-                }).setOrigin(0, 0);
+                color: "#fff4a8", fontFamily: displayFont, fontSize: "18px",
+                fontStyle: "bold", letterSpacing: 2
+            }).setOrigin(0, 0);
             const columns = entries.length <= 3 ? 1 : 2;
             const rows = Math.ceil(entries.length / columns);
             const gap = 12;
@@ -1668,18 +1682,18 @@ window.quizizzoPresentation = (() => {
                 }).setOrigin(.5);
                 const value = this.add.text(x - cardWidth / 2 + 74, y,
                     entry.value || "", {
-                        color: "#17131f", fontFamily: displayFont,
-                        fontSize: columns === 1 ? "21px" : "17px", fontStyle: "bold",
-                        wordWrap: { width: cardWidth - 96 }, align: "left"
-                    }).setOrigin(0, .5);
+                    color: "#17131f", fontFamily: displayFont,
+                    fontSize: columns === 1 ? "21px" : "17px", fontStyle: "bold",
+                    wordWrap: { width: cardWidth - 96 }, align: "left"
+                }).setOrigin(0, .5);
                 items.push(shadow, panel, badge, label, value);
                 if (entry.rank != null) {
                     items.push(this.add.text(x + cardWidth / 2 - 14,
                         y + cardHeight / 2 - 9,
-                            `#${entry.rank} · +${this.scoreLabel(entry.pointsAwarded, snapshot)}`, {
-                            color: "#7c2d92", fontFamily: displayFont,
-                            fontSize: "13px", fontStyle: "bold"
-                        }).setOrigin(1, 1));
+                        `#${entry.rank} · +${this.scoreLabel(entry.pointsAwarded, snapshot)}`, {
+                        color: "#7c2d92", fontFamily: displayFont,
+                        fontSize: "13px", fontStyle: "bold"
+                    }).setOrigin(1, 1));
                 }
             });
         }
@@ -1701,9 +1715,9 @@ window.quizizzoPresentation = (() => {
             board.strokeRoundedRect(centreX - boardWidth / 2, top, boardWidth, boardHeight, 20);
             const heading = this.add.text(centreX, top + 20,
                 snapshot.phase.endsWith("Results") ? "CREATORS REVEALED" : "THE CONTENT FEED", {
-                    color: "#ffd400", fontFamily: displayFont, fontSize: "19px",
-                    fontStyle: "bold", letterSpacing: 2
-                }).setOrigin(.5, 0);
+                color: "#ffd400", fontFamily: displayFont, fontSize: "19px",
+                fontStyle: "bold", letterSpacing: 2
+            }).setOrigin(.5, 0);
             items.push(board, heading);
             entries.forEach((entry, index) => {
                 const row = Math.floor(index / columns);
@@ -1737,10 +1751,10 @@ window.quizizzoPresentation = (() => {
                 if (snapshot.phase.endsWith("Results")) {
                     const views = this.add.text(x + cardWidth / 2 - 10,
                         y + cardHeight / 2 - 7, `+${this.scoreLabel(0, snapshot)}`, {
-                            color: winner ? "#9a3412" : "#7c2d92",
-                            fontFamily: displayFont, fontSize: columns === 1 ? "13px" : "11px",
-                            fontStyle: "bold"
-                        }).setOrigin(1, 1);
+                        color: winner ? "#9a3412" : "#7c2d92",
+                        fontFamily: displayFont, fontSize: columns === 1 ? "13px" : "11px",
+                        fontStyle: "bold"
+                    }).setOrigin(1, 1);
                     items.push(views);
                     if (this.controller.reducedMotion) {
                         views.setText(`+${this.scoreLabel(entry.pointsAwarded || 0, snapshot)}`);
@@ -1779,16 +1793,16 @@ window.quizizzoPresentation = (() => {
                     .setDisplaySize(frameSize, frameSize);
                 const caption = this.add.text(0, grid.cardHeight / 2 - (grid.rows > 1 ? 36 : 48),
                     `${animation.prompt} — ${animation.creatorName || "?"}`, {
-                        color: "#24123f", fontFamily: displayFont,
-                        fontSize: grid.rows > 1 ? "13px" : "18px",
-                        fontStyle: "bold", align: "center", wordWrap: { width: grid.cardWidth - 20 }
-                    }).setOrigin(.5);
+                    color: "#24123f", fontFamily: displayFont,
+                    fontSize: grid.rows > 1 ? "13px" : "18px",
+                    fontStyle: "bold", align: "center", wordWrap: { width: grid.cardWidth - 20 }
+                }).setOrigin(.5);
                 const result = this.add.text(0, grid.cardHeight / 2 - (grid.rows > 1 ? 15 : 20),
                     `${animation.votes} vote(s) · +${Number(animation.pointsAwarded || 0).toLocaleString()} pts`, {
-                        color: animation.rank === 1 ? "#9a3412" : "#6b21a8",
-                        fontFamily: displayFont, fontSize: grid.rows > 1 ? "11px" : "14px",
-                        fontStyle: "bold"
-                    }).setOrigin(.5);
+                    color: animation.rank === 1 ? "#9a3412" : "#6b21a8",
+                    fontFamily: displayFont, fontSize: grid.rows > 1 ? "11px" : "14px",
+                    fontStyle: "bold"
+                }).setOrigin(.5);
                 const badge = this.add.text(-grid.cardWidth / 2 + 10, -grid.cardHeight / 2 + 10,
                     animation.prompt, {
                     color: "#ffffff", backgroundColor: animation.rank === 1 ? "#db2777" : "#312e81",
@@ -1797,10 +1811,10 @@ window.quizizzoPresentation = (() => {
                 }).setOrigin(0, 0).setAngle(-2);
                 const rank = this.add.text(grid.cardWidth / 2 - 12, -grid.cardHeight / 2 + 12,
                     `#${animation.rank || "–"}`, {
-                        color: "#24123f", backgroundColor: animation.rank === 1 ? "#fde68a" : "#e9d5ff",
-                        padding: { x: 9, y: 5 }, fontFamily: displayFont,
-                        fontSize: grid.rows > 1 ? "12px" : "16px", fontStyle: "bold"
-                    }).setOrigin(1, 0).setAngle(2);
+                    color: "#24123f", backgroundColor: animation.rank === 1 ? "#fde68a" : "#e9d5ff",
+                    padding: { x: 9, y: 5 }, fontFamily: displayFont,
+                    fontSize: grid.rows > 1 ? "12px" : "16px", fontStyle: "bold"
+                }).setOrigin(1, 0).setAngle(2);
                 const card = this.add.container(x, y,
                     [shadow, panel, frame, caption, result, badge, rank]);
                 items.push(card);
@@ -1914,8 +1928,10 @@ window.quizizzoPresentation = (() => {
                             this.scoreLabel(Math.round(counter.value), snapshot)),
                         onComplete: () => {
                             avatar.score.setText(this.scoreLabel(player.score, snapshot));
-                            this.tweens.add({ targets: avatar.score, scale: 1.45,
-                                duration: 150, yoyo: true, ease: "Back.easeOut" });
+                            this.tweens.add({
+                                targets: avatar.score, scale: 1.45,
+                                duration: 150, yoyo: true, ease: "Back.easeOut"
+                            });
                         }
                     });
                     this.roundRankingScoreTweens.push(tween);
@@ -1992,9 +2008,9 @@ window.quizizzoPresentation = (() => {
                 ? "THE FINAL SCORES ARE IN"
                 : slopCelebration
                     ? snapshot.prompt
-                : biggestGainers.length
-                    ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
-                    : "THE FEED REFRESHED WITHOUT MERCY";
+                    : biggestGainers.length
+                        ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
+                        : "THE FEED REFRESHED WITHOUT MERCY";
             items.push(this.add.text(width / 2, 142, subheading, {
                 color: celebration ? "#67e8f9" : "#fff4a8",
                 fontFamily: displayFont,
@@ -2151,8 +2167,10 @@ window.quizizzoPresentation = (() => {
             }
             container.add([cardShadow, card, shadow, character, presence, name, score, wins, activity, remove]);
             container.setDepth(20);
-            return { container, cardShadow, card, character, shadow, presence, name, score, wins, activity, remove,
-                signature: null, mode: null, rig: null };
+            return {
+                container, cardShadow, card, character, shadow, presence, name, score, wins, activity, remove,
+                signature: null, mode: null, rig: null
+            };
         }
 
         updateAvatar(avatar, player, mode) {
@@ -2177,8 +2195,10 @@ window.quizizzoPresentation = (() => {
             avatar.container.setAlpha(disconnected ? 0.42 : 1);
             avatar.remove.setVisible(this.controller.canManagePlayers && this.controller.snapshot?.mode === "Lobby");
             if (!this.controller.reducedMotion && isThinking && !avatar.thinkingTween) {
-                avatar.thinkingTween = this.tweens.add({ targets: avatar.activity, y: { from: -142, to: -154 },
-                    duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut" });
+                avatar.thinkingTween = this.tweens.add({
+                    targets: avatar.activity, y: { from: -142, to: -154 },
+                    duration: 650, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                });
             } else if (player.activity !== "Thinking" && avatar.thinkingTween) {
                 avatar.thinkingTween.stop();
                 avatar.thinkingTween = null;
@@ -2531,11 +2551,10 @@ window.quizizzoPresentation = (() => {
                     return;
                 }
                 start(key, elementId, controller.snapshot,
-                    controller.dotNetReference, controller.canManagePlayers).catch(error =>
-                {
-                    console.error("Unable to resize the Quizizzo presentation.", error);
-                    controller.dotNetReference?.invokeMethodAsync("PresentationFailed").catch(() => { });
-                });
+                    controller.dotNetReference, controller.canManagePlayers).catch(error => {
+                        console.error("Unable to resize the Quizizzo presentation.", error);
+                        controller.dotNetReference?.invokeMethodAsync("PresentationFailed").catch(() => { });
+                    });
             }, 150);
         };
         controller.resizeObserver = new ResizeObserver(controller.resizeHandler);

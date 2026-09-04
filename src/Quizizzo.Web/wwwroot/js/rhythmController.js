@@ -73,6 +73,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     let disabled = Boolean(initialState.disabled);
     let nextSequence = Number(configuration.nextSequence ?? 1);
     let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
+    const tapPulseTimers = new Map();
 
     function ensureAudioContext() {
         const AudioContextType = globalThis.AudioContext ?? globalThis.webkitAudioContext;
@@ -136,14 +137,15 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     }
 
     function activate(lane) {
-        if (disabled) return;
+        if (disabled) return null;
         const position = songPositionSeconds(configuration.songStartsAtUtc);
         const note = nearestLaneNote(
             configuration.notes,
             lane,
             position,
             Number(configuration.goodWindowSeconds ?? 0.2));
-        if (note && !playedNotes.has(note.id)) {
+        const newNote = note && !playedNotes.has(note.id) ? note : null;
+        if (newNote) {
             playedNotes.add(note.id);
             feedback.textContent = judgeLabel(position - Number(note.startTimeSeconds));
             feedback.style.color = laneColours[lane];
@@ -157,7 +159,29 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             crypto.randomUUID(),
             actionKind,
             { sequence, input: `Lane${lane}`, clientTimestamp: new Date().toISOString() }
-        ]).catch(() => {});
+        ]).catch(() => { });
+        return newNote;
+    }
+
+    function showPadFeedback(lane, note) {
+        const button = element.querySelector(`[data-rhythm-lane="${lane}"]`);
+        if (!button || !note) return;
+        if (note.type === "Hold") {
+            button.classList.add("hold-active");
+            return;
+        }
+        button.classList.remove("tap-hit");
+        void button.offsetWidth;
+        button.classList.add("tap-hit");
+        window.clearTimeout(tapPulseTimers.get(lane));
+        tapPulseTimers.set(lane, window.setTimeout(() => {
+            button.classList.remove("tap-hit");
+            tapPulseTimers.delete(lane);
+        }, 240));
+    }
+
+    function releasePadFeedback(lane) {
+        element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.remove("hold-active");
     }
 
     function draw() {
@@ -221,10 +245,13 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             button.setPointerCapture?.(event.pointerId);
             pressedPointers.set(event.pointerId, lane);
             button.classList.add("pressed");
-            activate(lane);
+            showPadFeedback(lane, activate(lane));
         }, { signal: abort.signal });
         const release = event => {
-            if (pressedPointers.delete(event.pointerId)) button.classList.remove("pressed");
+            if (pressedPointers.delete(event.pointerId)) {
+                button.classList.remove("pressed");
+                releasePadFeedback(lane);
+            }
         };
         button.addEventListener("pointerup", release, { signal: abort.signal });
         button.addEventListener("pointercancel", release, { signal: abort.signal });
@@ -238,7 +265,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         event.preventDefault();
         pressedKeys.add(key);
         element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.add("pressed");
-        activate(lane);
+        showPadFeedback(lane, activate(lane));
     }, { signal: abort.signal });
     element.addEventListener("keyup", event => {
         const key = event.key.toLowerCase();
@@ -246,6 +273,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         if (lane === undefined) return;
         pressedKeys.delete(key);
         element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.remove("pressed");
+        releasePadFeedback(lane);
     }, { signal: abort.signal });
 
     preload();
@@ -260,6 +288,8 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         },
         dispose() {
             abort.abort();
+            tapPulseTimers.forEach(timer => window.clearTimeout(timer));
+            tapPulseTimers.clear();
             cancelAnimationFrame(animationFrame);
             if (audioContext) void audioContext.close();
         }

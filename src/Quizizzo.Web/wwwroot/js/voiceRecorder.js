@@ -166,7 +166,7 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
         const url = urls.get(key);
         if (!url) throw new Error("Record this sound before playing it.");
         const audio = new Audio(url);
-        audio.play().catch(() => {});
+        audio.play().catch(() => { });
     }
 
     async function upload(key, endpoint, gameInstanceId) {
