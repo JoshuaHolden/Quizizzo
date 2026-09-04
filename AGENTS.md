@@ -736,6 +736,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Validate JavaScript syntax, pass all 29 client tests, and pass all 352 .NET tests in Release.
 - [x] Rebuild the local production container and pass a repeatable Edge journey that injects PCM WAV samples through the secured UI, starts Greensleeves solo autoplay, observes scheduled voices, and refreshes without an elapsed-note burst.
 
+### VoiceChoon Piano Tiles controller and duo arrangements (completed 2026-09-04)
+
+- [x] Turn the silent phone controller into a four-column Piano Tiles-style runway with full-height touch targets, integrated judgement zones, falling tiles, and long hold tiles.
+- [x] Make normal minimum players arrangement-owned, retain three-player full-band songs, and allow two-player Greensleeves from both host availability and authoritative game validation.
+- [x] Split two-player Greensleeves into melody/chords and bass/percussion parts without dropping source tracks or required recording prompts.
+- [x] Pass all 29 client tests and all 38 focused VoiceChoon tests.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

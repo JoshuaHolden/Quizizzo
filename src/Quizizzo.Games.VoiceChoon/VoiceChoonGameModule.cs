@@ -40,21 +40,21 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     public GameModuleState Start(GameStartContext context)
     {
         var configuration = ReadConfiguration(context.Configuration);
+        var songDefinition = VoiceChoonSongCatalog.GetDefinition(configuration.SongKey);
         var validPlayerCount = configuration.SoloAutoplayTest
             ? context.Participants.Count == 1
-            : context.Participants.Count is >= VoiceChoonGameDefinition.NormalMinimumPlayers and
-                <= VoiceChoonGameDefinition.MaximumPlayers;
+            : context.Participants.Count >= songDefinition.MinimumPlayers &&
+              context.Participants.Count <= VoiceChoonGameDefinition.MaximumPlayers;
         if (!validPlayerCount)
         {
             throw new GameRuleViolationException(
                 "invalid-player-count",
                 configuration.SoloAutoplayTest
                     ? "VoiceChoon solo autoplay test mode requires exactly one player."
-                    : "VoiceChoon requires three to eight players unless solo autoplay test mode is enabled.");
+                    : $"{songDefinition.DisplayName} requires {songDefinition.MinimumPlayers} to eight players unless solo autoplay test mode is enabled.");
         }
 
         var difficulty = DifficultySettings.For(configuration.Difficulty);
-        var songDefinition = VoiceChoonSongCatalog.GetDefinition(configuration.SongKey);
         var song = VoiceChoonSongCatalog.Load(songDefinition.Key);
         var assignments = InstrumentAssignmentService.Assign(
             song,

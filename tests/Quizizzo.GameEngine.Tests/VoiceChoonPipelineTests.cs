@@ -11,6 +11,8 @@ public sealed class VoiceChoonPipelineTests
         Assert.Equal("VoiceChoon", VoiceChoonGameDefinition.Descriptor.DisplayName);
         Assert.Equal(1, VoiceChoonGameDefinition.Descriptor.MinimumPlayers);
         Assert.Equal(3, VoiceChoonGameDefinition.NormalMinimumPlayers);
+        Assert.Equal(2, VoiceChoonSongCatalog.GetDefinition(VoiceChoonSongCatalog.GreensleevesSongKey).MinimumPlayers);
+        Assert.Equal(3, VoiceChoonSongCatalog.GetDefinition(VoiceChoonSongCatalog.DefaultSongKey).MinimumPlayers);
         Assert.Equal(8, VoiceChoonGameDefinition.Descriptor.MaximumPlayers);
     }
 
@@ -119,6 +121,13 @@ public sealed class VoiceChoonPipelineTests
             prompt.Key.StartsWith("arp-", StringComparison.Ordinal) ||
             prompt.Key.StartsWith("lead-b-", StringComparison.Ordinal) ||
             prompt.Key.StartsWith("stabs-", StringComparison.Ordinal));
+
+        var duo = InstrumentAssignmentService.Assign(song, 2);
+        Assert.Equal(2, duo.Count);
+        Assert.All(duo, assignment => Assert.NotEmpty(assignment.Tracks));
+        Assert.Equal(song.Tracks.Count, duo.Sum(assignment => assignment.Tracks.Count));
+        Assert.Contains(duo[0].Tracks, track => track.Role == VoiceChoonTrackRole.LeadA);
+        Assert.Contains(duo[1].Tracks, track => track.Role == VoiceChoonTrackRole.Drums);
     }
 
     [Fact]

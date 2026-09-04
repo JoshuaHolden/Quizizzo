@@ -35,7 +35,7 @@ public sealed class InstrumentAssignmentService
             return new InstrumentAssignment(
                 playerIndex,
                 tracks.ToArray(),
-                (playerCount == 1 ? prompts : prompts.Take(4)).ToArray());
+                (playerCount <= 2 ? prompts : prompts.Take(4)).ToArray());
         }).ToArray();
     }
 
@@ -54,6 +54,8 @@ public sealed class InstrumentAssignmentService
 
     private static int PreferredOwner(int players, VoiceChoonTrackRole role) => (players, role) switch
     {
+        (2, VoiceChoonTrackRole.LeadA or VoiceChoonTrackRole.Chords) => 0,
+        (2, _) => 1,
         (3, VoiceChoonTrackRole.Drums or VoiceChoonTrackRole.PercussionFx) => 0,
         (3, VoiceChoonTrackRole.Bass or VoiceChoonTrackRole.Chords) => 1,
         (3, _) => 2,

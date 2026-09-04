@@ -1,6 +1,6 @@
 # VoiceChoon architecture and game design
 
-VoiceChoon is normally a three-to-eight-player cooperative rhythm game. A temporary, explicitly selected one-player autoplay mode supports production-path testing. A Standard MIDI file defines composition, timing, pitch, track structure, and sections. Players record short vocal or physical noises on their phones; those recordings, not MIDI synthesizer instruments, become the audible band.
+VoiceChoon is normally a cooperative rhythm game whose minimum party size belongs to each arrangement. Full-band songs currently require three players, while the lighter Greensleeves arrangement supports two. A temporary, explicitly selected one-player autoplay mode supports production-path testing. A Standard MIDI file defines composition, timing, pitch, track structure, and sections. Players record short vocal or physical noises on their phones; those recordings, not MIDI synthesizer instruments, become the audible band.
 
 VoiceChoon is registered as a production game after implementing the reusable musical pipeline, server-owned runtime, recording flow, phone controller, Web Audio playback, and shared-display presentation.
 
@@ -147,7 +147,7 @@ Future tuning should preserve strong beats and recognizable phrases before decor
 
 ## Phone controller
 
-The active controller is landscape-first. Four visually distinct pads occupy roughly the bottom third, with the hit line immediately above. Notes are positioned every animation frame from authoritative song time, never from CSS animation completion.
+The active controller is landscape-first and follows a Piano Tiles interaction model. Four full-height touch columns cover the runway, so players tap directly in the lane beneath an approaching tile instead of moving to a separate pad bank. The lower part of each column remains subtly colour-coded, the judgement line stays near the bottom, and holds render as long tiles. Notes are positioned every animation frame from authoritative song time, never from CSS animation completion.
 
 ```text
 lane 1       lane 2       lane 3       lane 4

@@ -8,7 +8,8 @@
         <strong data-rhythm-feedback>@(Configuration.Autoplay ? "AUTO-PERFORMING" : "GET READY")</strong>
         <span><DeadlineCountdown EndsAtUtc="Configuration.SongStartsAtUtc.AddSeconds(Configuration.SongDurationSeconds)" /></span>
     </header>
-        <canvas class="rhythm-highway" width="720" height="620" data-rhythm-canvas aria-label="Upcoming notes in four lanes"></canvas>
+    <div class="rhythm-playfield">
+        <canvas class="rhythm-highway" width="720" height="620" data-rhythm-canvas aria-label="Upcoming piano tiles in four lanes"></canvas>
     @if (Configuration.Autoplay)
     {
         <p class="rhythm-keyboard-hint">Solo test mode is playing every note perfectly. Labels show the test sound and source track.</p>
@@ -23,12 +24,16 @@
                         class="rhythm-pad rhythm-pad-@lane"
                         disabled="@Disabled"
                         data-rhythm-lane="@selectedLane"
-                        aria-label="Play lane @(selectedLane + 1)">
+                        aria-label="Play tile lane @(selectedLane + 1)">
                     <span>@(selectedLane + 1)</span>
                 </button>
             }
         </div>
-        <p class="rhythm-keyboard-hint">Keyboard: D F J K</p>
+    }
+    </div>
+    @if (!Configuration.Autoplay)
+    {
+        <p class="rhythm-keyboard-hint">Tap the column as each tile reaches the line · Keyboard: D F J K</p>
     }
 </section>
 

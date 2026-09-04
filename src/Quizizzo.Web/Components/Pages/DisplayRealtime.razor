@@ -531,12 +531,12 @@
 
     private int MinimumPlayersForCurrentSetup(GameDescriptor game) =>
         game.Key == VoiceChoonGameDefinition.GameKey && !voiceChoonSoloAutoplayTest
-            ? VoiceChoonGameDefinition.NormalMinimumPlayers
+            ? VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers
             : game.MinimumPlayers;
 
     private string PlayerRangeLabel(GameDescriptor game) =>
         game.Key == VoiceChoonGameDefinition.GameKey
-            ? "3–8 players · 1-player test"
+            ? $"{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers}–8 players · 1-player test"
             : $"{game.MinimumPlayers}–{game.MaximumPlayers} players";
 
     private bool PlaylistCanStart => hostParty is { Status: PartyStatus.Lobby, GameQueue.Count: > 0 } &&

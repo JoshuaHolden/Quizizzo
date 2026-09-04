@@ -9,6 +9,26 @@ public sealed class VoiceChoonGameModuleTests
     private static readonly DateTimeOffset Now = new(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
+    public void Greensleeves_supports_two_players_while_the_full_showdown_still_requires_three()
+    {
+        var module = new VoiceChoonGameModule();
+        var players = Participants().Take(2).ToArray();
+        var context = new GameStartContext(
+            GameInstanceId.New(), Guid.NewGuid(), "host", players, Now,
+            GameJson.From(new VoiceChoonGameConfiguration(SongKey: VoiceChoonSongCatalog.GreensleevesSongKey)));
+
+        var state = module.Start(context).Data.Deserialize<VoiceChoonGameState>()!;
+
+        Assert.Equal(2, state.Participants.Count);
+        Assert.Equal("gs.mid", state.SongName);
+        var defaultError = Assert.Throws<GameRuleViolationException>(() => module.Start(context with
+        {
+            Configuration = GameJson.From(new VoiceChoonGameConfiguration())
+        }));
+        Assert.Equal("invalid-player-count", defaultError.Code);
+    }
+
+    [Fact]
     public void Complete_runtime_scores_a_timed_lane_and_keeps_other_charts_private()
     {
         var module = new VoiceChoonGameModule(FastFlow());

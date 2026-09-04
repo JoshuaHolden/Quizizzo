@@ -24,6 +24,8 @@ The project file embeds every `Assets/*.mid` file automatically. `MidiParser` ac
 
 The host selects the song in the VoiceChoon settings before choosing **Play now** or adding the game to a playlist. The selected song key is persisted in the generic game configuration and copied into the authoritative VoiceChoon snapshot, so refresh and process recovery keep the same song.
 
+Each song definition also declares its normal minimum player count. Co-op Showdown and Wubquake retain their three-player minimum; Greensleeves supports two players by splitting melody/chords and bass/percussion between the pair. The server validates this value when starting the game, while solo autoplay remains an explicit exactly-one-player test mode.
+
 Unknown song keys are rejected server-side. Do not trust the browser selection or derive song identity from a display name.
 
 ## Player guidance

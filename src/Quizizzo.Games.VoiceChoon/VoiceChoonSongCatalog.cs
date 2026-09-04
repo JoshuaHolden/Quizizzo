@@ -15,6 +15,7 @@ public static class VoiceChoonSongCatalog
         new(
             DefaultSongKey,
             "Co-op Showdown",
+            3,
             DefaultSongName,
             "Meet your extremely human orchestra.",
             "Record the example sounds clearly: short hits should be punchy, sustained sounds should be steady.",
@@ -22,6 +23,7 @@ public static class VoiceChoonSongCatalog
         new(
             WubquakeSongKey,
             "Wubquake",
+            3,
             WubquakeSongName,
             "Build a ridiculous bass-heavy dubstep band.",
             "For bass and chord prompts, make a low, steady buzz or vowel. For drums, use short punchy mouth hits. For leads and stabs, use bright, sharp syllables.",
@@ -29,6 +31,7 @@ public static class VoiceChoonSongCatalog
         new(
             GreensleevesSongKey,
             "Greensleeves",
+            2,
             "gs.mid",
             "Turn Greensleeves into a tiny live mouth-noise ensemble.",
             "This song only uses melody, chords, bass, and light percussion. Record a clear bright lead, a steady held vowel for chords, a low rounded bass sound, and short light rhythmic clicks.",
@@ -63,6 +66,7 @@ public static class VoiceChoonSongCatalog
 public sealed record VoiceChoonSongDefinition(
     string Key,
     string DisplayName,
+    int MinimumPlayers,
     string FileName,
     string BriefingMessage,
     string RecordingMessage,
