@@ -1259,10 +1259,14 @@ window.quizizzoPresentation = (() => {
                 ring.setRadius(70).setAlpha(0);
                 return;
             }
-            this.tweens.add({ targets: flash, alpha: 0, scaleX: 1.08, duration: 360,
-                ease: "Cubic.easeOut", onComplete: () => flash.destroy() });
-            this.tweens.add({ targets: ring, radius: Math.max(90, gridWidth * .42), alpha: 0,
-                duration: 520, ease: "Cubic.easeOut", onComplete: () => ring.destroy() });
+            this.tweens.add({
+                targets: flash, alpha: 0, scaleX: 1.08, duration: 360,
+                ease: "Cubic.easeOut", onComplete: () => flash.destroy()
+            });
+            this.tweens.add({
+                targets: ring, radius: Math.max(90, gridWidth * .42), alpha: 0,
+                duration: 520, ease: "Cubic.easeOut", onComplete: () => ring.destroy()
+            });
             this.burst(x, y, 34);
         }
 

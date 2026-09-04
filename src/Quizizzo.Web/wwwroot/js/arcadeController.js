@@ -18,8 +18,8 @@ function cellsAt(arena, piece) {
     const turns = ((Number(piece.rotation) % 4) + 4) % 4;
     cells = cells.map(cell => turns === 0 ? cell
         : turns === 1 ? { x: -cell.y, y: cell.x }
-        : turns === 2 ? { x: -cell.x, y: -cell.y }
-        : { x: cell.y, y: -cell.x });
+            : turns === 2 ? { x: -cell.x, y: -cell.y }
+                : { x: cell.y, y: -cell.x });
     const minimumX = Math.min(...cells.map(cell => cell.x));
     const minimumY = Math.min(...cells.map(cell => cell.y));
     return cells.map(cell => ({
@@ -39,15 +39,19 @@ function applyPrediction(arena, input) {
     if (!arena?.activePiece) return;
     const active = arena.activePiece;
     if (input === "MoveLeft" || input === "MoveRight" || input === "SoftDrop") {
-        const candidate = { ...active,
+        const candidate = {
+            ...active,
             x: Number(active.x) + (input === "MoveLeft" ? -1 : input === "MoveRight" ? 1 : 0),
-            y: Number(active.y) + (input === "SoftDrop" ? 1 : 0) };
+            y: Number(active.y) + (input === "SoftDrop" ? 1 : 0)
+        };
         if (canOccupy(arena, candidate)) arena.activePiece = candidate;
     } else if (input === "RotateClockwise") {
         const corrections = [[0, 0], [-1, 0], [1, 0], [0, -1], [-2, 0], [2, 0], [-1, -1], [1, -1]];
         for (const [x, y] of corrections) {
-            const candidate = { ...active, rotation: (Number(active.rotation) + 1) % 4,
-                x: Number(active.x) + x, y: Number(active.y) + y };
+            const candidate = {
+                ...active, rotation: (Number(active.rotation) + 1) % 4,
+                x: Number(active.x) + x, y: Number(active.y) + y
+            };
             if (canOccupy(arena, candidate)) {
                 arena.activePiece = candidate;
                 break;
@@ -147,7 +151,7 @@ export function create(element, connectionKey, actionKind, initialState) {
         }
         void window.quizizzoRealtime.send(connectionKey, "SubmitArcadeAction", [
             crypto.randomUUID(), actionKind, payload
-        ]).catch(() => {});
+        ]).catch(() => { });
     };
 
     const stopHold = key => {
