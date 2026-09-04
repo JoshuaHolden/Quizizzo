@@ -33,6 +33,140 @@ window.quizizzoPresentation = (() => {
         return String(value || "").replaceAll("-", "").toLowerCase();
     }
 
+    function createVoiceChoonDisplayAudio() {
+        let audioContext = null;
+        let output = null;
+        let snapshot = null;
+        let muted = localStorage.getItem("quizizzo.display.audio-muted") === "true";
+        let timers = new Set();
+        let sources = new Set();
+        const buffers = new Map();
+
+        function ensureContext() {
+            const AudioContextType = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+            if (!AudioContextType) return null;
+            audioContext ??= new AudioContextType({ latencyHint: "interactive" });
+            if (audioContext.state === "suspended") void audioContext.resume();
+            if (!output) {
+                output = audioContext.createDynamicsCompressor();
+                output.threshold.value = -18;
+                output.knee.value = 18;
+                output.ratio.value = 4;
+                output.attack.value = 0.01;
+                output.release.value = 0.18;
+                output.connect(audioContext.destination);
+            }
+            return audioContext;
+        }
+
+        const gestureHandler = () => {
+            if (!muted) ensureContext();
+        };
+        document.addEventListener("pointerdown", gestureHandler, { passive: true });
+
+        async function load(assetId) {
+            if (buffers.has(assetId)) return buffers.get(assetId);
+            const context = ensureContext();
+            if (!context) return null;
+            const response = await fetch(`/api/voicechoon/display-samples/${assetId}`, { credentials: "same-origin" });
+            if (!response.ok) return null;
+            const buffer = await context.decodeAudioData(await response.arrayBuffer());
+            buffers.set(assetId, buffer);
+            return buffer;
+        }
+
+        function stop() {
+            timers.forEach(timer => window.clearTimeout(timer));
+            timers = new Set();
+            sources.forEach(source => {
+                try { source.stop(); } catch { }
+            });
+            sources = new Set();
+        }
+
+        function sampleGain(buffer) {
+            const channel = buffer.getChannelData(0);
+            let sum = 0;
+            const stride = Math.max(1, Math.floor(channel.length / 2000));
+            for (let index = 0; index < channel.length; index += stride) sum += channel[index] * channel[index];
+            const rms = Math.sqrt(sum / Math.ceil(channel.length / stride));
+            return Math.max(0.55, Math.min(2.2, 0.55 / Math.max(0.08, rms)));
+        }
+
+        async function play(note) {
+            if (muted) return;
+            const context = ensureContext();
+            const buffer = await load(note.sampleAssetId);
+            if (!context || !buffer || muted) return;
+            const source = context.createBufferSource();
+            const gain = context.createGain();
+            const duration = Math.max(0.05, Number(note.durationSeconds));
+            source.buffer = buffer;
+            source.playbackRate.value = Number(note.playbackRate || 1);
+            source.loop = Boolean(note.loop) || String(note.type || "").toLowerCase() === "hold";
+            if (source.loop) {
+                source.loopStart = Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration);
+                source.loopEnd = Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration);
+            }
+            gain.gain.setValueAtTime(Math.min(1.4, sampleGain(buffer)), context.currentTime);
+            gain.gain.setValueAtTime(gain.gain.value, context.currentTime + Math.max(0, duration - 0.04));
+            gain.gain.linearRampToValueAtTime(0, context.currentTime + duration);
+            source.connect(gain).connect(output);
+            sources.add(source);
+            source.addEventListener("ended", () => sources.delete(source), { once: true });
+            source.start();
+            source.stop(context.currentTime + duration + 0.03);
+        }
+
+        function schedule() {
+            stop();
+            if (muted || !snapshot || snapshot.gameKey !== "voicechoon" || snapshot.phase !== "Playing") return;
+            const state = snapshot.gameState || {};
+            const notes = state.playback || state.Playback || [];
+            const songPosition = (Date.now() - Date.parse(snapshot.gameState?.songStartsAtUtc ||
+                snapshot.gameState?.SongStartsAtUtc || snapshot.phaseEndsAtUtc || new Date().toISOString())) / 1000;
+            notes.forEach(note => {
+                const start = Number(note.startTimeSeconds ?? note.StartTimeSeconds);
+                const delay = Math.max(0, (start - songPosition) * 1000);
+                if (delay > Number(snapshot.gameState?.songDurationSeconds ?? state.SongDurationSeconds ?? 0) * 1000) return;
+                const timer = window.setTimeout(() => {
+                    timers.delete(timer);
+                    void play({
+                        sampleAssetId: note.sampleAssetId ?? note.SampleAssetId,
+                        playbackRate: note.playbackRate ?? note.PlaybackRate,
+                        durationSeconds: note.durationSeconds ?? note.DurationSeconds,
+                        loop: note.loop ?? note.Loop,
+                        loopStartSeconds: note.loopStartSeconds ?? note.LoopStartSeconds,
+                        loopEndSeconds: note.loopEndSeconds ?? note.LoopEndSeconds,
+                        type: note.type ?? note.Type
+                    });
+                }, delay);
+                timers.add(timer);
+            });
+        }
+
+        return {
+            update(nextSnapshot) {
+                snapshot = nextSnapshot;
+                if (snapshot?.gameKey === "voicechoon" && snapshot.phase === "Playing") {
+                    ensureContext();
+                    schedule();
+                } else stop();
+            },
+            setMuted(value) {
+                muted = Boolean(value);
+                if (muted) stop();
+                else schedule();
+            },
+            destroy() {
+                stop();
+                document.removeEventListener("pointerdown", gestureHandler);
+                audioContext?.close();
+                audioContext = null;
+            }
+        };
+    }
+
     function laneColoursForVoice(index) {
         return ["#ff7aa4", "#ffe36d", "#67e8f9", "#86efac"][index % 4];
     }
@@ -2495,13 +2629,17 @@ window.quizizzoPresentation = (() => {
             dotNetReference,
             canManagePlayers,
             audio: null
+            ,voiceAudio: null
         };
         controller.ready = new Promise(resolve => { controller.readyResolve = resolve; });
         controller.audio = window.quizizzoPresentationAudio?.create((muted, blocked) => {
+            controller.voiceAudio?.setMuted(muted || blocked);
             controller.dotNetReference?.invokeMethodAsync("AudioStateChanged", muted, blocked)
                 .catch(() => { });
         }) || null;
+        controller.voiceAudio = createVoiceChoonDisplayAudio();
         controller.audio?.update(controller.snapshot);
+        controller.voiceAudio.update(controller.snapshot);
         const scene = new PartyPresentationScene(controller);
         controller.game = new Phaser.Game({
             type: Phaser.AUTO,
@@ -2570,6 +2708,7 @@ window.quizizzoPresentation = (() => {
         }
         controller.snapshot = cloneSnapshot(snapshot);
         controller.audio?.update(controller.snapshot);
+        controller.voiceAudio?.update(controller.snapshot);
         controller.scene?.applySnapshot(controller.snapshot);
     }
 
@@ -2601,6 +2740,7 @@ window.quizizzoPresentation = (() => {
             window.removeEventListener("resize", controller.resizeHandler);
         }
         controller.audio?.destroy();
+        controller.voiceAudio?.destroy();
         controller.game?.destroy(true);
     }
 

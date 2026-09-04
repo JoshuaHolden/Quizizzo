@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Quizizzo.Application.Abstractions;
+using Quizizzo.Application.Displays;
 using Quizizzo.Application.Games;
 using Quizizzo.Application.Players;
 using Quizizzo.Domain.Voice;
@@ -21,6 +22,8 @@ public static class VoiceSampleEndpoints
             .WithMetadata(new RequestSizeLimitAttribute(MaximumRequestBytes))
             .RequireRateLimiting("voice-sample-submit");
         endpoints.MapGet("/api/voicechoon/samples/{assetId:guid}", GetAsync)
+            .RequireRateLimiting("voice-samples");
+        endpoints.MapGet("/api/voicechoon/display-samples/{assetId:guid}", GetDisplayAsync)
             .RequireRateLimiting("voice-samples");
         return endpoints;
     }
@@ -167,6 +170,39 @@ public static class VoiceSampleEndpoints
             return Results.File(sample.Content.ToArray(), sample.ContentType, enableRangeProcessing: true);
         }
         catch (Exception exception) when (exception is PlayerSessionNotFoundException or UnauthorizedAccessException)
+        {
+            return Results.Unauthorized();
+        }
+    }
+
+    private static async Task<IResult> GetDisplayAsync(
+        Guid assetId,
+        HttpContext context,
+        DisplaySessionService displays,
+        IVoiceSampleMetadataRepository metadata,
+        IVoiceSampleStore sampleStore,
+        TimeProvider timeProvider)
+    {
+        try
+        {
+            var sessionToken = context.Request.Cookies[HostDisplayEndpoints.DisplayCookieName]
+                ?? throw new UnauthorizedAccessException("A valid display session is required.");
+            var display = await displays.ReconnectAsync(sessionToken, context.RequestAborted);
+            if (display.PartyId is not { } partyId)
+            {
+                return Results.Unauthorized();
+            }
+            var record = await metadata.GetByIdAsync(assetId, context.RequestAborted);
+            if (record is null || record.PartyId != partyId || record.ExpiresAtUtc <= timeProvider.GetUtcNow())
+            {
+                return Results.NotFound();
+            }
+            var sample = await sampleStore.GetAsync(record.StorageKey, context.RequestAborted);
+            return sample is null
+                ? Results.NotFound()
+                : Results.File(sample.Content.ToArray(), sample.ContentType, enableRangeProcessing: true);
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or UnauthorizedAccessException)
         {
             return Results.Unauthorized();
         }

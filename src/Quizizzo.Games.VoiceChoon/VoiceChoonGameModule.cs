@@ -450,7 +450,23 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             game.BandCombo,
             game.MaximumBandCombo,
             game.EnergyPercent,
-            game.Results)));
+            game.Results,
+            current.Phase == PlayingPhase
+                ? game.Charts.SelectMany(chart => chart.PlaybackNotes.Select(note =>
+                {
+                    var playback = PlaybackNote(note, chart, game.SampleAssetIdsByPlayer[game.Participants
+                        .Single(player => player.PlayerIndex == chart.PlayerIndex).PlayerId]);
+                    return new VoiceChoonDisplayPlayback(
+                        playback.Id,
+                        playback.StartTimeSeconds,
+                        playback.DurationSeconds,
+                        playback.SampleAssetId ?? Guid.Empty,
+                        playback.PlaybackRate,
+                        playback.Loop,
+                        playback.LoopStartSeconds,
+                        playback.LoopEndSeconds);
+                })).Where(note => note.SampleAssetId != Guid.Empty).ToArray()
+                : null)));
 
     private static PlayerGameViewPayload PlayerView(
         GameModuleState current,

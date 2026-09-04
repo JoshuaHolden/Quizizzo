@@ -74,6 +74,16 @@ public sealed record RhythmControllerConfiguration(
     double PerfectWindowSeconds = 0.06,
     bool Autoplay = false);
 
+public sealed record VoiceChoonDisplayPlayback(
+    Guid Id,
+    double StartTimeSeconds,
+    double DurationSeconds,
+    Guid SampleAssetId,
+    double PlaybackRate,
+    bool Loop,
+    double? LoopStartSeconds,
+    double? LoopEndSeconds);
+
 public sealed record ArcadeControl(
     string Input,
     string Label,

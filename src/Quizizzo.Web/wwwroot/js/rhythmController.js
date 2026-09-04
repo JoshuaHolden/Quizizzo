@@ -74,6 +74,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     let nextSequence = Number(configuration.nextSequence ?? 1);
     let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
     const tapPulseTimers = new Map();
+    const laneHitEffects = new Map();
 
     function ensureAudioContext() {
         const AudioContextType = globalThis.AudioContext ?? globalThis.webkitAudioContext;
@@ -106,25 +107,39 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         for (const assetId of unique) void loadSample(assetId);
     }
 
+    function sampleGain(buffer) {
+        const channel = buffer.getChannelData(0);
+        const stride = Math.max(1, Math.floor(channel.length / 2000));
+        let sum = 0;
+        for (let index = 0; index < channel.length; index += stride) sum += channel[index] * channel[index];
+        const rms = Math.sqrt(sum / Math.ceil(channel.length / stride));
+        return Math.max(0.55, Math.min(1.8, 0.55 / Math.max(0.08, rms)));
+    }
+
     async function playNote(note) {
         const activeContext = ensureAudioContext();
         const buffer = await loadSample(note.sampleAssetId);
         if (!activeContext || !buffer) return;
         const source = activeContext.createBufferSource();
         const gain = activeContext.createGain();
+        const hold = String(note.type || "").toLowerCase() === "hold";
         source.buffer = buffer;
         source.playbackRate.value = Number(note.playbackRate);
-        source.loop = Boolean(note.loop);
+        source.loop = Boolean(note.loop) || hold;
         if (source.loop) {
             source.loopStart = Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration);
             source.loopEnd = Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration);
         }
-        gain.gain.setValueAtTime(0.9, activeContext.currentTime);
-        gain.gain.setValueAtTime(0.9, activeContext.currentTime + Math.max(0, Number(note.durationSeconds) - 0.03));
-        gain.gain.linearRampToValueAtTime(0, activeContext.currentTime + Math.max(0.03, Number(note.durationSeconds)));
+        const duration = Math.max(
+            Number(note.durationSeconds),
+            source.loop ? 0 : buffer.duration / Math.max(0.01, Number(note.playbackRate)));
+        const level = Math.min(1.2, sampleGain(buffer));
+        gain.gain.setValueAtTime(level, activeContext.currentTime);
+        gain.gain.setValueAtTime(level, activeContext.currentTime + Math.max(0, duration - 0.03));
+        gain.gain.linearRampToValueAtTime(0, activeContext.currentTime + Math.max(0.03, duration));
         source.connect(gain).connect(activeContext.destination);
         source.start();
-        source.stop(activeContext.currentTime + Math.max(0.05, Number(note.durationSeconds)) + 0.02);
+        source.stop(activeContext.currentTime + Math.max(0.05, duration) + 0.02);
     }
 
     function judgeLabel(errorSeconds) {
@@ -147,6 +162,13 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         const newNote = note && !playedNotes.has(note.id) ? note : null;
         if (newNote) {
             playedNotes.add(note.id);
+            laneHitEffects.set(lane, {
+                noteId: note.id,
+                hold: String(note.type || "").toLowerCase() === "hold",
+                released: false,
+                hitAt: performance.now(),
+                releasedAt: null
+            });
             feedback.textContent = judgeLabel(position - Number(note.startTimeSeconds));
             feedback.style.color = laneColours[lane];
             void playNote(note);
@@ -182,6 +204,11 @@ export function createRhythmController(element, connectionKey, actionKind, initi
 
     function releasePadFeedback(lane) {
         element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.remove("hold-active");
+        const effect = laneHitEffects.get(lane);
+        if (effect?.hold) {
+            effect.released = true;
+            effect.releasedAt = performance.now();
+        }
     }
 
     function draw() {
@@ -210,8 +237,15 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             context.lineTo(lane * laneWidth, height);
             context.stroke();
         }
+        const now = performance.now();
+        context.fillStyle = "rgba(255,255,255,.2)";
+        context.fillRect(0, hitY - 8, width, 21);
         context.fillStyle = "#ffffff";
         context.fillRect(0, hitY, width, 5);
+        context.fillStyle = "#d8e7f2";
+        context.font = "700 16px Fredoka, sans-serif";
+        context.textAlign = "center";
+        context.fillText("PRESS / HOLD", width / 2, hitY - 14);
         for (const note of visibleNotes(visualNotes, position, travel)) {
             const delta = Number(note.startTimeSeconds) - position;
             const y = hitY - (delta / travel) * (hitY - 24);
@@ -219,12 +253,33 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             const noteHeight = note.type === "Hold"
                 ? Math.max(28, Number(note.durationSeconds) / travel * (hitY - 24))
                 : 28;
+            const effect = laneHitEffects.get(Number(note.lane));
+            const isHit = effect?.noteId === note.id;
+            let alpha = 1;
+            if (isHit && !effect.released) {
+                alpha = effect.hold ? 1 : Math.max(0, 1 - (now - effect.hitAt) / 280);
+            } else if (isHit && effect.releasedAt !== null) {
+                alpha = Math.max(0, 1 - (now - effect.releasedAt) / 280);
+            }
+            if (isHit && alpha <= 0) {
+                laneHitEffects.delete(Number(note.lane));
+                continue;
+            }
+            context.save();
+            context.globalAlpha = alpha;
+            if (isHit) {
+                context.shadowColor = laneColours[Number(note.lane)];
+                context.shadowBlur = effect.hold && !effect.released ? 24 : 14;
+            }
             context.fillStyle = laneColours[Number(note.lane)];
             context.beginPath();
             context.roundRect(x, y - noteHeight, laneWidth - 24, noteHeight, 10);
             context.fill();
+            context.restore();
             context.fillStyle = "rgba(255,255,255,.5)";
+            context.globalAlpha = alpha;
             context.fillRect(x + 8, y - noteHeight + 6, laneWidth - 40, 4);
+            context.globalAlpha = 1;
         }
         drawProgress(context, width, height, position, configuration.songDurationSeconds);
         animationFrame = requestAnimationFrame(draw);
@@ -290,6 +345,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             abort.abort();
             tapPulseTimers.forEach(timer => window.clearTimeout(timer));
             tapPulseTimers.clear();
+            laneHitEffects.clear();
             cancelAnimationFrame(animationFrame);
             if (audioContext) void audioContext.close();
         }

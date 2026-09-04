@@ -1,3 +1,5 @@
+using Quizizzo.GameContracts;
+
 namespace Quizizzo.Games.VoiceChoon;
 
 public enum VoiceNoteRating
@@ -65,4 +67,5 @@ public sealed record VoiceChoonDisplayState(
     int BandCombo,
     int MaximumBandCombo,
     int EnergyPercent,
-    IReadOnlyList<VoiceChoonResult> Results);
+    IReadOnlyList<VoiceChoonResult> Results,
+    IReadOnlyList<VoiceChoonDisplayPlayback>? Playback = null);
