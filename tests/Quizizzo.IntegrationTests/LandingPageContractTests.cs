@@ -483,7 +483,7 @@ public sealed class LandingPageContractTests
         Assert.Contains(".phone-controller-shell .arcade-control-deck", styles,
             StringComparison.Ordinal);
         Assert.Contains("touch-action: none", styles, StringComparison.Ordinal);
-        Assert.Contains("grid-template-columns: repeat(4, minmax(0, 1fr))", styles,
+        Assert.Contains("grid-template-columns: repeat(6, minmax(44px, 1fr))", styles,
             StringComparison.Ordinal);
     }
 
