@@ -61,7 +61,8 @@ public sealed record RhythmControllerNote(
     double PlaybackRate,
     bool Loop,
     double? LoopStartSeconds,
-    double? LoopEndSeconds);
+    double? LoopEndSeconds,
+    string SoundLabel = "");
 
 public sealed record RhythmControllerConfiguration(
     DateTimeOffset SongStartsAtUtc,

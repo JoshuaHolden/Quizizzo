@@ -558,7 +558,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             plan.PlaybackRate,
             plan.Loop,
             plan.LoopStartSeconds,
-            plan.LoopEndSeconds);
+            plan.LoopEndSeconds,
+            $"{selectedPrompt.Example} · {note.SourceTrack}");
     }
 
     private static PlayerControllerView RecordingController(

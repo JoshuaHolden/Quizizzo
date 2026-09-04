@@ -24,39 +24,6 @@ export function dueAutoplayNotes(notes, previousPosition, position, playedNoteId
     });
 }
 
-export function autoplayVisualNotes(notes, maximumGapSeconds = 0.25, minimumRunLength = 3) {
-    const visual = [];
-    for (let lane = 0; lane < 4; lane += 1) {
-        const ordered = notes
-            .filter(note => Number(note.lane) === lane)
-            .sort((left, right) => Number(left.startTimeSeconds) - Number(right.startTimeSeconds));
-        for (let index = 0; index < ordered.length;) {
-            let end = index + 1;
-            while (end < ordered.length &&
-                Number(ordered[end].startTimeSeconds) - Number(ordered[end - 1].startTimeSeconds) <= maximumGapSeconds) {
-                end += 1;
-            }
-            const run = ordered.slice(index, end);
-            if (run.length >= minimumRunLength) {
-                const first = run[0];
-                const lastEnd = Math.max(...run.map(note =>
-                    Number(note.startTimeSeconds) + Number(note.durationSeconds)));
-                visual.push({
-                    ...first,
-                    id: `visual-run-${lane}-${first.id}`,
-                    durationSeconds: lastEnd - Number(first.startTimeSeconds),
-                    type: "Hold"
-                });
-            } else {
-                visual.push(...run);
-            }
-            index = end;
-        }
-    }
-    return visual.sort((left, right) => Number(left.startTimeSeconds) - Number(right.startTimeSeconds) ||
-        Number(left.lane) - Number(right.lane));
-}
-
 export function createRhythmController(element, connectionKey, actionKind, initialState) {
     const abort = new AbortController();
     const canvas = element.querySelector("[data-rhythm-canvas]");
@@ -67,7 +34,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     const playedNotes = new Set();
     let animationFrame = 0;
     let configuration = initialState.configuration;
-    let visualNotes = configuration.autoplay ? autoplayVisualNotes(configuration.notes) : configuration.notes;
     let disabled = Boolean(initialState.disabled);
     let nextSequence = Number(configuration.nextSequence ?? 1);
     let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
@@ -176,7 +142,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         context.font = "700 16px Fredoka, sans-serif";
         context.textAlign = "center";
         context.fillText("PRESS / HOLD", width / 2, hitY - 14);
-        for (const note of visibleNotes(visualNotes, position, travel)) {
+        for (const note of visibleNotes(configuration.notes, position, travel)) {
             const delta = Number(note.startTimeSeconds) - position;
             const y = hitY - (delta / travel) * (hitY - 24);
             const x = Number(note.lane) * laneWidth + 12;
@@ -210,6 +176,15 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             context.globalAlpha = alpha;
             context.fillRect(x + 8, y - noteHeight + 6, laneWidth - 40, 4);
             context.globalAlpha = 1;
+            if (configuration.autoplay && note.soundLabel) {
+                context.save();
+                context.globalAlpha = Math.min(1, alpha);
+                context.fillStyle = "#f4fbff";
+                context.font = "600 12px Nunito, sans-serif";
+                context.textAlign = "left";
+                context.fillText(note.soundLabel, x + 12, Math.max(18, y - noteHeight - 7));
+                context.restore();
+            }
         }
         drawProgress(context, width, height, position, configuration.songDurationSeconds);
         animationFrame = requestAnimationFrame(draw);
@@ -265,7 +240,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     return {
         update(state) {
             configuration = state.configuration;
-            visualNotes = configuration.autoplay ? autoplayVisualNotes(configuration.notes) : configuration.notes;
             disabled = Boolean(state.disabled);
             nextSequence = Math.max(nextSequence, Number(configuration.nextSequence ?? 1));
         },

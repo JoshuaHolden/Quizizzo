@@ -704,10 +704,10 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 
 ### VoiceChoon rhythm readability and soundtrack polish (completed 2026-09-04)
 
-- [x] Keep the four scrolling lanes aligned with every audible solo-autoplay MIDI note while merging dense same-lane runs into bounded hold bars.
+- [x] Keep the four scrolling lanes aligned with every audible solo-autoplay MIDI note and show the selected mouth-sound/source-track label for debugging.
 - [x] Collapse qualifying rapid same-lane tap runs into one sustained hold target on Easy and Medium while retaining the original tap-heavy Hard chart.
 - [x] Keep burst compression deterministic, profile-owned, and server-authoritative for scoring and recovery.
-- [x] Silence the generic shared-display game soundtrack throughout VoiceChoon without muting private recorded-note playback or changing lobby and other-game music.
+- [x] Silence the generic shared-display game soundtrack throughout VoiceChoon and route every instrument sample through the paired display while keeping phones silent.
 - [x] Pass all 30 client tests, 33 focused VoiceChoon tests, and a zero-warning strict Release Web build; deploy locally and confirm a healthy service with no display background audio.
 
 ### VoiceChoon song catalogue (completed 2026-09-04)

@@ -350,6 +350,7 @@ public sealed class VoiceChoonGameModuleTests
         Assert.True(controller.Autoplay);
         Assert.Equal(chart.PlaybackNotes.Count, controller.Notes.Count);
         Assert.True(controller.Notes.Count > chart.Notes.Count);
+        Assert.All(controller.Notes, note => Assert.NotEmpty(note.SoundLabel));
         Assert.All(controller.Notes, controllerNote =>
         {
             var sourceNote = chart.PlaybackNotes.Single(note => note.Id == controllerNote.Id);
