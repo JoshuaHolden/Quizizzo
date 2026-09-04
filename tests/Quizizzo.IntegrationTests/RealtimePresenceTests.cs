@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -116,22 +117,25 @@ public sealed class RealtimePresenceTests
             "transport", party.Id.Value, RealtimeRole.Player, player.Id.Value.ToString(), default);
         await registry.UnregisterAsync("transport");
 
-        for (var attempt = 0; attempt < 40 && player.Status != PlayerStatus.Disconnected; attempt++)
+        for (var attempt = 0; attempt < 40 &&
+             (player.Status != PlayerStatus.Disconnected || !notifier.HasReason("PlayerDisconnected")); attempt++)
         {
             await Task.Delay(10);
         }
 
         Assert.Equal(PlayerStatus.Disconnected, player.Status);
-        Assert.Contains(notifier.Events, item => item.Reason == "PlayerDisconnected");
+        Assert.True(notifier.HasReason("PlayerDisconnected"));
     }
 
     private sealed class RecordingNotifier : IPartyRealtimeNotifier
     {
-        public List<(Guid PartyId, string Reason)> Events { get; } = [];
+        public ConcurrentQueue<(Guid PartyId, string Reason)> Events { get; } = new();
+
+        public bool HasReason(string reason) => Events.Any(item => item.Reason == reason);
 
         public Task PartyChangedAsync(Guid partyId, string reason, CancellationToken cancellationToken = default)
         {
-            Events.Add((partyId, reason));
+            Events.Enqueue((partyId, reason));
             return Task.CompletedTask;
         }
 
