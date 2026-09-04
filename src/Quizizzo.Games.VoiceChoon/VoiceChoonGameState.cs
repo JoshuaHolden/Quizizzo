@@ -18,6 +18,8 @@ public sealed record VoiceNoteJudgement(
     int TimingErrorMilliseconds,
     int Points);
 
+public sealed record VoiceActiveHold(Guid NoteId, int Lane, DateTimeOffset StartedAtUtc, int StartPoints);
+
 public sealed record VoiceChoonResult(
     Guid PlayerId,
     string DisplayName,
@@ -46,7 +48,8 @@ public sealed record VoiceChoonGameState(
     IReadOnlyList<VoiceChoonResult> Results,
     VoiceChoonDifficulty Difficulty = VoiceChoonDifficulty.Medium,
     bool SoloAutoplayTest = false,
-    string SongKey = VoiceChoonSongCatalog.DefaultSongKey);
+    string SongKey = VoiceChoonSongCatalog.DefaultSongKey,
+    IReadOnlyDictionary<Guid, VoiceActiveHold>? ActiveHoldsByPlayer = null);
 
 public sealed record VoiceChoonPlayerState(
     string InstrumentName,

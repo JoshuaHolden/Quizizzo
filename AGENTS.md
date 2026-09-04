@@ -726,6 +726,16 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Remove round timeout ranking so an active round continues until only one operational player remains.
 - [x] Add a large winner/crying-player interstitial with a flying `PLAYER WINS` banner during the server-owned winner celebration phase.
 
+### VoiceChoon audio and hold repair (completed 2026-09-04)
+
+- [x] Keep one shared-display scheduler across snapshot refreshes and skip expired notes instead of replaying them in a burst.
+- [x] Preload private samples, schedule on the Web Audio clock with a rolling look-ahead, resume overlapping audio safely, and fade shutdowns.
+- [x] Derive loops from decoded recordings, reduce polyphonic gain, and improve capture noise, DC-offset, normalization, and boundary fades.
+- [x] Keep gameplay audio exclusively on the paired main display; phones provide silent input and retain explicit recording previews only during setup.
+- [x] Persist explicit hold starts/releases, tolerate 100 ms pointer interruptions, and split authoritative start/duration/release scoring.
+- [x] Validate JavaScript syntax, pass all 29 client tests, and pass all 352 .NET tests in Release.
+- [x] Rebuild the local production container and pass a repeatable Edge journey that injects PCM WAV samples through the secured UI, starts Greensleeves solo autoplay, observes scheduled voices, and refreshes without an elapsed-note burst.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

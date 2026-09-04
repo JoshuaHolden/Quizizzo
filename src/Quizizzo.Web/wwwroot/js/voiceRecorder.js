@@ -1,5 +1,5 @@
 const silenceThreshold = 0.018;
-const fadeSeconds = 0.008;
+const fadeSeconds = 0.015;
 
 export function findAudibleBounds(channelData, threshold = silenceThreshold) {
     let first = 0;
@@ -17,14 +17,27 @@ export function normalizeAndFade(channels, sampleRate) {
     const bounds = channels.map(channel => findAudibleBounds(channel));
     const start = Math.min(...bounds.map(item => item.start));
     const end = Math.max(...bounds.map(item => item.end));
-    const trimmed = channels.map(channel => channel.slice(start, end));
+    const trimmed = channels.map(channel => {
+        const source = channel.slice(start, end);
+        const mean = source.reduce((sum, sample) => sum + sample, 0) / Math.max(1, source.length);
+        return Float32Array.from(source, sample => {
+            const centred = sample - mean;
+            return Math.abs(centred) < silenceThreshold * 0.65 ? 0 : centred;
+        });
+    });
     let peak = 0;
+    let sumSquares = 0;
+    let sampleCount = 0;
     for (const channel of trimmed) {
         for (const sample of channel) {
             peak = Math.max(peak, Math.abs(sample));
+            sumSquares += sample * sample;
+            sampleCount += 1;
         }
     }
-    const gain = peak > 0 ? Math.min(8, 0.9 / peak) : 1;
+    const rms = Math.sqrt(sumSquares / Math.max(1, sampleCount));
+    // Aim for a consistent voice level while refusing to turn room noise into an instrument.
+    const gain = peak > 0 ? Math.min(3, 0.88 / peak, 0.18 / Math.max(0.025, rms)) : 1;
     const fadeSamples = Math.min(Math.floor(sampleRate * fadeSeconds), Math.floor((end - start) / 2));
     return trimmed.map(channel => {
         const output = new Float32Array(channel.length);

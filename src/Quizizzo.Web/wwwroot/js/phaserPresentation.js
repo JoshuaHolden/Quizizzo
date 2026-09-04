@@ -38,8 +38,10 @@ window.quizizzoPresentation = (() => {
         let output = null;
         let snapshot = null;
         let muted = localStorage.getItem("quizizzo.display.audio-muted") === "true";
-        let timers = new Set();
+        let schedulerTimer = null;
         let sources = new Set();
+        let scheduledNoteIds = new Set();
+        let scheduleKey = null;
         const buffers = new Map();
 
         function ensureContext() {
@@ -78,12 +80,20 @@ window.quizizzoPresentation = (() => {
         }
 
         function stop() {
-            timers.forEach(timer => window.clearTimeout(timer));
-            timers = new Set();
-            sources.forEach(source => {
-                try { source.stop(); } catch { }
+            if (schedulerTimer !== null) window.clearInterval(schedulerTimer);
+            schedulerTimer = null;
+            sources.forEach(voice => {
+                try {
+                    const now = audioContext?.currentTime ?? 0;
+                    voice.gain.gain.cancelScheduledValues(now);
+                    voice.gain.gain.setValueAtTime(Math.max(0.0001, voice.gain.gain.value), now);
+                    voice.gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.025);
+                    voice.source.stop(now + 0.03);
+                } catch { }
             });
             sources = new Set();
+            scheduledNoteIds = new Set();
+            scheduleKey = null;
         }
 
         function sampleGain(buffer) {
@@ -110,50 +120,67 @@ window.quizizzoPresentation = (() => {
             return seconds;
         }
 
-        async function play(note) {
+        async function play(note, when, offset = 0) {
             if (muted) return;
             const context = ensureContext();
             const buffer = await load(note.sampleAssetId);
             if (!context || !buffer || muted) return;
             const source = context.createBufferSource();
             const gain = context.createGain();
-            const duration = Math.max(0.05, Number(note.durationSeconds));
+            const duration = Math.max(0.05, Number(note.durationSeconds) - offset);
             source.buffer = buffer;
             source.playbackRate.value = Number(note.playbackRate || 1);
             source.loop = Boolean(note.loop) || String(note.type || "").toLowerCase() === "hold";
             if (source.loop) {
-                const loopStart = snapToZeroCrossing(buffer,
-                    Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration));
-                const loopEnd = snapToZeroCrossing(buffer,
-                    Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration));
+                // Derive the loop from the real decoded recording. Older snapshots used a
+                // fictional one-second duration, which produced invalid loop boundaries.
+                const loopStart = snapToZeroCrossing(buffer, buffer.duration * 0.3);
+                const loopEnd = snapToZeroCrossing(buffer, buffer.duration * 0.7);
                 source.loopStart = loopStart;
                 source.loopEnd = loopEnd > loopStart + 0.01 ? loopEnd : buffer.duration;
             }
-            const level = Math.min(1.2, sampleGain(buffer));
-            gain.gain.setValueAtTime(0, context.currentTime);
-            gain.gain.linearRampToValueAtTime(level, context.currentTime + 0.012);
-            gain.gain.setValueAtTime(level, context.currentTime + Math.max(0.012, duration - 0.04));
-            gain.gain.linearRampToValueAtTime(0, context.currentTime + duration);
+            const level = Math.min(0.42, sampleGain(buffer) * 0.35);
+            const startAt = Math.max(context.currentTime + 0.005, when);
+            gain.gain.setValueAtTime(0, startAt);
+            gain.gain.linearRampToValueAtTime(level, startAt + 0.015);
+            gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));
+            gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
             source.connect(gain).connect(output);
-            sources.add(source);
-            source.addEventListener("ended", () => sources.delete(source), { once: true });
-            source.start();
-            source.stop(context.currentTime + duration + 0.03);
+            const voice = { source, gain };
+            sources.add(voice);
+            source.addEventListener("ended", () => sources.delete(voice), { once: true });
+            source.start(startAt, source.loop ? 0 : Math.min(offset, Math.max(0, buffer.duration - 0.01)));
+            source.stop(startAt + duration + 0.03);
         }
 
         function schedule() {
-            stop();
             if (muted || !snapshot || snapshot.gameKey !== "voicechoon" || snapshot.phase !== "Playing") return;
             const state = snapshot.gameState || {};
             const notes = state.playback || state.Playback || [];
-            const songPosition = (Date.now() - Date.parse(snapshot.gameState?.songStartsAtUtc ||
-                snapshot.gameState?.SongStartsAtUtc || snapshot.phaseEndsAtUtc || new Date().toISOString())) / 1000;
-            notes.forEach(note => {
-                const start = Number(note.startTimeSeconds ?? note.StartTimeSeconds);
-                const delay = Math.max(0, (start - songPosition) * 1000);
-                if (delay > Number(snapshot.gameState?.songDurationSeconds ?? state.SongDurationSeconds ?? 0) * 1000) return;
-                const timer = window.setTimeout(() => {
-                    timers.delete(timer);
+            const startsAt = snapshot.gameState?.songStartsAtUtc || snapshot.gameState?.SongStartsAtUtc;
+            const key = `${snapshot.gameInstanceId || "voicechoon"}:${startsAt}`;
+            if (scheduleKey === key && schedulerTimer !== null) return;
+            stop();
+            scheduleKey = key;
+            const context = ensureContext();
+            if (!context || !startsAt) return;
+            // Decode everything during the lead-in rather than on the note boundary.
+            void Promise.all([...new Set(notes.map(note => note.sampleAssetId ?? note.SampleAssetId))].map(load));
+            const tick = () => {
+                const songPosition = (Date.now() - Date.parse(startsAt)) / 1000;
+                const audioOrigin = context.currentTime - songPosition;
+                notes.forEach(note => {
+                    const id = String(note.id ?? note.Id);
+                    if (scheduledNoteIds.has(id)) return;
+                    const start = Number(note.startTimeSeconds ?? note.StartTimeSeconds);
+                    const duration = Number(note.durationSeconds ?? note.DurationSeconds);
+                    const end = start + duration;
+                    if (end <= songPosition) {
+                        scheduledNoteIds.add(id);
+                        return;
+                    }
+                    if (start > songPosition + 0.3) return;
+                    scheduledNoteIds.add(id);
                     void play({
                         sampleAssetId: note.sampleAssetId ?? note.SampleAssetId,
                         playbackRate: note.playbackRate ?? note.PlaybackRate,
@@ -162,10 +189,11 @@ window.quizizzoPresentation = (() => {
                         loopStartSeconds: note.loopStartSeconds ?? note.LoopStartSeconds,
                         loopEndSeconds: note.loopEndSeconds ?? note.LoopEndSeconds,
                         type: note.type ?? note.Type
-                    });
-                }, delay);
-                timers.add(timer);
-            });
+                    }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start));
+                });
+            };
+            tick();
+            schedulerTimer = window.setInterval(tick, 50);
         }
 
         return {

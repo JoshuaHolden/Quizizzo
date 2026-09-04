@@ -23,7 +23,8 @@ public sealed record ReadyVoiceControllerAction : IGameAction
 public sealed record SubmitVoiceInputAction(
     long Sequence,
     int Lane,
-    DateTimeOffset ClientTimestamp) : IGameAction
+    DateTimeOffset ClientTimestamp,
+    bool Released = false) : IGameAction
 {
     public const string ActionKind = "voicechoon.input";
     public string Kind => ActionKind;

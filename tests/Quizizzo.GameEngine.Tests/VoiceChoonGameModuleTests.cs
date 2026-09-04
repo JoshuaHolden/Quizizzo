@@ -51,7 +51,7 @@ public sealed class VoiceChoonGameModuleTests
         var game = state.Data.Deserialize<VoiceChoonGameState>()!;
         var firstPlayer = game.Participants[0];
         var chart = game.Charts.Single(item => item.PlayerIndex == firstPlayer.PlayerIndex);
-        var note = chart.Notes[0];
+        var note = chart.Notes.First(item => item.Type == RhythmNoteType.Tap);
         var hitAt = game.SongStartsAtUtc!.Value.AddSeconds(note.StartTimeSeconds);
         var transition = module.Apply(
             state,
@@ -72,6 +72,44 @@ public sealed class VoiceChoonGameModuleTests
         Assert.DoesNotContain(
             scored.Charts.Where(item => item.PlayerIndex != firstPlayer.PlayerIndex).SelectMany(item => item.Notes),
             item => privateState.Chart.Notes.Any(own => own.Id == item.Id));
+    }
+
+    [Fact]
+    public void Hold_requires_a_release_and_a_quick_tap_cannot_receive_full_credit()
+    {
+        var module = new VoiceChoonGameModule(FastFlow());
+        var gameId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
+        var players = Participants();
+        var started = module.Start(new GameStartContext(gameId, partyId, "host", players, Now));
+        var game = started.Data.Deserialize<VoiceChoonGameState>()!;
+        var chart = game.Charts.First(item => item.Notes.Any(note => note.Type == RhythmNoteType.Hold));
+        var note = chart.Notes.First(item => item.Type == RhythmNoteType.Hold);
+        var playerId = game.Participants.Single(item => item.PlayerIndex == chart.PlayerIndex).PlayerId;
+        var playing = started with
+        {
+            Phase = VoiceChoonGameModule.PlayingPhase,
+            PhaseEndsAtUtc = Now.AddMinutes(3),
+            Data = GameJson.From(game with { SongStartsAtUtc = Now })
+        };
+        var pressedAt = Now.AddSeconds(note.StartTimeSeconds);
+
+        var pressed = module.Apply(playing,
+            Context(gameId, partyId, GameActor.Player(playerId), pressedAt),
+            new SubmitVoiceInputAction(1, note.Lane, pressedAt));
+        var whileHeld = pressed.State.Data.Deserialize<VoiceChoonGameState>()!;
+
+        Assert.Empty(whileHeld.JudgementsByPlayer[playerId]);
+        Assert.True(whileHeld.ActiveHoldsByPlayer!.ContainsKey(playerId));
+
+        var released = module.Apply(pressed.State,
+            Context(gameId, partyId, GameActor.Player(playerId), pressedAt.AddMilliseconds(50)),
+            new SubmitVoiceInputAction(2, note.Lane, pressedAt.AddMilliseconds(50), Released: true));
+        var afterRelease = released.State.Data.Deserialize<VoiceChoonGameState>()!;
+
+        Assert.InRange(afterRelease.ScoresByPlayer[playerId], 1, 999);
+        Assert.Empty(afterRelease.ActiveHoldsByPlayer!);
+        Assert.Contains(released.Events, item => item.Kind == "VoiceHoldJudged");
     }
 
     [Fact]

@@ -38,6 +38,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     let nextSequence = Number(configuration.nextSequence ?? 1);
     let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
     const tapPulseTimers = new Map();
+    const holdReleaseTimers = new Map();
     const laneHitEffects = new Map();
 
     function judgeLabel(errorSeconds) {
@@ -105,7 +106,30 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         if (effect?.hold) {
             effect.released = true;
             effect.releasedAt = performance.now();
+            holdReleaseTimers.set(lane, window.setTimeout(() => {
+                holdReleaseTimers.delete(lane);
+                const sequence = nextSequence++;
+                void window.quizizzoRealtime.send(connectionKey, "SubmitRhythmAction", [
+                    crypto.randomUUID(), actionKind,
+                    { sequence, input: `Lane${lane}`, released: true, clientTimestamp: new Date().toISOString() }
+                ]).catch(() => { });
+            }, 100));
+            return;
         }
+    }
+
+    function resumeInterruptedHold(lane) {
+        const timer = holdReleaseTimers.get(lane);
+        if (timer === undefined) return false;
+        window.clearTimeout(timer);
+        holdReleaseTimers.delete(lane);
+        const effect = laneHitEffects.get(lane);
+        if (effect) {
+            effect.released = false;
+            effect.releasedAt = null;
+        }
+        element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.add("hold-active");
+        return true;
     }
 
     function draw() {
@@ -205,6 +229,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             button.setPointerCapture?.(event.pointerId);
             pressedPointers.set(event.pointerId, lane);
             button.classList.add("pressed");
+            if (resumeInterruptedHold(lane)) return;
             showPadFeedback(lane, activate(lane));
         }, { signal: abort.signal });
         const release = event => {
@@ -225,6 +250,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         event.preventDefault();
         pressedKeys.add(key);
         element.querySelector(`[data-rhythm-lane="${lane}"]`)?.classList.add("pressed");
+        if (resumeInterruptedHold(lane)) return;
         showPadFeedback(lane, activate(lane));
     }, { signal: abort.signal });
     element.addEventListener("keyup", event => {
@@ -247,6 +273,8 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             abort.abort();
             tapPulseTimers.forEach(timer => window.clearTimeout(timer));
             tapPulseTimers.clear();
+            holdReleaseTimers.forEach(timer => window.clearTimeout(timer));
+            holdReleaseTimers.clear();
             laneHitEffects.clear();
             cancelAnimationFrame(animationFrame);
         }

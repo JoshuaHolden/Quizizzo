@@ -246,6 +246,54 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         var songStartedAt = game.SongStartsAtUtc
             ?? throw new InvalidOperationException("VoiceChoon has no authoritative song start.");
         var judged = game.JudgementsByPlayer[playerId];
+        var activeHolds = (game.ActiveHoldsByPlayer ?? new Dictionary<Guid, VoiceActiveHold>()).ToDictionary();
+        if (action.Released)
+        {
+            if (!activeHolds.Remove(playerId, out var active))
+            {
+                throw new GameRuleViolationException("no-active-hold", "There is no active hold in that lane.");
+            }
+            if (active.Lane != action.Lane)
+            {
+                throw new GameRuleViolationException("wrong-hold-lane", "Release the lane that started the hold.");
+            }
+            var heldNote = chart.Notes.Single(item => item.Id == active.NoteId);
+            // The controller deliberately waits through its 100 ms interruption grace before
+            // transmitting a release. Remove that known delay from musical judgement time.
+            var effectiveReleaseAt = context.ReceivedAtUtc.AddMilliseconds(-100);
+            var expectedRelease = songStartedAt.AddSeconds(heldNote.StartTimeSeconds + heldNote.DurationSeconds);
+            var releaseError = Math.Abs((effectiveReleaseAt - expectedRelease).TotalMilliseconds);
+            var heldMilliseconds = Math.Max(0, (effectiveReleaseAt - active.StartedAtUtc).TotalMilliseconds);
+            var targetMilliseconds = heldNote.DurationSeconds * 1000;
+            var maintainedRatio = Math.Clamp(heldMilliseconds / Math.Max(1, targetMilliseconds), 0, 1);
+            var durationPoints = (int)Math.Round(400 * maintainedRatio, MidpointRounding.AwayFromZero);
+            var releasePoints = releaseError <= difficulty.PerfectWindowMilliseconds ? 200
+                : releaseError <= difficulty.GreatWindowMilliseconds ? 150
+                : releaseError <= difficulty.GoodWindowMilliseconds ? 100 : 0;
+            var holdPoints = active.StartPoints + durationPoints + releasePoints;
+            var holdRating = holdPoints >= 900 ? VoiceNoteRating.Perfect : holdPoints >= 700 ? VoiceNoteRating.Great : VoiceNoteRating.Good;
+            var holdJudgement = new VoiceNoteJudgement(active.NoteId, active.Lane, holdRating,
+                (int)Math.Round(releaseError, MidpointRounding.AwayFromZero), holdPoints);
+            var releasedJudgements = game.JudgementsByPlayer.ToDictionary();
+            releasedJudgements[playerId] = [.. judged, holdJudgement];
+            var releasedScores = game.ScoresByPlayer.ToDictionary();
+            releasedScores[playerId] += holdPoints;
+            var releasedSequences = game.LastSequenceByPlayer.ToDictionary();
+            releasedSequences[playerId] = action.Sequence;
+            var releasedCombo = game.BandCombo + 1;
+            var released = game with
+            {
+                ActiveHoldsByPlayer = activeHolds,
+                LastSequenceByPlayer = releasedSequences,
+                JudgementsByPlayer = releasedJudgements,
+                ScoresByPlayer = releasedScores,
+                BandCombo = releasedCombo,
+                MaximumBandCombo = Math.Max(game.MaximumBandCombo, releasedCombo),
+                EnergyPercent = Math.Min(100, game.EnergyPercent + (holdRating == VoiceNoteRating.Perfect ? 2 : 1))
+            };
+            return new GameTransition(current with { Data = GameJson.From(released) }, [],
+                [new GameEvent("VoiceHoldJudged", GameJson.From(new { playerId, holdJudgement.NoteId, rating = holdRating, points = holdPoints }))]);
+        }
         var elapsedMilliseconds = (context.ReceivedAtUtc - songStartedAt).TotalMilliseconds;
         var note = chart.Notes
             .Where(item => item.Lane == action.Lane && judged.All(result => result.NoteId != item.Id))
@@ -259,6 +307,24 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             .ThenBy(item => item.Note.StartTimeSeconds)
             .FirstOrDefault()
             ?? throw new GameRuleViolationException("no-note-in-window", "There is no playable note in that lane right now.");
+
+        if (note.Note.Type == RhythmNoteType.Hold)
+        {
+            if (activeHolds.ContainsKey(playerId))
+            {
+                throw new GameRuleViolationException("hold-already-active", "Finish the current hold first.");
+            }
+            var startPoints = note.Error <= difficulty.PerfectWindowMilliseconds ? 400
+                : note.Error <= difficulty.GreatWindowMilliseconds ? 300 : 200;
+            activeHolds[playerId] = new VoiceActiveHold(note.Note.Id, note.Note.Lane, context.ReceivedAtUtc, startPoints);
+            var holdSequences = game.LastSequenceByPlayer.ToDictionary();
+            holdSequences[playerId] = action.Sequence;
+            return GameTransition.To(current with { Data = GameJson.From(game with
+            {
+                ActiveHoldsByPlayer = activeHolds,
+                LastSequenceByPlayer = holdSequences
+            }) });
+        }
 
         var rating = note.Error <= difficulty.PerfectWindowMilliseconds
             ? VoiceNoteRating.Perfect
@@ -670,7 +736,9 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         {
             throw new GameRuleViolationException("invalid-client-time", "The diagnostic client timestamp is invalid.");
         }
-        return new SubmitVoiceInputAction(sequence, lane, clientTimestamp);
+        var released = payload.TryGetProperty("released", out var releasedElement) &&
+            releasedElement.ValueKind is JsonValueKind.True;
+        return new SubmitVoiceInputAction(sequence, lane, clientTimestamp, released);
     }
 
     private static RegisterVoiceSampleAction ReadRegisteredSample(JsonElement payload)

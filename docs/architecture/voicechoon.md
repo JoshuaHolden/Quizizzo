@@ -39,7 +39,7 @@ MIDI stream
 - `ChartGenerator` owns playability transformations. It does not alter the target MIDI pitch.
 - `PitchShiftPlanner` chooses a recorded root, octave-folds extreme requests, and describes one-shot or sustained playback.
 - `VoiceChoonGameModule` owns song phase, authoritative start time, accepted inputs, hit judgements, combo, band score, energy, and completion.
-- The browser audio engine owns microphone capture, silence trimming, normalization, fades, decoded `AudioBuffer` objects, local low-latency preview, and sample scheduling. It does not award points.
+- The browser audio boundary owns microphone capture, silence trimming, normalization, fades, explicit setup previews, decoded `AudioBuffer` objects, and main-display sample scheduling. Gameplay phones remain silent and do not award points.
 
 This separation lets another MIDI be loaded without changing game rules or Blazor components.
 
@@ -117,6 +117,8 @@ attack -> loop loop loop -> release fade
 
 A hold of at least 500 ms requests looping. The audio engine stops and fades the source at the chart duration. Percussion samples use playback rate 1.0 by default; optional deterministic variation must stay small and must not change chart judgement.
 
+The display preloads decoded samples and retains one scheduler for the immutable game/start-time identity. A 50 ms rolling look-ahead schedules notes on the Web Audio clock; snapshot refreshes update presentation state without stopping active voices or replaying elapsed notes. Polyphonic voices use conservative gain before the output compressor, and phase/mute shutdowns use short gain ramps rather than hard cuts. Loop bounds come from each decoded recording rather than an assumed duration and are snapped to nearby zero crossings.
+
 ## Four-lane chart generation
 
 Melodic pitches are ranked within each source track and divided into four ordered bands. Ascending phrases therefore tend to move from lane 1 toward lane 4. Repeated runs may shift one lane for readability, but `TargetMidiNote` is untouched.
@@ -156,7 +158,7 @@ lane 1       lane 2       lane 3       lane 4
    BOOP         BOOP         BOOP          BOOP
 ```
 
-Pads use Pointer Events on down/up, support true multi-touch, trigger immediate local sample playback, send timestamped semantic input over the existing authenticated SignalR connection, and optionally provide haptics. No click delay is allowed. Portrait mode shows a concise rotate-device gate without destroying reconstructable state.
+Pads use Pointer Events on down/up, support true multi-touch, send timestamped semantic input over the existing authenticated SignalR connection, and optionally provide haptics. Gameplay audio plays only on the paired main display. No click delay is allowed. Portrait mode shows a concise rotate-device gate without destroying reconstructable state.
 
 The note travel time starts at two seconds. Inactive players receive a bounded `GET READY` countdown before their next phrase.
 
@@ -186,6 +188,8 @@ The host can explicitly enable `Solo autoplay test` in VoiceChoon settings. This
 - the rhythm controller reuses the audio context unlocked by the required recording gesture to satisfy browser autoplay policy.
 
 A hold scores start accuracy (40), maintained duration (up to 40), and release accuracy (20), with a 100 ms interruption grace period. The server owns every judgement and ignores forged note IDs, wrong lanes, impossible chronology, duplicate input IDs, and notes outside the player's chart.
+
+Hold presses create persisted active-hold state and do not award a completed judgement. Release is a separate sequenced semantic action; only then does the server combine start, maintained-duration, and release accuracy. The phone defers release for the 100 ms interruption window so a momentary pointer interruption can resume without creating a second press.
 
 Calibration is optional for first play. A later setup phase estimates per-device audio/input offset from repeated beat taps and stores it only for that durable browser session, with a manual adjustment control.
 
