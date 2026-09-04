@@ -130,8 +130,8 @@ public sealed class PileUpPanicRulesTests
         var options = new PileUpOptions();
 
         Assert.Equal(TimeSpan.FromMilliseconds(1100), options.FallIntervalFor(0));
-        Assert.Equal(TimeSpan.FromMilliseconds(1000), options.FallIntervalFor(1));
-        Assert.Equal(TimeSpan.FromMilliseconds(600), options.FallIntervalFor(5));
+        Assert.Equal(TimeSpan.FromMilliseconds(1050), options.FallIntervalFor(1));
+        Assert.Equal(TimeSpan.FromMilliseconds(850), options.FallIntervalFor(5));
         Assert.Equal(TimeSpan.FromMilliseconds(200), options.FallIntervalFor(20));
     }
 
@@ -372,18 +372,17 @@ public sealed class PileUpPanicRulesTests
     }
 
     [Fact]
-    public void Last_operational_arena_wins_and_timeout_uses_survival_stack_circuits_then_views()
+    public void Last_operational_arena_wins_and_round_does_not_timeout()
     {
         var elimination = new MatchFixture(2);
         elimination.Match.Arenas[elimination.PlayerIds[1]].ForceOverload();
         elimination.Match.AdvanceSimulation(Now.AddMilliseconds(50));
         Assert.Equal(elimination.PlayerIds[0], elimination.Match.RoundWinnerId);
 
-        var timeoutOptions = new PileUpOptions { RoundDuration = TimeSpan.FromSeconds(1) };
-        var timeout = new MatchFixture(2, timeoutOptions);
-        timeout.Match.Arenas[timeout.PlayerIds[1]].Grid[0, PileUpOptions.TotalRows - 1] = "junk";
-        timeout.Match.AdvanceSimulation(Now.AddSeconds(1));
-        Assert.Equal(timeout.PlayerIds[0], timeout.Match.RoundWinnerId);
+        var ongoing = new MatchFixture(2, new PileUpOptions { RoundDuration = TimeSpan.FromSeconds(1) });
+        ongoing.Match.AdvanceSimulation(Now.AddSeconds(1));
+        Assert.False(ongoing.Match.IsRoundComplete);
+        Assert.Null(ongoing.Match.RoundWinnerId);
     }
 
     [Theory]

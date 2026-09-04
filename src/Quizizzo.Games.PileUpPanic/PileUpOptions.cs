@@ -12,7 +12,7 @@ public sealed record PileUpOptions
     public TimeSpan SoftDropRepeat { get; init; } = TimeSpan.FromMilliseconds(55);
     public TimeSpan InitialFallInterval { get; init; } = TimeSpan.FromMilliseconds(1100);
     public TimeSpan MinimumFallInterval { get; init; } = TimeSpan.FromMilliseconds(200);
-    public TimeSpan SpeedUpBy { get; init; } = TimeSpan.FromMilliseconds(100);
+    public TimeSpan SpeedUpBy { get; init; } = TimeSpan.FromMilliseconds(50);
     public TimeSpan LockDelay { get; init; } = TimeSpan.FromMilliseconds(450);
     public int MaximumQueuedJunk { get; init; } = 4;
     public int MaximumJunkPerWindow { get; init; } = 2;

@@ -53,12 +53,13 @@ public sealed class PileUpPanicGameModuleTests
     }
 
     [Fact]
-    public async Task Recurring_runtime_recovers_mid_round_and_completes_a_best_of_three_match()
+    public async Task Recurring_runtime_recovers_mid_round_without_timeout_completion()
     {
         var module = new PileUpPanicGameModule(
             new PileUpOptions
             {
-                RoundDuration = TimeSpan.FromMilliseconds(140),
+                RoundDuration = TimeSpan.FromMinutes(2),
+                DisconnectGracePeriod = TimeSpan.FromMilliseconds(40),
                 SimulationStep = TimeSpan.FromMilliseconds(20),
                 InitialFallInterval = TimeSpan.FromSeconds(1),
                 MinimumFallInterval = TimeSpan.FromMilliseconds(100)
@@ -67,26 +68,24 @@ public sealed class PileUpPanicGameModuleTests
             FastFlow());
         var store = new InMemoryGameStateStore();
         var gameId = GameInstanceId.New();
+        var partyId = Guid.NewGuid();
         var players = Participants(2);
         await using var runtime = Runtime(module, store);
-        await runtime.StartAsync(new GameStartRequest(gameId, Guid.NewGuid(), "host", module.Descriptor.Key, players));
+        await runtime.StartAsync(new GameStartRequest(gameId, partyId, "host", module.Descriptor.Key, players));
         await WaitForPhaseAsync(runtime, gameId, PileUpPanicGameModule.PlayingPhase);
         var playingRevision = (await runtime.GetStatusAsync(gameId)).Revision;
         await WaitForRevisionAsync(runtime, gameId, playingRevision + 1);
 
         await runtime.ReleaseAsync(gameId);
         _ = await runtime.GetViewAsync(gameId, GameViewRequest.Display("display"));
-        var status = await WaitForCompletionAsync(runtime, gameId);
+        await Task.Delay(250);
+        var status = await runtime.GetStatusAsync(gameId);
         var persisted = await store.LoadAsync(gameId);
         var game = persisted!.ModuleState.Data.Deserialize<PileUpGameState>();
 
-        Assert.True(status.IsComplete, $"Stopped in {status.Phase} at revision {status.Revision}.");
-        Assert.Equal(PileUpPanicGameModule.CompletedPhase, status.Phase);
-        Assert.Equal(2, game!.RoundNumber);
-        Assert.Contains(game.RoundWins.Values, wins => wins == PileUpPanicGameModule.WinsRequired);
-        Assert.True(persisted.Scores[players[0].PlayerId] > persisted.Scores[players[1].PlayerId]);
-        Assert.Contains(persisted.ProcessedCommands.Values.SelectMany(result => result.Events),
-            item => item.Kind == "PileMatchCompleted");
+        Assert.False(status.IsComplete, $"Unexpectedly completed in {status.Phase} at revision {status.Revision}.");
+        Assert.Equal(PileUpPanicGameModule.PlayingPhase, status.Phase);
+        Assert.Equal(1, game!.RoundNumber);
     }
 
     [Fact]
@@ -358,19 +357,6 @@ public sealed class PileUpPanicGameModuleTests
         throw new TimeoutException("The Pile-Up Panic simulation did not advance.");
     }
 
-    private static async Task<GameSessionStatus> WaitForCompletionAsync(
-        GameRuntimeManager runtime,
-        GameInstanceId gameId)
-    {
-        var status = await runtime.GetStatusAsync(gameId);
-        for (var attempt = 0; attempt < 200 && !status.IsComplete; attempt++)
-        {
-            await Task.Delay(10);
-            status = await runtime.GetStatusAsync(gameId);
-        }
-        return status;
-    }
-
     private static async Task WaitForPhaseAsync(
         GameRuntimeManager runtime,
         GameInstanceId gameId,
@@ -386,4 +372,5 @@ public sealed class PileUpPanicGameModuleTests
         }
         throw new TimeoutException($"Pile-Up Panic did not reach {phase}.");
     }
+
 }

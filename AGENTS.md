@@ -718,6 +718,12 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Document the repeatable MIDI import, catalog, guidance, validation, and deployment workflow in `docs/architecture/voicechoon-songs.md`.
 - [x] Pass 35 focused VoiceChoon tests, 30 client tests, a zero-warning strict Release Web build, and live host-selector verification.
 
+### Pile-Up Panic speed and survivor celebration (completed 2026-09-04)
+
+- [x] Slow the shared gravity increase after circuits while preserving the bounded minimum fall interval.
+- [x] Remove round timeout ranking so an active round continues until only one operational player remains.
+- [x] Add a large winner/crying-player interstitial with a flying `PLAYER WINS` banner during the server-owned winner celebration phase.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

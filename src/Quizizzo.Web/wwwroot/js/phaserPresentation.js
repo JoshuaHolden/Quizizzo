@@ -1288,6 +1288,10 @@ window.quizizzoPresentation = (() => {
             const minimumHeight = 130;
             const winnerId = normalizedId(field(state, "matchWinnerId", field(field(state, "match", {}), "roundWinnerId", "")));
             const lastRank = ranked.length;
+            if (snapshot.phase === "WinnerCelebration") {
+                this.addPileWinnerCelebration(snapshot, ranked, winnerId, items);
+                return;
+            }
             ranked.forEach((entry, index) => {
                 const rank = finalPhase ? index + 1 : entry.roundRank;
                 const x = width / 2 + (index - (count - 1) / 2) * spacing;
@@ -1339,6 +1343,73 @@ window.quizizzoPresentation = (() => {
                     this.burst(x, 270, 55);
                     if (!this.controller.reducedMotion) this.cameras.main.shake(180, .005);
                 }
+            }
+        }
+
+        addPileWinnerCelebration(snapshot, ranked, winnerId, items) {
+            const winner = ranked.find(entry => entry.playerId === winnerId) || ranked[0];
+            if (!winner) return;
+            const winnerPlayer = (snapshot.players || []).find(player =>
+                normalizedId(player.playerId) === winner.playerId);
+            const winnerAvatar = winnerPlayer ? this.avatars.get(winnerPlayer.playerId) : null;
+            const losers = ranked.filter(entry => entry.playerId !== winner.playerId);
+            const loserSpacing = Math.min(220, 900 / Math.max(1, losers.length));
+            const banner = this.add.container(width + 760, 150).setDepth(110).setAngle(-3);
+            const bannerPanel = this.add.rectangle(0, 0, 1040, 150, 0xffc51b, 1)
+                .setStrokeStyle(8, 0x080914, 1);
+            const bannerText = this.add.text(0, 0, `${winner.name.toUpperCase()} WINS`, {
+                color: "#080914", fontFamily: displayFont, fontSize: "64px", fontStyle: "bold",
+                stroke: "#ffffff", strokeThickness: 4, align: "center", wordWrap: { width: 960 }
+            }).setOrigin(.5);
+            banner.add([bannerPanel, bannerText]);
+            items.push(banner);
+            if (!this.controller.reducedMotion) {
+                this.tweens.add({
+                    targets: banner,
+                    x: width / 2,
+                    duration: 550,
+                    ease: "Cubic.easeOut",
+                    hold: 1300,
+                    yoyo: true,
+                    onComplete: () => banner.destroy(true)
+                });
+            } else {
+                banner.setPosition(width / 2, 150);
+            }
+
+            if (winnerAvatar) {
+                winnerAvatar.container.setVisible(true).setDepth(105).setPosition(width / 2, 560).setScale(1.15);
+                winnerAvatar.card.setVisible(false);
+                winnerAvatar.cardShadow.setVisible(false);
+                winnerAvatar.shadow.setVisible(true).setScale(1.6, .8);
+                winnerAvatar.presence.setVisible(false);
+                winnerAvatar.name.setVisible(true).setY(112).setFontSize(28);
+                winnerAvatar.score.setVisible(true).setY(148).setFontSize(23);
+                winnerAvatar.wins.setVisible(false);
+                winnerAvatar.activity.setVisible(false);
+                this.playPileAvatar(winnerAvatar, "celebrate");
+            }
+            losers.forEach((entry, index) => {
+                const player = (snapshot.players || []).find(candidate =>
+                    normalizedId(candidate.playerId) === entry.playerId);
+                const avatar = player ? this.avatars.get(player.playerId) : null;
+                if (!avatar) return;
+                const x = width / 2 + (index - (losers.length - 1) / 2) * loserSpacing;
+                avatar.container.setVisible(true).setDepth(102).setPosition(x, 600).setScale(.62);
+                avatar.card.setVisible(false);
+                avatar.cardShadow.setVisible(false);
+                avatar.shadow.setVisible(true);
+                avatar.presence.setVisible(false);
+                avatar.name.setVisible(true).setY(58).setFontSize(20);
+                avatar.score.setVisible(false);
+                avatar.wins.setVisible(false);
+                avatar.activity.setVisible(false);
+                this.playPileAvatar(avatar, "cry");
+            });
+            if (this.pileEffectSignature !== `${snapshot.gameInstanceId}:${snapshot.phase}:${winnerId}`) {
+                this.pileEffectSignature = `${snapshot.gameInstanceId}:${snapshot.phase}:${winnerId}`;
+                this.burst(width / 2, 360, 80);
+                if (!this.controller.reducedMotion) this.cameras.main.shake(220, .006);
             }
         }
 

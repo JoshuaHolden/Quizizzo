@@ -206,10 +206,6 @@ public sealed class PileUpMatch
             lastSimulationAt = lastSimulationAt.Add(options.SimulationStep);
             SimulateStep(lastSimulationAt);
         }
-        if (now >= RoundEndsAtUtc && !IsRoundComplete)
-        {
-            EndRoundByRanking();
-        }
     }
 
     public void SetConnection(Guid playerId, bool connected, DateTimeOffset atUtc)
@@ -496,19 +492,6 @@ public sealed class PileUpMatch
         }
         IsRoundComplete = true;
         RoundWinnerId = operational[0].Arena.PlayerId;
-        events.Add(new PileMatchEvent("RoundCompleted", RoundWinnerId));
-    }
-
-    private void EndRoundByRanking()
-    {
-        IsRoundComplete = true;
-        RoundWinnerId = runtimes.Values
-            .OrderBy(runtime => runtime.Arena.IsOverloaded)
-            .ThenBy(runtime => runtime.Arena.Grid.StackHeight())
-            .ThenByDescending(runtime => runtime.Arena.CircuitsCompleted)
-            .ThenByDescending(runtime => runtime.Arena.Views)
-            .ThenBy(runtime => runtime.Arena.PlayerId)
-            .First().Arena.PlayerId;
         events.Add(new PileMatchEvent("RoundCompleted", RoundWinnerId));
     }
 
