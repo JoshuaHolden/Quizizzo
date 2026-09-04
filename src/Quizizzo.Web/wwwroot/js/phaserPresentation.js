@@ -68,11 +68,13 @@ window.quizizzoPresentation = (() => {
             if (buffers.has(assetId)) return buffers.get(assetId);
             const context = ensureContext();
             if (!context) return null;
-            const response = await fetch(`/api/voicechoon/display-samples/${assetId}`, { credentials: "same-origin" });
-            if (!response.ok) return null;
-            const buffer = await context.decodeAudioData(await response.arrayBuffer());
-            buffers.set(assetId, buffer);
-            return buffer;
+            const pending = (async () => {
+                const response = await fetch(`/api/voicechoon/display-samples/${assetId}`, { credentials: "same-origin" });
+                if (!response.ok) return null;
+                return context.decodeAudioData(await response.arrayBuffer());
+            })().catch(() => null);
+            buffers.set(assetId, pending);
+            return pending;
         }
 
         function stop() {
@@ -90,7 +92,22 @@ window.quizizzoPresentation = (() => {
             const stride = Math.max(1, Math.floor(channel.length / 2000));
             for (let index = 0; index < channel.length; index += stride) sum += channel[index] * channel[index];
             const rms = Math.sqrt(sum / Math.ceil(channel.length / stride));
-            return Math.max(0.55, Math.min(2.2, 0.55 / Math.max(0.08, rms)));
+            return Math.max(0.55, Math.min(1.6, 0.55 / Math.max(0.08, rms)));
+        }
+
+        function snapToZeroCrossing(buffer, seconds) {
+            const channel = buffer.getChannelData(0);
+            const centre = Math.max(0, Math.min(channel.length - 2, Math.round(seconds * buffer.sampleRate)));
+            const window = Math.min(Math.round(buffer.sampleRate * 0.02), channel.length - 1);
+            for (let offset = 0; offset <= window; offset++) {
+                for (const index of [centre + offset, centre - offset]) {
+                    if (index >= 0 && index + 1 < channel.length &&
+                        channel[index] <= 0 && channel[index + 1] >= 0) {
+                        return index / buffer.sampleRate;
+                    }
+                }
+            }
+            return seconds;
         }
 
         async function play(note) {
@@ -105,11 +122,17 @@ window.quizizzoPresentation = (() => {
             source.playbackRate.value = Number(note.playbackRate || 1);
             source.loop = Boolean(note.loop) || String(note.type || "").toLowerCase() === "hold";
             if (source.loop) {
-                source.loopStart = Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration);
-                source.loopEnd = Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration);
+                const loopStart = snapToZeroCrossing(buffer,
+                    Math.min(Number(note.loopStartSeconds ?? 0), buffer.duration));
+                const loopEnd = snapToZeroCrossing(buffer,
+                    Math.min(Number(note.loopEndSeconds ?? buffer.duration), buffer.duration));
+                source.loopStart = loopStart;
+                source.loopEnd = loopEnd > loopStart + 0.01 ? loopEnd : buffer.duration;
             }
-            gain.gain.setValueAtTime(Math.min(1.4, sampleGain(buffer)), context.currentTime);
-            gain.gain.setValueAtTime(gain.gain.value, context.currentTime + Math.max(0, duration - 0.04));
+            const level = Math.min(1.2, sampleGain(buffer));
+            gain.gain.setValueAtTime(0, context.currentTime);
+            gain.gain.linearRampToValueAtTime(level, context.currentTime + 0.012);
+            gain.gain.setValueAtTime(level, context.currentTime + Math.max(0.012, duration - 0.04));
             gain.gain.linearRampToValueAtTime(0, context.currentTime + duration);
             source.connect(gain).connect(output);
             sources.add(source);

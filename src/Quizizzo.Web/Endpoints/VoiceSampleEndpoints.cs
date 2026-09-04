@@ -8,6 +8,7 @@ using Quizizzo.Domain.Voice;
 using Quizizzo.GameContracts;
 using Quizizzo.Games.VoiceChoon;
 using Quizizzo.Web.Realtime;
+using Quizizzo.Web.Voice;
 
 namespace Quizizzo.Web.Endpoints;
 
@@ -120,7 +121,13 @@ public static class VoiceSampleEndpoints
         var contentType = NormalizeContentType(file.ContentType);
         await using var memory = new MemoryStream((int)file.Length);
         await file.CopyToAsync(memory, cancellationToken);
-        var stored = await sampleStore.SaveAsync(new VoiceSampleUpload(memory.ToArray(), contentType), cancellationToken);
+        var bytes = memory.ToArray();
+        if (contentType is "audio/wav" or "audio/wave" or "audio/x-wav")
+        {
+            bytes = VoiceSampleProcessor.CleanPcmWave(bytes);
+            contentType = "audio/wav";
+        }
+        var stored = await sampleStore.SaveAsync(new VoiceSampleUpload(bytes, contentType), cancellationToken);
         try
         {
             var record = VoiceSampleMetadata.Create(
