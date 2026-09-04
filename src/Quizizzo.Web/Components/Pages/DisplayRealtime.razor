@@ -527,16 +527,21 @@
         hostParty?.Status == PartyStatus.Lobby &&
         (game.Key != VoiceChoonGameDefinition.GameKey || !voiceChoonSoloAutoplayTest || players.Count == 1) &&
         players.Count >= MinimumPlayersForCurrentSetup(game) &&
-        players.Count <= game.MaximumPlayers;
+        players.Count <= MaximumPlayersForCurrentSetup(game);
 
     private int MinimumPlayersForCurrentSetup(GameDescriptor game) =>
         game.Key == VoiceChoonGameDefinition.GameKey && !voiceChoonSoloAutoplayTest
             ? VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers
             : game.MinimumPlayers;
 
+    private int MaximumPlayersForCurrentSetup(GameDescriptor game) =>
+        game.Key == VoiceChoonGameDefinition.GameKey
+            ? VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MaximumPlayers
+            : game.MaximumPlayers;
+
     private string PlayerRangeLabel(GameDescriptor game) =>
         game.Key == VoiceChoonGameDefinition.GameKey
-            ? $"{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers}–8 players · 1-player test"
+            ? $"{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers}–{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MaximumPlayers} players · 1-player test"
             : $"{game.MinimumPlayers}–{game.MaximumPlayers} players";
 
     private bool PlaylistCanStart => hostParty is { Status: PartyStatus.Lobby, GameQueue.Count: > 0 } &&
@@ -550,7 +555,7 @@
             ? "Solo autoplay test requires exactly one joined player"
             : players.Count < MinimumPlayersForCurrentSetup(game)
         ? $"Needs {MinimumPlayersForCurrentSetup(game) - players.Count} more player{(MinimumPlayersForCurrentSetup(game) - players.Count == 1 ? string.Empty : "s")}"
-        : $"Supports up to {game.MaximumPlayers} players";
+        : $"Supports up to {MaximumPlayersForCurrentSetup(game)} players";
 
     private static string GameThemeClass(string gameKey) => $"game-theme-{gameKey}";
 

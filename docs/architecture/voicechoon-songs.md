@@ -46,3 +46,14 @@ dotnet build src/Quizizzo.Web/Quizizzo.Web.csproj -c Release --warnaserror
 ```
 
 For a new song, also start a one-player solo autoplay test, confirm the recording prompts describe the new sound palette, and verify that the selected song name survives refresh. Never send MIDI bytes through SignalR; the server parses and stores the logical chart, while clients receive reconstructable notes and deadlines.
+
+## Dynamic administrator library
+
+Confirmed host accounts explicitly listed in `Admin:Emails` (the `QUIZIZZO_ADMIN_EMAILS` Compose setting) can manage `/admin/voicechoon`. Uploads are limited to 1 MB, `.mid`/`.midi`, ticks-per-quarter-note timing, 100,000 notes, twenty minutes, and at least two playable tracks. The server parses the bytes before persistence and derives:
+
+- a stable collision-safe song key from the display name;
+- minimum players from track count and average note density;
+- maximum players from playable track count, capped at eight;
+- duration, note count, track count, and track names for validation and reporting.
+
+Uploaded bytes and analysis metadata live in PostgreSQL and are loaded into the in-process catalogue before the game module serves requests. Built-ins remain assembly-owned and cannot be replaced or removed. Removal is refused while any VoiceChoon game is active or a party playlist references the tune; completed snapshots already contain their generated chart and remain reconstructable.

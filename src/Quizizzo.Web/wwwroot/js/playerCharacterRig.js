@@ -104,7 +104,9 @@ window.quizizzoCharacterRig = (() => {
             timer = null;
             effects.splice(0).forEach(effect => effect.destroy());
             if (restore && animationOrigin) {
-                target.setPosition(animationOrigin.x, animationOrigin.y).setAngle(animationOrigin.angle);
+                target.setPosition(animationOrigin.x, animationOrigin.y)
+                    .setAngle(animationOrigin.angle)
+                    .setScale(animationOrigin.scaleX, animationOrigin.scaleY);
                 parts?.eyeLeft?.setScale(1);
                 parts?.eyeRight?.setScale(1);
                 parts?.mouth?.setTexture(`${atlasPrefix}face`, variants.mouth);
@@ -179,10 +181,13 @@ window.quizizzoCharacterRig = (() => {
             return variants;
         };
 
-        const play = (action, { resumeIdle = false, onComplete = null } = {}) => {
+        const play = (action, { resumeIdle = false, onComplete = null, beatMs = 480 } = {}) => {
             clearAnimation(true);
             if (!parts || !variants) return;
-            animationOrigin = { x: target.x, y: target.y, angle: target.angle };
+            animationOrigin = {
+                x: target.x, y: target.y, angle: target.angle,
+                scaleX: target.scaleX, scaleY: target.scaleY
+            };
             const origin = animationOrigin;
             const finish = () => {
                 clearAnimation(true);
@@ -290,6 +295,85 @@ window.quizizzoCharacterRig = (() => {
                     angle: { from: -1.2, to: 1.2 },
                     duration: 430, yoyo: true, repeat: -1, ease: "Sine.easeOut"
                 }));
+                return;
+            }
+            if (["bowLegged", "armFlap", "fistPump", "discoPoint", "rubberRobot"].includes(action)) {
+                const beat = Math.max(220, Math.min(760, Number(beatMs) || 480));
+                parts.mouth.setTexture(`${atlasPrefix}face`, "mouth_glad.png");
+                const sway = (angle, lift = 10) => rememberTween(scene.tweens.add({
+                    targets: target,
+                    angle: { from: -angle, to: angle },
+                    y: { from: origin.y, to: origin.y - lift },
+                    duration: beat / 2, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                }));
+                if (action === "bowLegged") {
+                    parts.armLeft?.setAngle(-38);
+                    parts.armRight?.setAngle(38);
+                    if (parts.armLeft && parts.armRight) {
+                        rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: -65,
+                            duration: beat / 2, yoyo: true, repeat: -1 }));
+                        rememberTween(scene.tweens.add({ targets: parts.armRight, angle: 65,
+                            duration: beat / 2, yoyo: true, repeat: -1 }));
+                    }
+                    rememberTween(scene.tweens.add({
+                        targets: target,
+                        scaleX: { from: origin.scaleX * .9, to: origin.scaleX * 1.08 },
+                        scaleY: { from: origin.scaleY * 1.06, to: origin.scaleY * .94 },
+                        duration: beat / 2, yoyo: true, repeat: -1
+                    }));
+                    sway(7, 5);
+                } else if (action === "armFlap") {
+                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -105, to: 45 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 105, to: -45 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Quad.easeInOut" }));
+                    sway(3, 16);
+                } else if (action === "fistPump") {
+                    parts.armLeft?.setAngle(18);
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: -25, to: -145 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Back.easeOut" }));
+                    sway(4, 22);
+                } else if (action === "discoPoint") {
+                    parts.armLeft?.setAngle(-115);
+                    parts.armRight?.setAngle(42);
+                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -125, to: -70 },
+                        duration: beat, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 65, to: 15 },
+                        duration: beat, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
+                    sway(10, 8);
+                } else {
+                    parts.armLeft?.setAngle(-78);
+                    parts.armRight?.setAngle(78);
+                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -78, to: 24 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 24, to: 78 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                    rememberTween(scene.tweens.add({ targets: target, x: { from: origin.x - 16, to: origin.x + 16 },
+                        duration: beat / 2, yoyo: true, repeat: -1, ease: "Stepped" }));
+                }
+                return;
+            }
+            if (action === "dazed") {
+                parts.mouth.setTexture(`${atlasPrefix}face`, "mouth_oh.png");
+                parts.eyeLeft.setScale(1, .35);
+                parts.eyeRight.setScale(1, .35);
+                parts.armLeft?.setAngle(-12);
+                parts.armRight?.setAngle(12);
+                const starGlyphs = ["★", "✦", "★"];
+                starGlyphs.forEach((glyph, index) => {
+                    const star = scene.add.text(-62 + index * 62, -42 - (index % 2) * 18, glyph, {
+                        color: index === 1 ? "#67e8f9" : "#fde047",
+                        fontFamily: "Arial", fontSize: "44px", fontStyle: "bold",
+                        stroke: "#3b0764", strokeThickness: 5
+                    }).setOrigin(.5);
+                    target.add(star);
+                    effects.push(star);
+                    rememberTween(scene.tweens.add({ targets: star, angle: 360, x: star.x + 22,
+                        duration: 520 + index * 90, repeat: -1, ease: "Linear" }));
+                });
+                rememberTween(scene.tweens.add({ targets: target, angle: { from: -5, to: 5 },
+                    duration: 120, yoyo: true, repeat: 7, ease: "Sine.easeInOut" }));
+                timer = scene.time.delayedCall(1000, finish);
                 return;
             }
             if (action === "fart") {

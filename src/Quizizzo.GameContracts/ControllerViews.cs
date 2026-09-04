@@ -83,7 +83,10 @@ public sealed record VoiceChoonDisplayPlayback(
     double PlaybackRate,
     bool Loop,
     double? LoopStartSeconds,
-    double? LoopEndSeconds);
+    double? LoopEndSeconds,
+    Guid? PlayerId = null,
+    Guid? JudgementNoteId = null,
+    double? JudgementTimeSeconds = null);
 
 public sealed record ArcadeControl(
     string Input,

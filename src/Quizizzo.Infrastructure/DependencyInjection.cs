@@ -36,6 +36,7 @@ public static class DependencyInjection
         services.AddScoped<IPlayerRepository, PlayerRepository>();
         services.AddScoped<IDrawingAssetMetadataRepository, DrawingAssetMetadataRepository>();
         services.AddScoped<IVoiceSampleMetadataRepository, VoiceSampleMetadataRepository>();
+        services.AddScoped<IVoiceChoonSongRepository, VoiceChoonSongRepository>();
         services.AddSingleton<IGameStateStore, PostgreSqlGameStateStore>();
         services.AddSingleton<IRoomCodeGenerator, CryptographicRoomCodeGenerator>();
         services.AddSingleton<IDisplayCredentialService, DisplayCredentialService>();

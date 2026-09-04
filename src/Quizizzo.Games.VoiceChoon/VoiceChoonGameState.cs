@@ -71,4 +71,12 @@ public sealed record VoiceChoonDisplayState(
     int MaximumBandCombo,
     int EnergyPercent,
     IReadOnlyList<VoiceChoonResult> Results,
-    IReadOnlyList<VoiceChoonDisplayPlayback>? Playback = null);
+    IReadOnlyList<VoiceChoonDisplayPlayback>? Playback = null,
+    IReadOnlyList<VoiceChoonDisplayPerformer>? Performers = null);
+
+public sealed record VoiceChoonDisplayPerformer(
+    Guid PlayerId,
+    IReadOnlyList<VoiceChoonDisplayNote> Notes,
+    IReadOnlyList<Guid> JudgedNoteIds);
+
+public sealed record VoiceChoonDisplayNote(Guid NoteId, double StartTimeSeconds);

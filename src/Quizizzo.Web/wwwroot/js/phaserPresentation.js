@@ -41,6 +41,8 @@ window.quizizzoPresentation = (() => {
         let schedulerTimer = null;
         let sources = new Set();
         let scheduledNoteIds = new Set();
+        let missedJudgementIds = new Set();
+        let soundedMissIds = new Set();
         let scheduleKey = null;
         const buffers = new Map();
 
@@ -93,6 +95,8 @@ window.quizizzoPresentation = (() => {
             });
             sources = new Set();
             scheduledNoteIds = new Set();
+            missedJudgementIds = new Set();
+            soundedMissIds = new Set();
             scheduleKey = null;
         }
 
@@ -120,7 +124,7 @@ window.quizizzoPresentation = (() => {
             return seconds;
         }
 
-        async function play(note, when, offset = 0) {
+        async function play(note, when, offset = 0, offKeyCents = 0) {
             if (muted) return;
             const context = ensureContext();
             const buffer = await load(note.sampleAssetId);
@@ -130,6 +134,7 @@ window.quizizzoPresentation = (() => {
             const duration = Math.max(0.05, Number(note.durationSeconds) - offset);
             source.buffer = buffer;
             source.playbackRate.value = Number(note.playbackRate || 1);
+            source.detune.value = Number(offKeyCents || 0);
             source.loop = Boolean(note.loop) || String(note.type || "").toLowerCase() === "hold";
             if (source.loop) {
                 // Derive the loop from the real decoded recording. Older snapshots used a
@@ -169,6 +174,31 @@ window.quizizzoPresentation = (() => {
             const tick = () => {
                 const songPosition = (Date.now() - Date.parse(startsAt)) / 1000;
                 const audioOrigin = context.currentTime - songPosition;
+                const liveState = snapshot?.gameState || {};
+                const performers = liveState.performers || liveState.Performers || [];
+                const judgedIds = new Set(performers.flatMap(performer =>
+                    performer.judgedNoteIds || performer.JudgedNoteIds || []).map(normalizedId));
+                const judgementNotes = performers.flatMap(performer =>
+                    performer.notes || performer.Notes || []);
+                judgementNotes.forEach(judgement => {
+                    const judgementId = normalizedId(judgement.noteId ?? judgement.NoteId);
+                    const judgementTime = Number(judgement.startTimeSeconds ?? judgement.StartTimeSeconds);
+                    if (!judgementId || judgedIds.has(judgementId) || missedJudgementIds.has(judgementId) ||
+                        judgementTime + .65 >= songPosition) return;
+                    missedJudgementIds.add(judgementId);
+                    const sourSource = notes.find(note => normalizedId(
+                        note.judgementNoteId ?? note.JudgementNoteId) === judgementId);
+                    if (!sourSource || soundedMissIds.has(judgementId)) return;
+                    soundedMissIds.add(judgementId);
+                    const sourDirection = Number.parseInt(judgementId.slice(-2), 16) % 2 ? 1 : -1;
+                    void play({
+                        sampleAssetId: sourSource.sampleAssetId ?? sourSource.SampleAssetId,
+                        playbackRate: sourSource.playbackRate ?? sourSource.PlaybackRate,
+                        durationSeconds: Math.min(.32, Number(
+                            sourSource.durationSeconds ?? sourSource.DurationSeconds ?? .25)),
+                        loop: false
+                    }, context.currentTime + .005, 0, sourDirection * 175);
+                });
                 notes.forEach(note => {
                     const id = String(note.id ?? note.Id);
                     if (scheduledNoteIds.has(id)) return;
@@ -181,6 +211,9 @@ window.quizizzoPresentation = (() => {
                     }
                     if (start > songPosition + 0.3) return;
                     scheduledNoteIds.add(id);
+                    const judgementId = normalizedId(note.judgementNoteId ?? note.JudgementNoteId);
+                    const offKey = missedJudgementIds.has(judgementId);
+                    const sourDirection = Number.parseInt(judgementId.slice(-2), 16) % 2 ? 1 : -1;
                     void play({
                         sampleAssetId: note.sampleAssetId ?? note.SampleAssetId,
                         playbackRate: note.playbackRate ?? note.PlaybackRate,
@@ -189,7 +222,8 @@ window.quizizzoPresentation = (() => {
                         loopStartSeconds: note.loopStartSeconds ?? note.LoopStartSeconds,
                         loopEndSeconds: note.loopEndSeconds ?? note.LoopEndSeconds,
                         type: note.type ?? note.Type
-                    }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start));
+                    }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start),
+                    offKey ? sourDirection * 175 : 0);
                 });
             };
             tick();
@@ -864,6 +898,8 @@ window.quizizzoPresentation = (() => {
                 if (!avatar) continue;
                 const portrait = avatar.mode === "portrait";
                 avatar.container.setVisible(true).setDepth(20);
+                avatar.character.setScale(portrait ? .4 : .31)
+                    .setPosition(0, portrait ? -54 : -160);
                 avatar.card.setVisible(portrait);
                 avatar.cardShadow.setVisible(portrait);
                 avatar.shadow.setVisible(!portrait);
@@ -901,86 +937,238 @@ window.quizizzoPresentation = (() => {
             const players = snapshot.players || [];
             const entries = snapshot.entries || [];
             const items = [];
+            const playing = snapshot.phase === "Playing";
+            const showingResults = snapshot.phase === "Results";
+            const rankedResults = [...(snapshot.results || [])].sort((a, b) => a.rank - b.rank);
+            const resultByPlayer = new Map(rankedResults.map(result => [normalizedId(result.playerId), result]));
+            const lastRank = Math.max(0, ...rankedResults.map(result => Number(result.rank || 0)));
+            if (this.voiceStreakGame !== snapshot.gameInstanceId) {
+                this.voiceStreakGame = snapshot.gameInstanceId;
+                this.voiceLastStreak = 0;
+            }
+            const dances = ["bowLegged", "armFlap", "fistPump", "discoPoint", "rubberRobot"];
+            const playback = field(state, "playback", []);
+            const attackTimes = playback.map(note => Number(field(note, "startTimeSeconds", 0)))
+                .filter(Number.isFinite).sort((a, b) => a - b);
+            const intervals = attackTimes.slice(1).map((time, index) => time - attackTimes[index])
+                .filter(value => value >= .22 && value <= .9).sort((a, b) => a - b);
+            const beatSeconds = intervals.length ? intervals[Math.floor(intervals.length / 2)] : .48;
+            const beatMs = Math.round(beatSeconds * 1000);
+            const psychedelic = this.add.graphics().setDepth(0);
+            const beams = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
+            const stageShade = this.add.graphics().setDepth(3);
+            stageShade.fillStyle(0x03030d, .18);
+            stageShade.fillRect(0, 0, width, height);
+            stageShade.fillStyle(0x090516, .55);
+            stageShade.fillRect(0, 655, width, 65);
+            items.push(psychedelic, beams, stageShade);
             items.push(
-                this.add.text(width / 2, 74, snapshot.phase === "Playing" ? "VOICECHOON LIVE" : "VOICECHOON", {
-                    color: "#ffffff", fontFamily: displayFont, fontSize: "44px", fontStyle: "bold",
-                    stroke: "#130828", strokeThickness: 9
-                }).setOrigin(.5),
-                this.add.text(width / 2, 120, snapshot.phaseMessage || snapshot.phase, {
-                    color: "#fff36e", fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
-                }).setOrigin(.5));
+                this.add.text(38, 28, playing ? "VOICECHOON · LIVE"
+                    : showingResults ? "VOICECHOON · FINAL SCORE" : "VOICECHOON", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold",
+                    stroke: "#130828", strokeThickness: 7, letterSpacing: 2
+                }),
+                this.add.text(1240, 33, snapshot.phaseMessage || snapshot.phase, {
+                    color: "#fff36e", fontFamily: displayFont, fontSize: "18px", fontStyle: "bold",
+                    stroke: "#130828", strokeThickness: 5
+                }).setOrigin(1, 0));
 
-            const stage = this.add.graphics();
-            stage.fillStyle(0x050719, .68);
-            stage.fillRoundedRect(45, 145, 1190, 485, 24);
-            stage.lineStyle(4, 0x4ce0ff, .38);
-            stage.strokeRoundedRect(45, 145, 1190, 485, 24);
-            stage.fillStyle(0xff4f86, .5);
-            stage.fillRect(70, 590, 1140, 9);
-            items.push(stage);
+            if (showingResults) {
+                psychedelic.fillStyle(0x17053b, 1).fillRect(0, 0, width, height);
+                psychedelic.lineStyle(24, 0xff2fa7, .18);
+                for (let ring = 0; ring < 8; ring++) psychedelic.strokeCircle(width / 2, 430, 90 + ring * 105);
+                const winner = rankedResults.length
+                    ? players.find(player => normalizedId(player.playerId) === normalizedId(rankedResults[0].playerId))
+                    : null;
+                const total = Number(field(state, "bandScore", 0));
+                items.push(
+                    this.add.text(width / 2, 75, `${total.toLocaleString()} TOTAL BAND POINTS`, {
+                        color: "#fff36e", fontFamily: displayFont, fontSize: "42px", fontStyle: "bold",
+                        stroke: "#3b0764", strokeThickness: 9
+                    }).setOrigin(.5).setDepth(60),
+                    this.add.text(width / 2, 125,
+                        winner ? `${winner.displayName.toUpperCase()} TOP SCORED!` : "WHAT A PERFORMANCE!", {
+                            color: "#ffffff", fontFamily: displayFont, fontSize: "25px", fontStyle: "bold",
+                            stroke: "#3b0764", strokeThickness: 6
+                        }).setOrigin(.5).setDepth(60));
+                const podium = this.add.graphics().setDepth(25);
+                items.push(podium);
+                const podiumSteps = [
+                    { x: 640, y: 560, w: 270, h: 132, colour: 0xfacc15, rank: 1 },
+                    { x: 350, y: 598, w: 235, h: 94, colour: 0x94a3b8, rank: 2 },
+                    { x: 930, y: 620, w: 235, h: 72, colour: 0xd97706, rank: 3 }
+                ];
+                podiumSteps.slice(0, Math.min(3, rankedResults.length)).forEach(step => {
+                    podium.fillStyle(0x130925, .94).fillRoundedRect(
+                        step.x - step.w / 2, step.y, step.w, step.h, 18);
+                    podium.lineStyle(5, step.colour, .95).strokeRoundedRect(
+                        step.x - step.w / 2, step.y, step.w, step.h, 18);
+                    items.push(this.add.text(step.x, step.y + 34, `#${step.rank}`, {
+                        color: `#${step.colour.toString(16).padStart(6, "0")}`,
+                        fontFamily: displayFont, fontSize: "31px", fontStyle: "bold"
+                    }).setOrigin(.5).setDepth(55));
+                });
+            }
 
             players.forEach((player, index) => {
                 const avatar = this.avatars.get(player.playerId);
                 if (!avatar) return;
                 this.tweens.killTweensOf(avatar.container);
+                const result = resultByPlayer.get(normalizedId(player.playerId));
+                const rank = Number(result?.rank || 0);
                 const columns = Math.min(4, players.length);
                 const rows = Math.ceil(players.length / columns);
                 const row = Math.floor(index / columns);
                 const rowCount = Math.min(columns, players.length - row * columns);
                 const column = index % columns;
-                const x = width / 2 + (column - (rowCount - 1) / 2) * Math.min(245, 940 / rowCount);
-                const y = rows === 1 ? 520 : 350 + row * 245;
-                avatar.container.setVisible(true).setDepth(48).setPosition(x, y).setScale(rows === 1 ? .72 : .5);
+                const spacing = Math.min(300, 1140 / Math.max(1, rowCount));
+                const podiumPosition = rank === 1 ? { x: 640, y: 555, scale: .76 }
+                    : rank === 2 ? { x: 350, y: 595, scale: .62 }
+                        : rank === 3 ? { x: 930, y: 617, scale: .58 } : null;
+                const remainingIndex = Math.max(0, rank - 4);
+                const remainingCount = Math.max(1, players.length - 3);
+                const x = showingResults ? podiumPosition?.x
+                    ?? width / 2 + (remainingIndex - (remainingCount - 1) / 2) * Math.min(190, 900 / remainingCount)
+                    : width / 2 + (column - (rowCount - 1) / 2) * spacing;
+                const y = showingResults ? podiumPosition?.y ?? 670 : rows === 1 ? 575 : 335 + row * 295;
+                const scale = showingResults ? podiumPosition?.scale ?? .38
+                    : rows === 1 ? .94 : players.length <= 6 ? .67 : .58;
+                avatar.container.setVisible(true).setDepth(48 + row).setPosition(x, y).setScale(scale);
+                avatar.character
+                    .setScale(showingResults ? (rank === 1 ? .62 : .54) : rows === 1 ? .72 : .56)
+                    .setPosition(0, showingResults ? (rank <= 3 ? -330 : -295) : rows === 1 ? -365 : -325);
                 avatar.card.setVisible(false);
                 avatar.cardShadow.setVisible(false);
                 avatar.shadow.setVisible(true);
                 avatar.presence.setVisible(player.status === "Disconnected");
-                avatar.name.setVisible(true).setY(42);
-                avatar.score.setVisible(snapshot.phase === "Playing" || snapshot.phase === "Results").setY(74);
+                avatar.name.setVisible(true).setY(38);
+                avatar.score.setVisible(false).setY(70);
                 avatar.wins.setVisible(false);
                 avatar.activity.setVisible(false);
                 avatar.remove.setVisible(false);
                 if (this.controller.reducedMotion) avatar.rig?.stop();
-                else avatar.rig?.play(snapshot.phase === "Results" && snapshot.results?.[index]?.rank === 1
-                    ? "celebrate" : "idle");
-                items.push(this.add.text(x, y - (rows === 1 ? 190 : 130), entries[index]?.value || "Band member", {
-                    color: laneColoursForVoice(index), backgroundColor: "#171936",
-                    padding: { x: 11, y: 6 }, fontFamily: displayFont, fontSize: rows === 1 ? "19px" : "15px",
-                    fontStyle: "bold", align: "center",
-                    wordWrap: { width: rows === 1 ? 240 : 180 }
-                }).setOrigin(.5));
+                else avatar.rig?.play(playing ? dances[index % dances.length]
+                    : showingResults && rank === 1 ? "celebrate"
+                        : showingResults && rank === lastRank && lastRank > 1 ? "cry"
+                            : showingResults ? dances[index % dances.length] : "idle", { beatMs });
+                const roleLabel = players.length === 1 ? "ONE-HUMAN ORCHESTRA"
+                    : entries[index]?.value || "Band member";
+                const resultLabel = showingResults
+                    ? `#${rank} · ${Number(result?.pointsAwarded || 0).toLocaleString()} PTS`
+                    : roleLabel;
+                items.push(this.add.text(x, showingResults ? y - (rank <= 3 ? 250 : 150)
+                    : rows === 1 ? 116 : y - 205, resultLabel, {
+                        color: laneColoursForVoice(index), backgroundColor: "#160a31cc",
+                        padding: { x: 12, y: 6 }, fontFamily: displayFont,
+                        fontSize: rows === 1 ? "19px" : "14px", fontStyle: "bold", align: "center",
+                        wordWrap: { width: rows === 1 ? 255 : 205 }
+                    }).setOrigin(.5).setDepth(54));
             });
 
-            if (snapshot.phase === "Playing") {
-                const sectionText = this.add.text(95, 175, "INTRO", {
-                    color: "#ffffff", fontFamily: displayFont, fontSize: "30px", fontStyle: "bold"
+            if (playing) {
+                const sectionText = this.add.text(35, 674, "INTRO", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "22px", fontStyle: "bold"
+                }).setDepth(60);
+                const comboText = this.add.text(1245, 674, "", {
+                    color: "#fff36e", fontFamily: displayFont, fontSize: "21px", fontStyle: "bold"
+                }).setOrigin(1, 0).setDepth(60);
+                const progress = this.add.rectangle(205, 689, 0, 8, 0x67e8f9, 1).setOrigin(0, .5).setDepth(60);
+                const performerData = field(state, "performers", []);
+                const judged = new Set(performerData.flatMap(item => field(item, "judgedNoteIds", []))
+                    .map(normalizedId));
+                const missedByPlayer = new Map();
+                const started = Date.parse(field(state, "songStartsAtUtc", new Date().toISOString()));
+                const initialElapsed = Math.max(0, (Date.now() - started) / 1000);
+                performerData.forEach(performer => {
+                    const playerId = normalizedId(field(performer, "playerId", ""));
+                    const missed = new Set(field(performer, "notes", [])
+                        .filter(note => Number(field(note, "startTimeSeconds", 0)) + .65 < initialElapsed
+                            && !judged.has(normalizedId(field(note, "noteId", ""))))
+                        .map(note => normalizedId(field(note, "noteId", ""))));
+                    missedByPlayer.set(playerId, missed);
                 });
-                const comboText = this.add.text(1185, 175, "", {
-                    color: "#fff36e", fontFamily: displayFont, fontSize: "25px", fontStyle: "bold"
-                }).setOrigin(1, 0);
-                const progress = this.add.rectangle(100, 615, 0, 12, 0x4ce0ff, 1).setOrigin(0, .5);
-                const energy = this.add.rectangle(280, 137, 0, 10, 0xff4f86, 1).setOrigin(0, .5);
                 items.push(
                     sectionText,
                     comboText,
-                    this.add.rectangle(640, 615, 1080, 12, 0xffffff, .16),
-                    progress,
-                    this.add.rectangle(640, 137, 720, 10, 0xffffff, .15),
-                    energy);
+                    this.add.rectangle(720, 689, 1030, 8, 0xffffff, .18).setDepth(59),
+                    progress);
+                const showStreak = streak => {
+                    if (streak < 10 || streak === this.voiceLastStreak || streak % 10 !== 0) return;
+                    this.voiceLastStreak = streak;
+                    const phrases = ["UNREAL!", "HUMAN JUKEBOX!", "FACE-MELTING!", "ABSURD STREAK!", "VOICE LEGENDS!"];
+                    const banner = this.add.text(width / 2, height / 2 - 30,
+                        `${phrases[(streak / 10 - 1) % phrases.length]}  ${streak} HITS`, {
+                            color: "#ffffff", fontFamily: displayFont, fontSize: "58px", fontStyle: "bold",
+                            stroke: "#ec4899", strokeThickness: 14, align: "center"
+                        }).setOrigin(.5).setDepth(90).setAngle(-4).setScale(.2);
+                    this.tweens.add({ targets: banner, scale: 1, angle: 2, duration: 260,
+                        ease: "Back.easeOut", yoyo: true, hold: 850,
+                        onComplete: () => banner.destroy() });
+                };
                 const update = () => {
-                    const started = Date.parse(field(state, "songStartsAtUtc", new Date().toISOString()));
                     const duration = Number(field(state, "songDurationSeconds", 1));
                     const elapsed = Math.max(0, (Date.now() - started) / 1000);
-                    progress.width = 1080 * Math.max(0, Math.min(1, elapsed / duration));
-                    energy.width = 720 * Math.max(0, Math.min(1, Number(field(state, "energyPercent", 0)) / 100));
-                    comboText.setText(`${Number(field(state, "bandCombo", 0))}× COMBO`);
+                    progress.width = 1030 * Math.max(0, Math.min(1, elapsed / duration));
+                    const beatIndex = Math.floor(elapsed / beatSeconds);
+                    const beatPhase = (elapsed % beatSeconds) / beatSeconds;
+                    const pulse = 1 - Math.min(1, beatPhase * 2.4);
+                    const palettes = [[0x17053b, 0xff2fa7, 0x28e7ff], [0x061b49, 0x8b5cf6, 0xfde047],
+                        [0x28104e, 0x22d3ee, 0xfb7185], [0x071f1d, 0xa3e635, 0xf472b6]];
+                    const palette = palettes[Math.floor(beatIndex / 8) % palettes.length];
+                    psychedelic.clear().fillStyle(palette[0], 1).fillRect(0, 0, width, height);
+                    for (let ring = 0; ring < 9; ring++) {
+                        psychedelic.lineStyle(18 + pulse * 10, palette[1 + ring % 2], .18 + pulse * .13);
+                        psychedelic.strokeCircle(width / 2, height / 2,
+                            ((ring * 105 + elapsed * 95) % 900) + 35);
+                    }
+                    psychedelic.fillStyle(palette[2], .11 + pulse * .12);
+                    for (let slice = 0; slice < 12; slice++) {
+                        const angle = elapsed * .16 + slice * Math.PI / 6;
+                        psychedelic.fillTriangle(width / 2, height / 2,
+                            width / 2 + Math.cos(angle - .18) * 920, height / 2 + Math.sin(angle - .18) * 920,
+                            width / 2 + Math.cos(angle + .18) * 920, height / 2 + Math.sin(angle + .18) * 920);
+                    }
+                    beams.clear();
+                    [0, 1, 2, 3].forEach(index => {
+                        const anchor = 100 + index * 360;
+                        const sweep = Math.sin(elapsed * (.62 + index * .08) + index) * 430;
+                        beams.fillStyle(index % 2 ? palette[1] : palette[2], .1 + pulse * .07);
+                        beams.fillTriangle(anchor, -20, anchor - 42, -20, width / 2 + sweep, 710);
+                    });
                     const sections = field(state, "sections", []);
                     const current = [...sections].reverse().find(item =>
                         Number(field(item, "startTimeSeconds", 0)) <= elapsed);
                     sectionText.setText(field(current, "name", "INTRO"));
+                    const completed = performerData.flatMap(performer => field(performer, "notes", []))
+                        .filter(note => Number(field(note, "startTimeSeconds", 0)) + .65 < elapsed)
+                        .sort((a, b) => Number(field(a, "startTimeSeconds", 0)) - Number(field(b, "startTimeSeconds", 0)));
+                    let streak = 0;
+                    for (let index = completed.length - 1; index >= 0; index--) {
+                        if (!judged.has(normalizedId(field(completed[index], "noteId", "")))) break;
+                        streak++;
+                    }
+                    comboText.setText(streak ? `${streak}× HIT STREAK` : "KEEP THE BEAT");
+                    showStreak(streak);
+                    performerData.forEach(performer => {
+                        const playerId = normalizedId(field(performer, "playerId", ""));
+                        const missed = missedByPlayer.get(playerId) || new Set();
+                        const newlyMissed = field(performer, "notes", []).find(note => {
+                            const id = normalizedId(field(note, "noteId", ""));
+                            return Number(field(note, "startTimeSeconds", 0)) + .65 < elapsed
+                                && !judged.has(id) && !missed.has(id);
+                        });
+                        if (!newlyMissed) return;
+                        missed.add(normalizedId(field(newlyMissed, "noteId", "")));
+                        const playerIndex = players.findIndex(player => normalizedId(player.playerId) === playerId);
+                        const avatar = playerIndex < 0 ? null : this.avatars.get(players[playerIndex].playerId);
+                        if (!avatar || this.controller.reducedMotion) return;
+                        avatar.rig?.play("dazed", {
+                            onComplete: () => avatar.rig?.play(dances[playerIndex % dances.length], { beatMs })
+                        });
+                    });
                 };
                 update();
-                this.voiceTimer = this.time.addEvent({ delay: 100, loop: true, callback: update });
+                this.voiceTimer = this.time.addEvent({ delay: 50, loop: true, callback: update });
             } else if (snapshot.phase === "Results") {
                 items.push(this.add.text(width / 2, 135,
                     `${Number(field(state, "bandScore", 0)).toLocaleString()} BAND POINTS`, {

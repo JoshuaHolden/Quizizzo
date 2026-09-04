@@ -9,6 +9,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${QUIZIZZO_ASPNETCORE_ENVIRONMENT:-Production}
       AllowedHosts: ${QUIZIZZO_ALLOWED_HOSTS:-localhost}
+      Admin__Emails: ${QUIZIZZO_ADMIN_EMAILS:-mogawowo@gmail.com,joshua@mvc.tech}
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=quizizzo;Username=quizizzo;Password=${QUIZIZZO_POSTGRES_PASSWORD:?Set QUIZIZZO_POSTGRES_PASSWORD in .env};Maximum Pool Size=32;Connection Idle Lifetime=60"
       ConnectionStrings__Redis: "redis:6379,password=${QUIZIZZO_REDIS_PASSWORD:?Set QUIZIZZO_REDIS_PASSWORD in .env},abortConnect=false"
       DrawingAssets__RootPath: /app/assets/drawings

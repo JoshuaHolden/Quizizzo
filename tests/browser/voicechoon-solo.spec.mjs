@@ -68,7 +68,7 @@ async function registerHost(page) {
     await page.getByRole("button", { name: "Log in", exact: true }).click();
 }
 
-test("injected WAV sounds play Greensleeves in solo autoplay without refresh bursts", async ({ browser }) => {
+test("injected WAV sounds play Greensleeves in solo autoplay without refresh bursts", async ({ browser }, testInfo) => {
     test.setTimeout(240000);
     const hostContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     const playerContext = await browser.newContext({ viewport: { width: 667, height: 375 }, hasTouch: true });
@@ -89,6 +89,8 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     await registerHost(host);
     await host.goto("/host");
     await expect(host).toHaveURL(/\/display$/);
+    // Let the interactive server circuit replace the prerendered display controls.
+    await host.waitForTimeout(1000);
     await host.getByRole("button", { name: "Host controls" }).click();
     const roomLabel = await host.getByText(/^Room [A-HJ-KM-NP-Z2-9]{4}$/).innerText();
     const roomCode = roomLabel.match(/[A-HJ-KM-NP-Z2-9]{4}/)?.[0];
@@ -110,6 +112,7 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     await host.getByRole("button", { name: "Continue now" }).click();
 
     await expect(player.locator(".voice-recording-card").first()).toBeVisible({ timeout: 20000 });
+    await host.getByRole("button", { name: "Close host controls" }).click();
     const cards = player.locator(".voice-recording-card");
     const count = await cards.count();
     expect(count).toBeGreaterThan(0);
@@ -127,6 +130,7 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     await expect(player.getByText("AUTO-PERFORMING")).toBeVisible({ timeout: 20000 });
 
     await player.waitForTimeout(8000);
+    await host.screenshot({ path: testInfo.outputPath("voicechoon-music-video-stage.png"), fullPage: true });
     const beforeRefresh = await host.evaluate(() => globalThis.__voiceStarts.length);
     expect(beforeRefresh).toBeGreaterThan(0);
     await host.reload();

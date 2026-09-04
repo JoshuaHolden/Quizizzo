@@ -743,6 +743,27 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Split two-player Greensleeves into melody/chords and bass/percussion parts without dropping source tracks or required recording prompts.
 - [x] Pass all 29 client tests and all 38 focused VoiceChoon tests.
 
+### Dynamic VoiceChoon song administration (completed 2026-09-04)
+
+- [x] Add an allow-listed administrator policy and authenticated VoiceChoon song-library panel without exposing it to ordinary hosts.
+- [x] Accept bounded `.mid` and `.midi` uploads, parse them server-side, reject malformed or unsuitable songs, and derive a safe unique tune key automatically.
+- [x] Analyse playable MIDI tracks, note density, duration, and complexity to infer a supported two-to-eight-player range automatically.
+- [x] Persist uploaded MIDI bytes and metadata in PostgreSQL, restore them into the runtime catalogue after restart, and expose them immediately to host tune selection.
+- [x] Let administrators remove uploaded tunes while protecting built-ins and songs referenced by active games or queued playlists.
+- [x] Keep Greensleeves constrained to its complete two-to-four-player arrangement.
+- [x] Add analyser/catalog tests and an opt-in Edge journey covering upload, inferred range, reload, host discovery, and removal.
+
+### VoiceChoon main-display music-video stage (completed 2026-09-04)
+
+- [x] Make large full-body player rigs dominate the shared display throughout the live performance.
+- [x] Add five beat-paced absurd dance variations: bow-legged bounce, arm flap, fist pump, disco point, and rubber robot.
+- [x] Send reconstructable per-player note and judgement cues to the display and show an animated one-second dazed pose with orbiting stars after a missed beat.
+- [x] Replace the static stage with music-timed psychedelic palette changes, expanding pulse rings, rotating colour wedges, and additive sweeping spotlights.
+- [x] Derive current hit streaks from elapsed and judged notes and flash bounded milestone callouts without trusting the display for scoring.
+- [x] Turn the song-complete Results phase into a ranked podium interstitial with total band score, named top scorer, cheering winner, crying last place, and dancing remaining players.
+- [x] Map audible MIDI notes back to their owning player target and add a main-display-only sour semitone sting plus continued detuning when that target is missed.
+- [x] Preserve a static, readable presentation under reduced-motion preferences and add automated presentation contracts.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

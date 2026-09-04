@@ -10,7 +10,7 @@ public static class VoiceChoonSongCatalog
     public const string DefaultSongName = "quizizzo_coop_showdown.mid";
     private const string WubquakeSongName = "quizizzo_wubquake.mid";
 
-    private static readonly IReadOnlyList<VoiceChoonSongDefinition> Definitions =
+    private static readonly IReadOnlyList<VoiceChoonSongDefinition> BuiltInDefinitions =
     [
         new(
             DefaultSongKey,
@@ -35,10 +35,22 @@ public static class VoiceChoonSongCatalog
             "gs.mid",
             "Turn Greensleeves into a tiny live mouth-noise ensemble.",
             "This song only uses melody, chords, bass, and light percussion. Record a clear bright lead, a steady held vowel for chords, a low rounded bass sound, and short light rhythmic clicks.",
-            "Quizizzo.Games.VoiceChoon.Assets.gs.mid")
+            "Quizizzo.Games.VoiceChoon.Assets.gs.mid",
+            MaximumPlayers: 4)
     ];
+    private static readonly object Sync = new();
+    private static readonly Dictionary<string, (VoiceChoonSongDefinition Definition, byte[] Data)> Uploaded =
+        new(StringComparer.OrdinalIgnoreCase);
 
-    public static IReadOnlyList<VoiceChoonSongDefinition> Available => Definitions;
+    public static IReadOnlyList<VoiceChoonSongDefinition> Available
+    {
+        get
+        {
+            lock (Sync)
+                return BuiltInDefinitions.Concat(Uploaded.Values.Select(item => item.Definition))
+                    .OrderBy(song => song.DisplayName, StringComparer.OrdinalIgnoreCase).ToArray();
+        }
+    }
 
     public static RawMidiSong LoadDefaultSong()
         => Load(DefaultSongKey);
@@ -46,18 +58,43 @@ public static class VoiceChoonSongCatalog
     public static RawMidiSong Load(string songKey)
     {
         var definition = GetDefinition(songKey);
+        lock (Sync)
+        {
+            if (Uploaded.TryGetValue(definition.Key, out var uploaded))
+            {
+                using var uploadedStream = new MemoryStream(uploaded.Data, writable: false);
+                return MidiParser.Parse(uploadedStream, definition.FileName);
+            }
+        }
         using var stream = typeof(VoiceChoonSongCatalog).Assembly
-            .GetManifestResourceStream(definition.ResourceName)
+            .GetManifestResourceStream(definition.ResourceName!)
             ?? throw new InvalidOperationException($"Embedded MIDI resource '{definition.ResourceName}' was not found.");
         return MidiParser.Parse(stream, definition.FileName);
     }
 
     public static VoiceChoonSongDefinition GetDefinition(string songKey) =>
-        Definitions.FirstOrDefault(item => string.Equals(item.Key, songKey, StringComparison.OrdinalIgnoreCase))
-        ?? Definitions[0];
+        Available.FirstOrDefault(item => string.Equals(item.Key, songKey, StringComparison.OrdinalIgnoreCase))
+        ?? BuiltInDefinitions[0];
 
     public static bool IsKnownKey(string songKey) =>
-        Definitions.Any(item => string.Equals(item.Key, songKey, StringComparison.OrdinalIgnoreCase));
+        Available.Any(item => string.Equals(item.Key, songKey, StringComparison.OrdinalIgnoreCase));
+
+    public static bool IsBuiltIn(string songKey) => BuiltInDefinitions.Any(item =>
+        string.Equals(item.Key, songKey, StringComparison.OrdinalIgnoreCase));
+
+    public static void RegisterUploaded(VoiceChoonSongDefinition definition, ReadOnlySpan<byte> midiData)
+    {
+        ArgumentNullException.ThrowIfNull(definition);
+        if (IsBuiltIn(definition.Key)) throw new InvalidOperationException("A built-in song key cannot be replaced.");
+        using var stream = new MemoryStream(midiData.ToArray(), writable: false);
+        _ = MidiParser.Parse(stream, definition.FileName);
+        lock (Sync) Uploaded[definition.Key] = (definition, midiData.ToArray());
+    }
+
+    public static bool RemoveUploaded(string songKey)
+    {
+        lock (Sync) return Uploaded.Remove(songKey);
+    }
 
     public static RawMidiSong Load(Stream stream, string sourceName) =>
         MidiParser.Parse(stream, sourceName);
@@ -70,4 +107,6 @@ public sealed record VoiceChoonSongDefinition(
     string FileName,
     string BriefingMessage,
     string RecordingMessage,
-    string ResourceName);
+    string? ResourceName = null,
+    Guid? UploadedSongId = null,
+    int MaximumPlayers = 8);

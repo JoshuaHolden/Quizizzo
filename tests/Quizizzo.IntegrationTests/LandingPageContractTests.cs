@@ -698,6 +698,40 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void VoiceChoon_display_is_a_beat_driven_character_music_video()
+    {
+        var presentation = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var rig = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/playerCharacterRig.js");
+        var state = ReadRepositoryFile(
+            "src/Quizizzo.Games.VoiceChoon/VoiceChoonGameState.cs");
+
+        Assert.Contains("bowLegged", presentation, StringComparison.Ordinal);
+        Assert.Contains("armFlap", presentation, StringComparison.Ordinal);
+        Assert.Contains("fistPump", presentation, StringComparison.Ordinal);
+        Assert.Contains("discoPoint", presentation, StringComparison.Ordinal);
+        Assert.Contains("rubberRobot", presentation, StringComparison.Ordinal);
+        Assert.Contains("action === \"dazed\"", rig, StringComparison.Ordinal);
+        Assert.Contains("★", rig, StringComparison.Ordinal);
+        Assert.Contains("strokeCircle", presentation, StringComparison.Ordinal);
+        Assert.Contains("fillTriangle", presentation, StringComparison.Ordinal);
+        Assert.Contains("HIT STREAK", presentation, StringComparison.Ordinal);
+        Assert.Contains("beatSeconds", presentation, StringComparison.Ordinal);
+        Assert.Contains("TOTAL BAND POINTS", presentation, StringComparison.Ordinal);
+        Assert.Contains("TOP SCORED!", presentation, StringComparison.Ordinal);
+        Assert.Contains("showingResults && rank === 1 ? \"celebrate\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("rank === lastRank && lastRank > 1 ? \"cry\"", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("missedJudgementIds", presentation, StringComparison.Ordinal);
+        Assert.Contains("sourDirection * 175", presentation, StringComparison.Ordinal);
+        Assert.Contains("source.detune.value", presentation, StringComparison.Ordinal);
+        Assert.Contains("VoiceChoonDisplayPerformer", state, StringComparison.Ordinal);
+        Assert.Contains("JudgedNoteIds", state, StringComparison.Ordinal);
+    }
+
     private static string ReadRepositoryFile(string relativePath)
         => File.ReadAllText(RepositoryPath(relativePath));
 

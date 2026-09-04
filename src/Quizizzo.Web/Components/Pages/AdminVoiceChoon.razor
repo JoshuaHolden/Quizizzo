@@ -1,0 +1,146 @@
+@page "/admin/voicechoon"
+@rendermode InteractiveServer
+@attribute [Authorize(Policy = "Admin")]
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using Quizizzo.Application.Abstractions
+@using Quizizzo.Domain.Parties
+@using Quizizzo.Domain.Voice
+@using Quizizzo.Games.VoiceChoon
+@using Quizizzo.Infrastructure.Identity
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthenticationState
+@inject TimeProvider TimeProvider
+
+<PageTitle>VoiceChoon song library</PageTitle>
+
+<main class="admin-song-page">
+    <header>
+        <p class="eyebrow">Administration</p>
+        <h1>VoiceChoon song library</h1>
+        <p>Upload a Standard MIDI file. Quizizzo analyses its playable tracks, density and duration, then chooses a safe player range automatically.</p>
+    </header>
+
+    <section class="admin-song-upload" aria-labelledby="upload-song-title">
+        <h2 id="upload-song-title">Add a tune</h2>
+        <label for="song-name">Song name</label>
+        <input id="song-name" maxlength="80" @bind="displayName" />
+        <label for="midi-file">MIDI file</label>
+        <InputFile id="midi-file" OnChange="SelectFile" accept=".mid,.midi,audio/midi,audio/x-midi" />
+        <button type="button" class="btn btn-primary" disabled="@(selectedFile is null || busy)" @onclick="UploadAsync">
+            @(busy ? "Analysing…" : "Analyse and add tune")
+        </button>
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <p role="status" class="admin-song-message">@message</p>
+        }
+    </section>
+
+    <section aria-labelledby="song-library-title">
+        <h2 id="song-library-title">Available tunes</h2>
+        <div class="admin-song-list">
+            @foreach (var song in songs)
+            {
+                <article class="admin-song-card">
+                    <div>
+                        <strong>@song.DisplayName</strong>
+                        <span>@song.MinimumPlayers–@song.MaximumPlayers players</span>
+                    </div>
+                    <p>@song.FileName</p>
+                    @if (song.UploadedSongId is { } id)
+                    {
+                        <button type="button" class="btn btn-outline-danger" disabled="@busy"
+                                @onclick="() => RemoveAsync(id, song.Key)">Remove</button>
+                    }
+                    else
+                    {
+                        <span class="admin-song-built-in">Built in</span>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+</main>
+
+@code {
+    private IReadOnlyList<VoiceChoonSongDefinition> songs = [];
+    private IBrowserFile? selectedFile;
+    private string displayName = string.Empty;
+    private string? message;
+    private bool busy;
+
+    protected override void OnInitialized() => Refresh();
+
+    private void SelectFile(InputFileChangeEventArgs args)
+    {
+        selectedFile = args.FileCount == 1 ? args.File : null;
+        if (selectedFile is not null && string.IsNullOrWhiteSpace(displayName))
+            displayName = Path.GetFileNameWithoutExtension(selectedFile.Name).Replace('_', ' ');
+        message = null;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (selectedFile is null || string.IsNullOrWhiteSpace(displayName))
+        { message = "Choose a MIDI file and enter its song name."; return; }
+        busy = true;
+        try
+        {
+            await using var input = selectedFile.OpenReadStream(VoiceChoonSongAnalyzer.MaximumMidiBytes);
+            using var memory = new MemoryStream();
+            await input.CopyToAsync(memory);
+            var bytes = memory.ToArray();
+            var analysis = VoiceChoonSongAnalyzer.Analyze(bytes, selectedFile.Name, displayName);
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IVoiceChoonSongRepository>();
+            var key = analysis.SuggestedKey;
+            for (var suffix = 2; VoiceChoonSongCatalog.IsKnownKey(key) || await repository.KeyExistsAsync(key); suffix++)
+                key = $"{analysis.SuggestedKey}-{suffix}";
+            var user = (await AuthenticationState.GetAuthenticationStateAsync()).User;
+            var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value
+                ?? throw new InvalidOperationException("The administrator identity is unavailable.");
+            var record = VoiceChoonSong.Create(key, displayName.Trim(), Path.GetFileName(selectedFile.Name), bytes,
+                analysis.MinimumPlayers, analysis.MaximumPlayers, analysis.DurationSeconds, analysis.TrackCount,
+                TimeProvider.GetUtcNow(), userId);
+            await repository.AddAsync(record);
+            VoiceChoonSongCatalog.RegisterUploaded(ToDefinition(record), bytes);
+            message = $"Added {record.DisplayName}: {analysis.TrackCount} tracks, {analysis.NoteCount:N0} notes, " +
+                      $"{TimeSpan.FromSeconds(analysis.DurationSeconds):m\\:ss}, {analysis.MinimumPlayers}–{analysis.MaximumPlayers} players.";
+            selectedFile = null;
+            displayName = string.Empty;
+            Refresh();
+        }
+        catch (Exception exception) when (exception is InvalidDataException or InvalidOperationException or ArgumentException)
+        { message = exception.Message; }
+        finally { busy = false; }
+    }
+
+    private async Task RemoveAsync(Guid id, string key)
+    {
+        busy = true;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IVoiceChoonSongRepository>();
+            if (await repository.IsReferencedAsync(key))
+            { message = "Finish performances of this tune and remove it from party playlists first."; return; }
+            var record = await repository.GetAsync(id);
+            if (record is null) { message = "That uploaded tune no longer exists."; return; }
+            await repository.DeleteAsync(record);
+            VoiceChoonSongCatalog.RemoveUploaded(key);
+            message = $"Removed {record.DisplayName}. Existing completed game snapshots remain intact.";
+            Refresh();
+        }
+        finally { busy = false; }
+    }
+
+    private static VoiceChoonSongDefinition ToDefinition(VoiceChoonSong song) => new(
+        song.Key, song.DisplayName, song.MinimumPlayers, song.FileName,
+        $"Turn {song.DisplayName} into a ridiculous mouth-noise performance.",
+        "Record clear short hits and steady vowels suited to your assigned tracks.",
+        UploadedSongId: song.Id, MaximumPlayers: song.MaximumPlayers);
+
+    private void Refresh() => songs = VoiceChoonSongCatalog.Available;
+}

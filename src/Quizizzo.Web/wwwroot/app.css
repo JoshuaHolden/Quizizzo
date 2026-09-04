@@ -97,6 +97,71 @@
     opacity: 0.48;
 }
 
+.admin-song-page {
+    width: min(960px, 100%);
+    margin-inline: auto;
+    padding: clamp(1rem, 4vw, 3rem);
+}
+
+.admin-song-upload,
+.admin-song-card {
+    padding: 1rem;
+    border: 1px solid rgba(76, 224, 255, 0.28);
+    border-radius: 14px;
+    background: rgba(10, 15, 43, 0.76);
+}
+
+.admin-song-upload {
+    display: grid;
+    gap: 0.65rem;
+    margin-block: 1.5rem;
+}
+
+.admin-song-upload input {
+    min-height: 44px;
+}
+
+.admin-song-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.admin-song-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.35rem 1rem;
+}
+
+.admin-song-card div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.admin-song-card p {
+    margin: 0;
+    color: #a9bfd0;
+}
+
+.admin-song-card button,
+.admin-song-built-in {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+}
+
+.admin-song-message {
+    margin: 0;
+    color: #7cf2a5;
+}
+
+@media (max-width: 520px) {
+    .admin-song-card { grid-template-columns: 1fr; }
+    .admin-song-card button,
+    .admin-song-built-in { grid-column: 1; grid-row: auto; }
+}
+
 .rhythm-controller {
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;

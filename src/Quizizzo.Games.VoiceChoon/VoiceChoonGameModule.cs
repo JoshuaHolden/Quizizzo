@@ -44,7 +44,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         var validPlayerCount = configuration.SoloAutoplayTest
             ? context.Participants.Count == 1
             : context.Participants.Count >= songDefinition.MinimumPlayers &&
-              context.Participants.Count <= VoiceChoonGameDefinition.MaximumPlayers;
+              context.Participants.Count <= songDefinition.MaximumPlayers;
         if (!validPlayerCount)
         {
             throw new GameRuleViolationException(
@@ -520,8 +520,13 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             current.Phase == PlayingPhase
                 ? game.Charts.SelectMany(chart => chart.PlaybackNotes.Select(note =>
                 {
-                    var playback = PlaybackNote(note, chart, game.SampleAssetIdsByPlayer[game.Participants
-                        .Single(player => player.PlayerIndex == chart.PlayerIndex).PlayerId]);
+                    var participant = game.Participants.Single(player => player.PlayerIndex == chart.PlayerIndex);
+                    var playback = PlaybackNote(note, chart, game.SampleAssetIdsByPlayer[participant.PlayerId]);
+                    var judgementNote = chart.Notes.FirstOrDefault(candidate =>
+                        candidate.Id == note.Id ||
+                        (candidate.Lane == note.Lane &&
+                         note.StartTimeSeconds >= candidate.StartTimeSeconds &&
+                         note.StartTimeSeconds <= candidate.StartTimeSeconds + candidate.DurationSeconds + 0.01));
                     return new VoiceChoonDisplayPlayback(
                         playback.Id,
                         playback.StartTimeSeconds,
@@ -530,8 +535,21 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                         playback.PlaybackRate,
                         playback.Loop,
                         playback.LoopStartSeconds,
-                        playback.LoopEndSeconds);
+                        playback.LoopEndSeconds,
+                        participant.PlayerId,
+                        judgementNote?.Id,
+                        judgementNote?.StartTimeSeconds);
                 })).Where(note => note.SampleAssetId != Guid.Empty).ToArray()
+                : null,
+            current.Phase == PlayingPhase
+                ? game.Participants.Select(participant =>
+                {
+                    var chart = game.Charts.Single(item => item.PlayerIndex == participant.PlayerIndex);
+                    return new VoiceChoonDisplayPerformer(
+                        participant.PlayerId,
+                        chart.Notes.Select(note => new VoiceChoonDisplayNote(note.Id, note.StartTimeSeconds)).ToArray(),
+                        game.JudgementsByPlayer[participant.PlayerId].Select(item => item.NoteId).ToArray());
+                }).ToArray()
                 : null)));
 
     private static PlayerGameViewPayload PlayerView(

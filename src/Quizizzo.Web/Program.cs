@@ -31,6 +31,7 @@ using Quizizzo.Web.Presentation;
 using Quizizzo.Web.Realtime;
 using Quizizzo.Web.Games;
 using Quizizzo.Web.Security;
+using Quizizzo.Domain.Voice;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,6 +55,12 @@ if (!string.IsNullOrWhiteSpace(redisConnectionString))
 }
 
 builder.Services.AddCascadingAuthenticationState();
+var adminEmails = (builder.Configuration["Admin:Emails"] ?? string.Empty)
+    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+builder.Services.AddAuthorizationBuilder().AddPolicy("Admin", policy => policy
+    .RequireAuthenticatedUser()
+    .RequireAssertion(context => context.User.Identity?.Name is { } name && adminEmails.Contains(name)));
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
@@ -175,6 +182,7 @@ builder.Services.AddOptions<RealtimePresenceOptions>()
     .ValidateOnStart();
 builder.Services.AddSingleton<PartyConnectionRegistry>();
 builder.Services.AddSingleton<PlayerReactionLimiter>();
+builder.Services.AddHostedService<VoiceChoonSongCatalogLoader>();
 builder.Services.AddSingleton<IPartyRealtimeNotifier, SignalRPartyRealtimeNotifier>();
 builder.Services.AddRateLimiter(options =>
 {

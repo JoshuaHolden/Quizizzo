@@ -256,4 +256,57 @@ public sealed class VoiceChoonPipelineTests
         Assert.All(InstrumentSoundGuide.For(VoiceChoonTrackRole.Chords), prompt =>
             Assert.Equal(RecordingStyle.Sustained, prompt.Style));
     }
+
+    [Fact]
+    public void Uploaded_song_analysis_derives_a_bounded_player_range_and_safe_key()
+    {
+        using var stream = typeof(VoiceChoonSongCatalog).Assembly.GetManifestResourceStream(
+            "Quizizzo.Games.VoiceChoon.Assets.gs.mid")!;
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+
+        var analysis = VoiceChoonSongAnalyzer.Analyze(memory.ToArray(), "my tune.mid", "My Lovely Tune!");
+
+        Assert.Equal("my-lovely-tune", analysis.SuggestedKey);
+        Assert.Equal(4, analysis.TrackCount);
+        Assert.Equal(2, analysis.MinimumPlayers);
+        Assert.Equal(4, analysis.MaximumPlayers);
+        Assert.InRange(analysis.NoteCount, 1, VoiceChoonSongAnalyzer.MaximumNotes);
+    }
+
+    [Fact]
+    public void Uploaded_catalog_entries_can_be_added_loaded_and_removed_without_replacing_built_ins()
+    {
+        using var stream = typeof(VoiceChoonSongCatalog).Assembly.GetManifestResourceStream(
+            "Quizizzo.Games.VoiceChoon.Assets.gs.mid")!;
+        using var memory = new MemoryStream();
+        stream.CopyTo(memory);
+        const string key = "test-uploaded-greensleeves";
+        var definition = new VoiceChoonSongDefinition(key, "Test upload", 2, "test.mid",
+            "Briefing", "Recording", UploadedSongId: Guid.NewGuid(), MaximumPlayers: 4);
+        try
+        {
+            VoiceChoonSongCatalog.RegisterUploaded(definition, memory.ToArray());
+            Assert.True(VoiceChoonSongCatalog.IsKnownKey(key));
+            Assert.Equal("test.mid", VoiceChoonSongCatalog.Load(key).SourceName);
+            Assert.False(VoiceChoonSongCatalog.IsBuiltIn(key));
+            var builtInCollision = definition with { Key = VoiceChoonSongCatalog.DefaultSongKey };
+            Assert.Throws<InvalidOperationException>(() => VoiceChoonSongCatalog.RegisterUploaded(
+                builtInCollision, memory.ToArray()));
+        }
+        finally
+        {
+            Assert.True(VoiceChoonSongCatalog.RemoveUploaded(key));
+        }
+        Assert.False(VoiceChoonSongCatalog.IsKnownKey(key));
+    }
+
+    [Fact]
+    public void Uploaded_song_analysis_rejects_malformed_and_misleading_files()
+    {
+        Assert.Throws<InvalidDataException>(() =>
+            VoiceChoonSongAnalyzer.Analyze("not midi data"u8.ToArray(), "fake.mid", "Fake"));
+        Assert.Throws<InvalidDataException>(() =>
+            VoiceChoonSongAnalyzer.Analyze(new byte[32], "fake.txt", "Fake"));
+    }
 }

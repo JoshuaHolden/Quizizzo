@@ -68,6 +68,8 @@ The local commands above start the isolated `quizizzo` Compose project, web appl
 
 Set `QUIZIZZO_ALLOWED_HOSTS` to the exact public Quizizzo hostname in production. The container runs as the built-in non-root `app` user, and `.dockerignore` excludes local secrets, tooling state, generated data, tests, and dependency folders from the image context.
 
+Set `QUIZIZZO_ADMIN_EMAILS` to a comma-separated allow-list of confirmed host-account email addresses. Those accounts receive `/admin/voicechoon`, where bounded Standard MIDI files can be analysed, added to the persistent tune library, or safely removed. Built-in tunes cannot be removed, and uploaded tunes referenced by active games or playlists are protected.
+
 For a VPS already hosting another website, follow [the coexistence deployment guide](docs/deployment/hetzner-coexistence.md). Quizizzo commands must remain scoped to its Compose project and must never prune or stop unrelated containers.
 
 ## Architecture
