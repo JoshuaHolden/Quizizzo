@@ -788,6 +788,15 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Preserve keyboard focus, reduced motion, forced colours, safe areas, touch targets, progressive reveals, and the existing no-download/no-player-account promises.
 - [x] Pass desktop and 320 px scrolling browser journeys with no horizontal overflow, 29 client tests, all 363 .NET tests, and a zero-warning Release build.
 
+### VoiceChoon first-use microphone permission guidance (completed 2026-09-05)
+
+- [x] Request microphone access only from the player's explicit Record action through `getUserMedia`.
+- [x] Query the microphone permission state and skip explanatory UI when access is already granted.
+- [x] Show a focused pre-permission sheet for prompt/unknown states explaining why VoiceChoon needs audio and what browser control to accept.
+- [x] Give denied, unavailable, and insecure-context states actionable recovery messages without repeatedly triggering permission UI.
+- [x] Retain the browser-owned permission prompt and recording indicator without attempting to imitate or bypass them.
+- [x] Pass 30 client tests, all 364 .NET tests, a zero-warning Release build, and a full Edge WAV/Greensleeves journey proving one-time guidance and subsequent direct recording.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
