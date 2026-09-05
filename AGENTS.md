@@ -829,6 +829,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Render Mandelbrot frames on a deliberately small canvas at six frames per second and scale smoothly for TV output without burdening the display CPU.
 - [x] Keep the chosen fractal, landmark, direction, speed, colour phase, and zoom timing stable across refresh and replay for each game instance.
 
+### VoiceChoon seamless mobile microphone permission (completed 2026-09-05)
+
+- [x] Make the first Record tap invoke the browser-owned microphone prompt directly, removing the misleading app-owned confirmation step.
+- [x] Classify blocked, missing, busy, insecure, and unsupported microphone failures into useful player-facing recovery states.
+- [x] Give Brave on iPhone concise native Settings directions, a same-code Safari fallback, and an immediate retry action.
+- [x] Recheck permission automatically when a player returns from iPhone Settings without attempting to bypass browser consent.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

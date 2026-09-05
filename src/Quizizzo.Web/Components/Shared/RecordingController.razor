@@ -3,30 +3,6 @@
 @inject IJSRuntime JavaScript
 
 <section class="voice-recording-controller" aria-label="VoiceChoon sound recorder">
-    @if (pendingPermissionPromptKey is not null)
-    {
-        <div class="microphone-permission-backdrop" role="presentation">
-            <section class="microphone-permission-dialog" role="dialog" aria-modal="true"
-                     aria-labelledby="microphone-permission-title" aria-describedby="microphone-permission-description">
-                <span class="microphone-permission-icon" aria-hidden="true">🎤</span>
-                <p>One quick thing</p>
-                <h2 id="microphone-permission-title">VoiceChoon needs your microphone</h2>
-                <p id="microphone-permission-description">
-                    We only listen while you are recording a sound. Tap <strong>Allow microphone</strong>,
-                    then choose <strong>Allow</strong> in your browser's permission message.
-                </p>
-                <div class="microphone-permission-actions">
-                    <button type="button" class="microphone-permission-allow" @onclick="AllowMicrophoneAsync">
-                        Allow microphone
-                    </button>
-                    <button type="button" class="microphone-permission-cancel" @onclick="CancelMicrophonePermission">
-                        Not now
-                    </button>
-                </div>
-                <small>Your recording is used only to build this VoiceChoon performance.</small>
-            </section>
-        </div>
-    }
     <header class="voice-recording-header">
         <div>
             <span>Build your instrument</span>
@@ -86,6 +62,33 @@
     {
         <p class="controller-notice" role="alert">@error</p>
     }
+    @if (microphoneBlocked)
+    {
+        <aside class="microphone-recovery" aria-labelledby="microphone-recovery-title">
+            <span aria-hidden="true">🎤</span>
+            <div>
+                <strong id="microphone-recovery-title">Microphone is blocked</strong>
+                @if (microphoneEnvironment == "brave-ios")
+                {
+                    <p>On your iPhone, open <b>Settings → Privacy &amp; Security → Microphone</b>
+                        and switch <b>Brave</b> on. Then come back here.</p>
+                    <small>If Brave still blocks it, open Quizizzo in Safari and join with the same code.</small>
+                }
+                else if (microphoneEnvironment == "ios")
+                {
+                    <p>Open <b>Settings → Privacy &amp; Security → Microphone</b> and switch your browser on.
+                        Then come back here.</p>
+                }
+                else
+                {
+                    <p>Allow microphone access for quizizzo.com in your browser's site settings, then try again.</p>
+                }
+                <button type="button" class="microphone-retry" @onclick="RetryMicrophoneAsync">
+                    Check again
+                </button>
+            </div>
+        </aside>
+    }
     <button type="button"
             class="voice-lock-button"
             disabled="@(Disabled || AcceptedCount != Configuration.Prompts.Count || confirming)"
@@ -108,8 +111,9 @@
     private string? recordingKey;
     private string? error;
     private bool confirming;
-    private string? pendingPermissionPromptKey;
-    private bool microphonePermissionExplained;
+    private string microphoneEnvironment = "other";
+    private string? retryPromptKey;
+    private bool microphoneBlocked;
     private int AcceptedCount => Configuration.Prompts.Count(prompt => StateFor(prompt).AssetId is not null);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -123,6 +127,7 @@
             states[prompt.Key] = new RecordingUiState(prompt.AssetId is not null, prompt.AssetId, "idle");
         }
         module = await JavaScript.InvokeAsync<IJSObjectReference>("import", "./js/voiceRecorder.js");
+        microphoneEnvironment = await module.InvokeAsync<string>("microphoneEnvironment");
         dotNetReference = DotNetObjectReference.Create(this);
         controller = await module.InvokeAsync<IJSObjectReference>(
             "createVoiceRecorder",
@@ -154,37 +159,34 @@
             return;
         }
         error = null;
+        microphoneBlocked = false;
+        retryPromptKey = promptKey;
+        await StartRecordingAsync(promptKey);
+    }
+
+    private async Task RetryMicrophoneAsync()
+    {
         var permission = await module!.InvokeAsync<string>("microphonePermissionState");
-        if (permission == "denied")
-        {
-            error = "Microphone access is blocked. Allow Microphone for Quizizzo in your browser settings, then try again.";
-            return;
-        }
         if (permission == "unavailable")
         {
             error = "Microphone recording needs a modern browser and a secure HTTPS connection.";
             return;
         }
-        if (permission != "granted" && !microphonePermissionExplained)
-        {
-            pendingPermissionPromptKey = promptKey;
-            return;
-        }
-        await StartRecordingAsync(promptKey);
+        microphoneBlocked = false;
+        error = null;
+        if (retryPromptKey is not null) await StartRecordingAsync(retryPromptKey);
     }
 
-    private async Task AllowMicrophoneAsync()
+    [JSInvokable]
+    public async Task MicrophonePermissionRechecked(string permission)
     {
-        var promptKey = pendingPermissionPromptKey;
-        pendingPermissionPromptKey = null;
-        microphonePermissionExplained = true;
-        if (promptKey is not null)
+        if (permission == "granted" && microphoneBlocked)
         {
-            await StartRecordingAsync(promptKey);
+            microphoneBlocked = false;
+            error = "Microphone enabled — tap Record to make your sound.";
+            await InvokeAsync(StateHasChanged);
         }
     }
-
-    private void CancelMicrophonePermission() => pendingPermissionPromptKey = null;
 
     private async Task StartRecordingAsync(string promptKey)
     {
@@ -201,7 +203,10 @@
         catch (JSException exception)
         {
             recordingKey = null;
-            error = exception.Message;
+            microphoneBlocked = exception.Message.Contains("MICROPHONE_BLOCKED", StringComparison.Ordinal);
+            error = microphoneBlocked
+                ? "Your browser did not allow microphone access."
+                : exception.Message.Replace("MICROPHONE_UNAVAILABLE|", string.Empty, StringComparison.Ordinal);
         }
     }
 

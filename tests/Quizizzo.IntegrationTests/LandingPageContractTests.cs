@@ -829,19 +829,24 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
-    public void VoiceChoon_explains_microphone_access_only_before_a_new_permission_prompt()
+    public void VoiceChoon_requests_real_microphone_permission_directly_and_guides_blocked_players()
     {
         var controller = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Shared/RecordingController.razor");
         var recorder = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/js/voiceRecorder.js");
 
-        Assert.Contains("microphonePermissionState", controller, StringComparison.Ordinal);
-        Assert.Contains("permission != \"granted\"", controller, StringComparison.Ordinal);
-        Assert.Contains("VoiceChoon needs your microphone", controller, StringComparison.Ordinal);
-        Assert.Contains("We only listen while you are recording", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("pendingPermissionPromptKey", controller, StringComparison.Ordinal);
+        Assert.Contains("await StartRecordingAsync(promptKey)", controller, StringComparison.Ordinal);
+        Assert.Contains("Microphone is blocked", controller, StringComparison.Ordinal);
+        Assert.Contains("Settings → Privacy &amp; Security → Microphone", controller,
+            StringComparison.Ordinal);
+        Assert.Contains("MicrophonePermissionRechecked", controller, StringComparison.Ordinal);
+        Assert.Contains("microphoneEnvironment", controller, StringComparison.Ordinal);
         Assert.Contains("navigator.permissions.query({ name: \"microphone\" })", recorder,
             StringComparison.Ordinal);
         Assert.Contains("navigator.mediaDevices.getUserMedia", recorder, StringComparison.Ordinal);
+        Assert.Contains("globalThis.addEventListener(\"focus\", recheckPermission)", recorder,
+            StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

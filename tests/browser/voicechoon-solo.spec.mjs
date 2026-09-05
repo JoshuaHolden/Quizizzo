@@ -126,11 +126,6 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     for (let index = 0; index < count; index += 1) {
         const current = cards.nth(index);
         await current.getByRole("button", { name: /^Record / }).click();
-        if (index === 0) {
-            await expect(player.getByRole("dialog", { name: "VoiceChoon needs your microphone" }))
-                .toBeVisible();
-            await player.getByRole("button", { name: "Allow microphone" }).click();
-        }
         await current.getByRole("button", { name: /Stop/ }).click();
         await expect(current.getByRole("button", { name: "Use sound" })).toBeVisible();
         await current.getByRole("button", { name: "Use sound" }).click();

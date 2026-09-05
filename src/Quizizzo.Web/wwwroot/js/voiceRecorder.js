@@ -114,6 +114,7 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
     const samples = new Map();
     const urls = new Map();
     const commandIds = new Map();
+    let hasRequestedMicrophone = false;
 
     async function notify(key, hasRecording, status) {
         await dotNet.invokeMethodAsync("RecordingChanged", key, hasRecording, status);
@@ -121,21 +122,26 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
 
     async function ensureStream() {
         if (!globalThis.isSecureContext) {
-            throw new Error("Microphone recording requires HTTPS on iPhone. Open Quizizzo using its secure HTTPS address.");
+            throw new Error("MICROPHONE_UNAVAILABLE|Microphone recording requires HTTPS. Open Quizizzo using its secure address.");
         }
         if (!navigator.mediaDevices?.getUserMedia || !globalThis.MediaRecorder) {
-            throw new Error("This browser cannot record microphone audio.");
+            throw new Error("MICROPHONE_UNAVAILABLE|This browser cannot record microphone audio.");
         }
         if (!stream || stream.getTracks().every(track => track.readyState === "ended")) {
             try {
+                hasRequestedMicrophone = true;
                 stream = await navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
                     video: false
                 });
             } catch (error) {
                 if (error?.name === "NotAllowedError" || error?.name === "PermissionDeniedError") {
-                    throw new Error("Microphone access was blocked. Allow Microphone for Quizizzo in iPhone Settings, then reload this page.");
+                    throw new Error("MICROPHONE_BLOCKED");
                 }
+                if (error?.name === "NotFoundError" || error?.name === "DevicesNotFoundError")
+                    throw new Error("MICROPHONE_UNAVAILABLE|No microphone was found on this device.");
+                if (error?.name === "NotReadableError" || error?.name === "AbortError")
+                    throw new Error("MICROPHONE_UNAVAILABLE|Your microphone is busy in another app. Close it and try again.");
                 throw error;
             }
         }
@@ -225,9 +231,27 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
         for (const track of stream?.getTracks() ?? []) track.stop();
         samples.clear();
         urls.clear();
+        globalThis.removeEventListener("focus", recheckPermission);
+        document.removeEventListener("visibilitychange", recheckPermission);
     }
 
+    async function recheckPermission() {
+        if (!hasRequestedMicrophone || document.visibilityState === "hidden") return;
+        await dotNet.invokeMethodAsync("MicrophonePermissionRechecked", await microphonePermissionState());
+    }
+
+    globalThis.addEventListener("focus", recheckPermission);
+    document.addEventListener("visibilitychange", recheckPermission);
+
     return { start, stop, play, upload, dispose };
+}
+
+export function microphoneEnvironment() {
+    const agent = navigator.userAgent || "";
+    const ios = /iPad|iPhone|iPod/.test(agent)
+        || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    if (!ios) return "other";
+    return /Brave/i.test(agent) || Boolean(navigator.brave) ? "brave-ios" : "ios";
 }
 
 export async function microphonePermissionState() {
