@@ -17,6 +17,11 @@ export function nearestLaneNote(notes, lane, position, maximumDistance = 0.25) {
             Math.abs(Number(right.startTimeSeconds) - position))[0] ?? null;
 }
 
+export function newlyMissedNotes(notes, playedNoteIds, missedNoteIds, position, goodWindowSeconds) {
+    return notes.filter(note => !playedNoteIds.has(note.id) && !missedNoteIds.has(note.id) &&
+        Number(note.startTimeSeconds) + goodWindowSeconds < position);
+}
+
 export function createRhythmController(element, connectionKey, actionKind, initialState) {
     const abort = new AbortController();
     const canvas = element.querySelector("[data-rhythm-canvas]");
@@ -25,6 +30,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     const pressedPointers = new Map();
     const pressedKeys = new Set();
     const playedNotes = new Set();
+    const missedNotes = new Set();
     let animationFrame = 0;
     let configuration = initialState.configuration;
     let disabled = Boolean(initialState.disabled);
@@ -32,6 +38,22 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     const tapPulseTimers = new Map();
     const holdReleaseTimers = new Map();
     const laneHitEffects = new Map();
+    const missFlashTimers = new Map();
+
+    function showMiss(lane) {
+        const button = element.querySelector(`[data-rhythm-lane="${lane}"]`);
+        if (!button) return;
+        feedback.textContent = "MISS";
+        feedback.style.color = "#ff334f";
+        button.classList.remove("miss-flash");
+        void button.offsetWidth;
+        button.classList.add("miss-flash");
+        window.clearTimeout(missFlashTimers.get(lane));
+        missFlashTimers.set(lane, window.setTimeout(() => {
+            button.classList.remove("miss-flash");
+            missFlashTimers.delete(lane);
+        }, 520));
+    }
 
     function judgeLabel(errorSeconds) {
         const error = Math.abs(errorSeconds);
@@ -144,6 +166,12 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             context.stroke();
         }
         const now = performance.now();
+        const goodWindow = Number(configuration.goodWindowSeconds ?? 0.2);
+        for (const note of newlyMissedNotes(configuration.notes, playedNotes, missedNotes, position, goodWindow)) {
+            missedNotes.add(note.id);
+            // Do not replay a wall of warnings after reconnecting midway through a song.
+            if (position - Number(note.startTimeSeconds) <= 0.75) showMiss(Number(note.lane));
+        }
         context.fillStyle = "rgba(255,255,255,.2)";
         context.fillRect(0, hitY - 8, width, 21);
         context.fillStyle = "#ffffff";
@@ -261,6 +289,8 @@ export function createRhythmController(element, connectionKey, actionKind, initi
             tapPulseTimers.clear();
             holdReleaseTimers.forEach(timer => window.clearTimeout(timer));
             holdReleaseTimers.clear();
+            missFlashTimers.forEach(timer => window.clearTimeout(timer));
+            missFlashTimers.clear();
             laneHitEffects.clear();
             cancelAnimationFrame(animationFrame);
         }

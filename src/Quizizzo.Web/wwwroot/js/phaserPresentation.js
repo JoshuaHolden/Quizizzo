@@ -152,7 +152,8 @@ window.quizizzoPresentation = (() => {
             return seconds;
         }
 
-        async function play(note, when, offset = 0, offKeyCents = 0, generation = playbackGeneration) {
+        async function play(note, when, offset = 0, offKeyCents = 0,
+            generation = playbackGeneration, disruptiveMiss = false) {
             if (muted) return;
             const context = ensureContext();
             const buffer = await load(note.sampleAssetId);
@@ -174,8 +175,14 @@ window.quizizzoPresentation = (() => {
             }
             const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
             const expression = Math.max(.28, Math.sqrt(velocity / 127));
-            const level = Math.min(0.42, sampleGain(buffer) * 0.35 * expression);
+            const level = Math.min(disruptiveMiss ? 0.68 : 0.42,
+                sampleGain(buffer) * 0.35 * expression * (disruptiveMiss ? 1.7 : 1));
             const startAt = Math.max(context.currentTime + 0.005, when);
+            if (disruptiveMiss) {
+                source.detune.setValueAtTime(offKeyCents, startAt);
+                source.detune.linearRampToValueAtTime(
+                    offKeyCents > 0 ? 70 : -70, startAt + duration);
+            }
             gain.gain.setValueAtTime(0, startAt);
             gain.gain.linearRampToValueAtTime(level, startAt + 0.015);
             gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));
@@ -215,7 +222,7 @@ window.quizizzoPresentation = (() => {
                     const judgementId = normalizedId(judgement.noteId ?? judgement.NoteId);
                     const judgementTime = Number(judgement.startTimeSeconds ?? judgement.StartTimeSeconds);
                     if (!judgementId || judgedIds.has(judgementId) || missedJudgementIds.has(judgementId) ||
-                        judgementTime + .65 >= songPosition) return;
+                        judgementTime + .38 >= songPosition) return;
                     missedJudgementIds.add(judgementId);
                     const sourSource = notes.find(note => normalizedId(
                         note.judgementNoteId ?? note.JudgementNoteId) === judgementId);
@@ -225,10 +232,10 @@ window.quizizzoPresentation = (() => {
                     void play({
                         sampleAssetId: sourSource.sampleAssetId ?? sourSource.SampleAssetId,
                         playbackRate: sourSource.playbackRate ?? sourSource.PlaybackRate,
-                        durationSeconds: Math.min(.32, Number(
-                            sourSource.durationSeconds ?? sourSource.DurationSeconds ?? .25)),
+                        durationSeconds: Math.max(.48, Math.min(.68, Number(
+                            sourSource.durationSeconds ?? sourSource.DurationSeconds ?? .55))),
                         loop: false
-                    }, context.currentTime + .005, 0, sourDirection * 175, generation);
+                    }, context.currentTime + .005, 0, sourDirection * 425, generation, true);
                 });
                 notes.forEach(note => {
                     const id = String(note.id ?? note.Id);

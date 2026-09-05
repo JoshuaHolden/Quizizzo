@@ -23,7 +23,7 @@ test("microphone permission state distinguishes a saved grant from a fresh promp
         else delete globalThis.isSecureContext;
     }
 });
-import { nearestLaneNote, songPositionSeconds, visibleNotes } from
+import { nearestLaneNote, newlyMissedNotes, songPositionSeconds, visibleNotes } from
     "../../src/Quizizzo.Web/wwwroot/js/rhythmController.js";
 
 test("recording processing trims silence, normalizes peaks and emits PCM wave", () => {
@@ -37,6 +37,19 @@ test("recording processing trims silence, normalizes peaks and emits PCM wave", 
     const wave = encodeWave([processed], 1000);
     assert.equal(wave.type, "audio/wav");
     assert.equal(wave.size, 44 + processed.length * 2);
+});
+
+test("rhythm helpers report each newly missed note once", () => {
+    const notes = [
+        { id: "missed", lane: 1, startTimeSeconds: 1 },
+        { id: "played", lane: 2, startTimeSeconds: 1.1 },
+        { id: "future", lane: 3, startTimeSeconds: 2 }
+    ];
+    const played = new Set(["played"]);
+    const missed = new Set();
+    assert.deepEqual(newlyMissedNotes(notes, played, missed, 1.5, 0.2).map(note => note.id), ["missed"]);
+    missed.add("missed");
+    assert.deepEqual(newlyMissedNotes(notes, played, missed, 1.5, 0.2), []);
 });
 test("rhythm helpers derive song time and choose only the nearest matching lane", () => {
     const notes = [
