@@ -758,6 +758,12 @@ public sealed class LandingPageContractTests
         Assert.Contains("action === \"dazed\"", rig, StringComparison.Ordinal);
         Assert.Contains("const motion = beat * 1.25", rig, StringComparison.Ordinal);
         Assert.Contains("const footPivotY = 523", rig, StringComparison.Ordinal);
+        Assert.Contains("Math.max(18, headOffsetY)", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.sleeveLeft", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.sleeveRight", rig, StringComparison.Ordinal);
+        Assert.Contains("targets: parts.shoeLeft", rig, StringComparison.Ordinal);
+        Assert.DoesNotContain("to: 128", rig, StringComparison.Ordinal);
+        Assert.DoesNotContain("to: -125", rig, StringComparison.Ordinal);
         Assert.Contains("Phaser.Math.DegToRad(pose.angle)", rig, StringComparison.Ordinal);
         Assert.Contains("1 - Math.cos(radians)", rig, StringComparison.Ordinal);
         Assert.DoesNotContain("scaleX: { from: origin.scaleX * .9", rig,

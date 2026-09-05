@@ -123,6 +123,12 @@ window.quizizzoCharacterRig = (() => {
                 parts?.armRight?.setY(218);
                 parts?.handLeft?.setAngle(0);
                 parts?.handRight?.setAngle(0);
+                parts?.handLeft?.setPosition(-108 + handInset, 83 - handInset * .45);
+                parts?.handRight?.setPosition(108 - handInset, 83 - handInset * .45);
+                parts?.sleeveLeft?.setScale(1);
+                parts?.sleeveRight?.setScale(1);
+                parts?.shoeLeft?.setAngle(0);
+                parts?.shoeRight?.setAngle(0);
             }
             animationOrigin = null;
         };
@@ -158,21 +164,23 @@ window.quizizzoCharacterRig = (() => {
                     group.add([sleeve, hand]);
                     target.add(group);
                     bodyParts.push(group);
-                    return { group, hand };
+                    return { group, sleeve, hand };
                 };
                 body(0, 168, "skin", `tint${variants.skin}_neck.png`, .5, 0).setScale(.42, 1);
                 const leftArm = arm(-58, true);
                 const rightArm = arm(58, false);
                 parts.armLeft = leftArm.group;
                 parts.armRight = rightArm.group;
+                parts.sleeveLeft = leftArm.sleeve;
+                parts.sleeveRight = rightArm.sleeve;
                 parts.handLeft = leftArm.hand;
                 parts.handRight = rightArm.hand;
                 body(-95.5, 341, "skin", `tint${variants.skin}_leg.png`, 0, 0).setFlipX(true);
                 body(95.5, 341, "skin", `tint${variants.skin}_leg.png`, 1, 0);
                 body(-95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 0, 0).setFlipX(true);
                 body(95.5, 341, "pants", `${variants.pants}_${variants.trouserLength}.png`, 1, 0);
-                body(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
-                body(66, 505, "shoes", variants.shoe).setScale(.86);
+                parts.shoeLeft = body(-66, 505, "shoes", variants.shoe).setFlipX(true).setScale(.86);
+                parts.shoeRight = body(66, 505, "shoes", variants.shoe).setScale(.86);
                 body(0, 200, "shirts", `${variants.shirt}Shirt${variants.shirtStyle}.png`, .5, 0);
                 body(0, 341, "pants", `${variants.pants}${variants.trouserStyle}.png`, .5, 0);
                 bodyParts.forEach(part => {
@@ -180,15 +188,18 @@ window.quizizzoCharacterRig = (() => {
                     part.scaleX *= variants.bodyWidth;
                 });
             }
-            parts.head = add(0, headOffsetY, "skin", `tint${variants.skin}_head.png`, .5, 0)
+            // Full-body atlas heads need a little overlap with the neck. Keeping a
+            // minimum attachment offset prevents fast stage motion exposing a gap.
+            const attachedHeadOffsetY = mode === "full" ? Math.max(18, headOffsetY) : headOffsetY;
+            parts.head = add(0, attachedHeadOffsetY, "skin", `tint${variants.skin}_head.png`, .5, 0)
                 .setScale(variants.faceWidth, 1);
-            parts.hair = add(0, -25 + headOffsetY, "hair", variants.hair, .5, 0);
-            parts.eyeLeft = add(-27 * variants.faceWidth, 75 + headOffsetY, "face", variants.eye);
-            parts.eyeRight = add(27 * variants.faceWidth, 75 + headOffsetY, "face", variants.eye);
-            parts.browLeft = add(-28 * variants.faceWidth, 55 + headOffsetY, "face", variants.brow);
-            parts.browRight = add(28 * variants.faceWidth, 55 + headOffsetY, "face", variants.brow).setFlipX(true);
-            parts.nose = add(0, 98 + headOffsetY, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
-            parts.mouth = add(0, 132 + headOffsetY, "face", variants.mouth);
+            parts.hair = add(0, -25 + attachedHeadOffsetY, "hair", variants.hair, .5, 0);
+            parts.eyeLeft = add(-27 * variants.faceWidth, 75 + attachedHeadOffsetY, "face", variants.eye);
+            parts.eyeRight = add(27 * variants.faceWidth, 75 + attachedHeadOffsetY, "face", variants.eye);
+            parts.browLeft = add(-28 * variants.faceWidth, 55 + attachedHeadOffsetY, "face", variants.brow);
+            parts.browRight = add(28 * variants.faceWidth, 55 + attachedHeadOffsetY, "face", variants.brow).setFlipX(true);
+            parts.nose = add(0, 98 + attachedHeadOffsetY, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
+            parts.mouth = add(0, 132 + attachedHeadOffsetY, "face", variants.mouth);
             if (armsInFront && mode === "full") {
                 target.bringToTop(parts.armLeft);
                 target.bringToTop(parts.armRight);
@@ -294,15 +305,15 @@ window.quizizzoCharacterRig = (() => {
                 parts.mouth.setTexture(`${atlasPrefix}face`, "mouth_glad.png");
                 parts.eyeLeft.setScale(1, .65);
                 parts.eyeRight.setScale(1, .65);
-                parts.armLeft?.setAngle(98);
-                parts.armRight?.setAngle(-98);
+                parts.armLeft?.setAngle(78);
+                parts.armRight?.setAngle(-78);
                 if (parts.armLeft && parts.armRight) {
                     rememberTween(scene.tweens.add({
-                        targets: parts.armLeft, angle: { from: 94, to: 103 },
+                        targets: parts.armLeft, angle: { from: 73, to: 83 },
                         duration: 340, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                     }));
                     rememberTween(scene.tweens.add({
-                        targets: parts.armRight, angle: { from: -94, to: -103 },
+                        targets: parts.armRight, angle: { from: -73, to: -83 },
                         duration: 340, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                     }));
                 }
@@ -326,6 +337,37 @@ window.quizizzoCharacterRig = (() => {
                     rememberTween(scene.tweens.add({
                         targets: parts.handRight, angle: { from: 20, to: -22 },
                         duration: motion * .81, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    // The atlas arm is one rigid piece, so counter-moving the hands
+                    // and sleeves creates a soft inflatable-tube wave without joints
+                    // folding behind the torso.
+                    rememberTween(scene.tweens.add({
+                        targets: parts.handLeft, x: { from: -94, to: -113 }, y: { from: 76, to: 91 },
+                        duration: motion * .57, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.handRight, x: { from: 113, to: 94 }, y: { from: 91, to: 76 },
+                        duration: motion * .63, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
+                if (parts.sleeveLeft && parts.sleeveRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.sleeveLeft, scaleY: { from: .94, to: 1.06 },
+                        duration: motion * .57, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.sleeveRight, scaleY: { from: 1.06, to: .94 },
+                        duration: motion * .63, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                }
+                if (parts.shoeLeft && parts.shoeRight) {
+                    rememberTween(scene.tweens.add({
+                        targets: parts.shoeLeft, angle: { from: -5, to: 7 },
+                        duration: motion * .72, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
+                    }));
+                    rememberTween(scene.tweens.add({
+                        targets: parts.shoeRight, angle: { from: 7, to: -5 },
+                        duration: motion * .72, yoyo: true, repeat: -1, ease: "Sine.easeInOut"
                     }));
                 }
                 if (parts.armLeft && parts.armRight) {
@@ -370,21 +412,21 @@ window.quizizzoCharacterRig = (() => {
                     }
                     sway(5);
                 } else if (action === "armFlap") {
-                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -38, to: -102 },
+                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -34, to: -82 },
                         duration: motion, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
-                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 38, to: 102 },
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 34, to: 82 },
                         duration: motion, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
                     sway(3);
                 } else if (action === "fistPump") {
                     rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -18, to: -48 },
                         duration: motion, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
-                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 62, to: 128 },
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 48, to: 84 },
                         duration: motion * .72, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
                     sway(4);
                 } else if (action === "discoPoint") {
-                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -125, to: -70 },
+                    rememberTween(scene.tweens.add({ targets: parts.armLeft, angle: { from: -86, to: -58 },
                         duration: motion * 1.15, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
-                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 65, to: 15 },
+                    rememberTween(scene.tweens.add({ targets: parts.armRight, angle: { from: 58, to: 18 },
                         duration: motion * 1.15, yoyo: true, repeat: -1, ease: "Sine.easeInOut" }));
                     sway(6);
                 } else {
