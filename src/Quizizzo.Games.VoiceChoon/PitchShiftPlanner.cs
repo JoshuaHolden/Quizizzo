@@ -28,7 +28,11 @@ public static class PitchShiftPlanner
         var playbackNote = FoldNearRoot(targetMidiNote, sample.RootMidiNote);
         var semitones = playbackNote - sample.RootMidiNote;
         var loop = sample.Style is (RecordingStyle.Sustained or RecordingStyle.SoftSustain or
-            RecordingStyle.Brass or RecordingStyle.Woodwind) && noteDurationSeconds >= 0.5;
+            RecordingStyle.Brass or RecordingStyle.Woodwind) && noteDurationSeconds >= 0.5
+            && sample.DurationSeconds > 0.1;
+        // Ensure loop boundaries are never degenerate: require at least a 50 ms usable region.
+        var loopStart = loop ? Math.Max(sample.DurationSeconds * 0.3, sample.DurationSeconds * 0.1) : (double?)null;
+        var loopEnd = loop ? Math.Max(sample.DurationSeconds * 0.7, loopStart!.Value + 0.05) : (double?)null;
         return new PitchShiftPlan(
             sample.Key,
             targetMidiNote,
@@ -36,8 +40,8 @@ public static class PitchShiftPlanner
             semitones,
             Math.Pow(2, semitones / 12d),
             loop,
-            loop ? sample.DurationSeconds * 0.3 : null,
-            loop ? sample.DurationSeconds * 0.7 : null);
+            loopStart,
+            loopEnd);
     }
 
     public static int FoldNearRoot(int targetMidiNote, int rootMidiNote)

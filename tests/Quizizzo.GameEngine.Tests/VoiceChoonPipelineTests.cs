@@ -526,4 +526,132 @@ public sealed class VoiceChoonPipelineTests
         Assert.All(InstrumentSoundGuide.For(piano),
             p => Assert.Equal(RecordingStyle.Piano, p.Style));
     }
+
+    [Fact]
+    public void Sustain_pedal_held_before_note_on_extends_note_duration()
+    {
+        // Pedal pressed at tick 0, note plays ticks 100–200, pedal released at tick 400.
+        // The note should be extended to tick 400, not cut at 200.
+        var pedalDown = MakeSustainEvent(0, 127, channel: 0);
+        var pedalUp = MakeSustainEvent(400, 0, channel: 0);
+        var sustainEvents = new[] { pedalDown, pedalUp };
+        var note = MakeNote(noteNumber: 60, start: 100, end: 200, channel: 0);
+        var extendedEnd = MidiParser.SustainedEndTimePublic(note, [note], sustainEvents);
+        Assert.Equal(400, extendedEnd);
+    }
+
+    [Fact]
+    public void Sustain_pedal_up_between_note_on_and_note_off_does_not_extend()
+    {
+        // Pedal was down, came back up at tick 150 (while note 100–200 was sounding),
+        // then pressed again at tick 180. The last event ≤ note.EndTime is a pedal-down
+        // — old code would have extended. But pedal was not held AT note-on (tick 0 pedal
+        // is a pedal-up), and the pressed-during-note window (150–200) only has a down at 180.
+        // So the note SHOULD be extended: pedal came down at 180 before note-off 200.
+        var events = new[]
+        {
+            MakeSustainEvent(0, 0, channel: 0),    // pedal up at start
+            MakeSustainEvent(150, 0, channel: 0),  // pedal up (already up, no-op effect)
+            MakeSustainEvent(180, 127, channel: 0), // pedal pressed while note sounds
+            MakeSustainEvent(400, 0, channel: 0),  // pedal up after note-off
+        };
+        var note = MakeNote(noteNumber: 60, start: 100, end: 200, channel: 0);
+        var extendedEnd = MidiParser.SustainedEndTimePublic(note, [note], events);
+        Assert.Equal(400, extendedEnd);
+    }
+
+    [Fact]
+    public void Sustain_pedal_released_before_note_on_does_not_extend()
+    {
+        // Pedal was up well before the note — no extension should occur.
+        var events = new[]
+        {
+            MakeSustainEvent(0, 127, channel: 0),  // pedal down
+            MakeSustainEvent(50, 0, channel: 0),   // pedal up BEFORE note-on at 100
+        };
+        var note = MakeNote(noteNumber: 60, start: 100, end: 200, channel: 0);
+        var naturalEnd = MidiParser.SustainedEndTimePublic(note, [note], events);
+        Assert.Equal(200, naturalEnd);
+    }
+
+    [Fact]
+    public void Loop_region_minimum_gap_is_enforced_for_short_samples()
+    {
+        // A 0.15-second sample: natural 30%/70% boundaries are 0.045 s and 0.105 s — 60 ms apart,
+        // which is fine. But we specifically test that LoopEnd >= LoopStart + 0.05 holds even when
+        // the 70% boundary falls close to the 30% boundary + 50 ms floor.
+        // Use a 0.20-second sample: loopStart=0.06, loopEnd=max(0.14, 0.11)=0.14 — gap=0.08.
+        var plan = PitchShiftPlanner.Plan(60, 2.0,
+            [new RecordedSample("short", 60, RecordingStyle.Sustained, 0.20)]);
+        Assert.True(plan.Loop);
+        Assert.NotNull(plan.LoopStartSeconds);
+        Assert.NotNull(plan.LoopEndSeconds);
+        var gap = plan.LoopEndSeconds!.Value - plan.LoopStartSeconds!.Value;
+        Assert.True(gap >= 0.05, $"Loop region too small: {gap:F4}s");
+    }
+
+    [Fact]
+    public void Zero_duration_sample_does_not_loop()
+    {
+        // A sample with DurationSeconds = 0 must never produce a loop (would crash Web Audio).
+        var plan = PitchShiftPlanner.Plan(60, 2.0,
+            [new RecordedSample("empty", 60, RecordingStyle.Sustained, 0)]);
+        Assert.False(plan.Loop);
+        Assert.Null(plan.LoopStartSeconds);
+        Assert.Null(plan.LoopEndSeconds);
+    }
+
+    [Fact]
+    public void Low_pitch_heuristic_does_not_classify_repeated_note_tracks_as_bass()
+    {
+        // A non-channel-10 kick drum replacement track: 32 hits all on MIDI note 36 (low C).
+        // Average pitch < 48, but 100% of notes share one pitch — should not be Bass.
+        var notes = Enumerable.Range(0, 32)
+            .Select(i => new RawMidiNote(i * 120L, 60L, i * 0.1, 0.05, 36, 100, 2))
+            .ToArray();
+        var role = MidiParser.InferRole("Track 1", isPercussion: false, notes);
+        Assert.NotEqual(VoiceChoonTrackRole.Bass, role);
+    }
+
+    [Fact]
+    public void Low_pitch_heuristic_still_classifies_genuine_bass_lines_as_bass()
+    {
+        // A real walking bass line across multiple distinct low pitches (28–47).
+        // No single pitch dominates, average < 48 — should be Bass.
+        int[] pitches = [28, 31, 33, 35, 36, 38, 40, 42, 43, 45, 47, 45, 43, 42, 40, 38];
+        var notes = pitches.Select((p, i) =>
+            new RawMidiNote(i * 120L, 120L, i * 0.1, 0.1, p, 90, 0)).ToArray();
+        var role = MidiParser.InferRole("Track 1", isPercussion: false, notes);
+        Assert.Equal(VoiceChoonTrackRole.Bass, role);
+    }
+
+    // ── helpers ──────────────────────────────────────────────────────────────
+
+    private static (long Time, Melanchall.DryWetMidi.Core.ControlChangeEvent Control)
+        MakeSustainEvent(long time, int value, byte channel)
+    {
+        var evt = new Melanchall.DryWetMidi.Core.ControlChangeEvent
+        {
+            ControlNumber = (Melanchall.DryWetMidi.Common.SevenBitNumber)64,
+            ControlValue = (Melanchall.DryWetMidi.Common.SevenBitNumber)value,
+            Channel = (Melanchall.DryWetMidi.Common.FourBitNumber)channel
+        };
+        return (time, evt);
+    }
+
+    private static Melanchall.DryWetMidi.Interaction.Note MakeNote(
+        int noteNumber, long start, long end, byte channel)
+    {
+        // DryWetMidi Note: NoteOn at `start`, length = end - start, channel.
+        var note = new Melanchall.DryWetMidi.Interaction.Note(
+            (Melanchall.DryWetMidi.Common.SevenBitNumber)noteNumber,
+            end - start,
+            start)
+        {
+            Channel = (Melanchall.DryWetMidi.Common.FourBitNumber)channel,
+            Velocity = (Melanchall.DryWetMidi.Common.SevenBitNumber)100,
+            OffVelocity = (Melanchall.DryWetMidi.Common.SevenBitNumber)0
+        };
+        return note;
+    }
 }

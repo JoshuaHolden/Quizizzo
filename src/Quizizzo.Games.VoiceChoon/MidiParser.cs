@@ -88,9 +88,22 @@ public sealed class MidiParser
     private static long SustainedEndTime(Note note, IReadOnlyList<Note> notes,
         IReadOnlyList<(long Time, ControlChangeEvent Control)> sustainEvents)
     {
-        var lastPedal = sustainEvents.LastOrDefault(item =>
-            item.Time <= note.EndTime && item.Control.Channel == note.Channel);
-        if (lastPedal.Control is null || (int)lastPedal.Control.ControlValue < 64) return note.EndTime;
+        // Determine whether the sustain pedal is held at note-on: find the last pedal event
+        // at or before note.Time on the same channel. If that event is a pedal-down (≥64)
+        // the pedal was already held when this note started.
+        var pedalAtNoteOn = sustainEvents.LastOrDefault(item =>
+            item.Time <= note.Time && item.Control.Channel == note.Channel);
+        var pedalDownAtStart = pedalAtNoteOn.Control is not null &&
+            (int)pedalAtNoteOn.Control.ControlValue >= 64;
+
+        // The pedal may also have been pressed while the note was already sounding.
+        var pedalPressedDuringNote = sustainEvents.Any(item =>
+            item.Time > note.Time && item.Time <= note.EndTime &&
+            item.Control.Channel == note.Channel && (int)item.Control.ControlValue >= 64);
+
+        if (!pedalDownAtStart && !pedalPressedDuringNote) return note.EndTime;
+
+        // Find the next pedal-up after note-off.
         var pedalUp = sustainEvents.FirstOrDefault(item => item.Time > note.EndTime &&
             item.Control.Channel == note.Channel && (int)item.Control.ControlValue < 64).Time;
         if (pedalUp <= note.EndTime) return note.EndTime;
@@ -120,13 +133,27 @@ public sealed class MidiParser
         if (ContainsAny(normalized, "arp", "sparkle")) return VoiceChoonTrackRole.Arp;
         if (ContainsAny(normalized, "stab", "shout")) return VoiceChoonTrackRole.VocalStabs;
 
+        // Low average pitch suggests bass — but guard against non-channel-10 percussion tracks
+        // whose repeated kick/snare hits on a handful of pitches mimic a bass average.
+        // If ≥60% of notes share any single MIDI pitch (typical of a kick pattern on an offbeat
+        // channel) treat the track as Other rather than Bass.
         if (notes.Count > 0 && notes.Average(note => note.MidiNote) < 48)
         {
-            return VoiceChoonTrackRole.Bass;
+            var maxSinglePitchFraction = notes
+                .GroupBy(note => note.MidiNote)
+                .Max(group => (double)group.Count() / notes.Count);
+            return maxSinglePitchFraction < 0.6 ? VoiceChoonTrackRole.Bass : VoiceChoonTrackRole.Other;
         }
         return VoiceChoonTrackRole.Other;
     }
 
     private static bool ContainsAny(string value, params string[] candidates) =>
         candidates.Any(value.Contains);
+
+    // Exposed for unit tests — mirrors the private SustainedEndTime signature exactly.
+    internal static long SustainedEndTimePublic(
+        Melanchall.DryWetMidi.Interaction.Note note,
+        IReadOnlyList<Melanchall.DryWetMidi.Interaction.Note> notes,
+        IReadOnlyList<(long Time, Melanchall.DryWetMidi.Core.ControlChangeEvent Control)> sustainEvents)
+        => SustainedEndTime(note, notes, sustainEvents);
 }
