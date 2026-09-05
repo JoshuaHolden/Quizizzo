@@ -68,11 +68,20 @@
             {
                 <a href="@ReplayUrl" target="_blank" rel="noopener">Watch permanent replay</a>
                 <button type="button" @onclick="CopyReplayLinkAsync">Copy replay link</button>
-                <a href="@FacebookShareUrl" target="_blank" rel="noopener">Share link on Facebook</a>
+                <button type="button" @onclick="ShareReplayOnFacebookAsync">Share link on Facebook</button>
                 @if (HasHostControls)
                 {
                     <button type="button" class="share-delete" @onclick="DeleteReplayAsync">Delete replay</button>
                 }
+            }
+            else
+            {
+                <button type="button" disabled="@replayLinkPending" @onclick="CopyReplayLinkAsync">
+                    @(replayLinkPending ? "Creating link…" : "Create & copy replay link")
+                </button>
+                <button type="button" disabled="@replayLinkPending" @onclick="ShareReplayOnFacebookAsync">
+                    @(replayLinkPending ? "Creating link…" : "Create link & share on Facebook")
+                </button>
             }
             @if (replayRecordingReady)
             {
@@ -394,6 +403,7 @@
     private Guid? savedReplayGameInstanceId;
     private bool replayRecordingReady;
     private bool nativeReplayShareAvailable;
+    private bool replayLinkPending;
     private string? replayStatus;
     private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
@@ -467,21 +477,33 @@
         players = state.Players;
         gameView = state.Game;
         game = gameView?.Data.Deserialize<DisplayGameViewPayload>();
-        await EnsureReplaySavedAsync();
+        if (savedReplayGameInstanceId is not null && savedReplayGameInstanceId != gameView?.GameInstanceId)
+        {
+            savedReplay = null;
+            savedReplayGameInstanceId = null;
+        }
     }
 
-    private async Task EnsureReplaySavedAsync()
+    private async Task<bool> EnsureReplaySavedAsync()
     {
         if (!IsVoiceChoonResult || session.PartyId is not { } partyId ||
-            gameView is null || savedReplayGameInstanceId == gameView.GameInstanceId) return;
+            gameView is null) return false;
+        if (savedReplay is not null && savedReplayGameInstanceId == gameView.GameInstanceId) return true;
+        replayLinkPending = true;
         try
         {
             savedReplay = await VoiceChoonReplays.SaveAsync(partyId, PresentationSnapshot);
             savedReplayGameInstanceId = gameView.GameInstanceId;
+            return true;
         }
         catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
         {
             replayStatus = exception.Message;
+            return false;
+        }
+        finally
+        {
+            replayLinkPending = false;
         }
     }
 
@@ -509,8 +531,16 @@
 
     private async Task CopyReplayLinkAsync()
     {
+        if (!await EnsureReplaySavedAsync()) return;
         await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", $"{ReplayCaption} {ReplayUrl}");
         replayStatus = "Replay link and caption copied.";
+    }
+
+    private async Task ShareReplayOnFacebookAsync()
+    {
+        if (!await EnsureReplaySavedAsync()) return;
+        await JavaScript.InvokeVoidAsync("open", FacebookShareUrl, "_blank", "noopener,noreferrer");
+        replayStatus = "Facebook sharing opened in a new window.";
     }
 
     private async Task DeleteReplayAsync()
@@ -518,6 +548,7 @@
         if (savedReplay is null || hostUserId is null) return;
         await VoiceChoonReplays.DeleteAsync(savedReplay.ShareCode, hostUserId);
         savedReplay = null;
+        savedReplayGameInstanceId = null;
         replayStatus = "Permanent replay and retained voice samples deleted.";
     }
 

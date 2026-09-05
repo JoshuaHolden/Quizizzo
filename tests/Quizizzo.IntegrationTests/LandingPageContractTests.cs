@@ -841,6 +841,9 @@ public sealed class LandingPageContractTests
 
         Assert.Contains("Watch permanent replay", display, StringComparison.Ordinal);
         Assert.Contains("Share link on Facebook", display, StringComparison.Ordinal);
+        Assert.Contains("Create & copy replay link", display, StringComparison.Ordinal);
+        Assert.Contains("Create link & share on Facebook", display, StringComparison.Ordinal);
+        Assert.DoesNotContain("await EnsureReplaySavedAsync();", display, StringComparison.Ordinal);
         Assert.Contains("Delete replay", display, StringComparison.Ordinal);
         Assert.Contains("navigator.share", presentation, StringComparison.Ordinal);
         Assert.Contains("canvas.captureStream(30)", presentation, StringComparison.Ordinal);
