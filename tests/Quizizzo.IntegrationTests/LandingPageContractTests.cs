@@ -52,7 +52,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("opacity:1", homeCss, StringComparison.Ordinal);
         Assert.Contains("quizizzoCharacterRig", motion, StringComparison.Ordinal);
         Assert.Contains("armsInFront: true", motion, StringComparison.Ordinal);
-        Assert.Contains("headOffsetY: 18", motion, StringComparison.Ordinal);
+        Assert.Contains("headOffsetY: 30", motion, StringComparison.Ordinal);
+        Assert.Contains("handInset: 24", motion, StringComparison.Ordinal);
+        Assert.Contains("83 - handInset * .45", rig, StringComparison.Ordinal);
         Assert.Contains("target.bringToTop(parts.armLeft)", rig, StringComparison.Ordinal);
         Assert.Contains(".scroll-confetti", homeCss, StringComparison.Ordinal);
         Assert.True(CountOccurrences(home, "<i style=\"--x:") >= 20);

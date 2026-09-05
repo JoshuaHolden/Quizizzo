@@ -101,7 +101,7 @@
                 { presentation: "Man", skinTone: "Tint5", hairColour: "Black", hairStyle: "Style2", shirtColour: "Green", shirtStyle: "Style3", trouserColour: "Blue", shoeColour: "Blue", mouth: "Tongue" },
                 { presentation: "Woman", skinTone: "Tint7", hairColour: "Brown", hairStyle: "Style2", shirtColour: "Blue", shirtStyle: "Style4", trouserColour: "Tan", shoeColour: "Red", mouth: "Smile" }
             ];
-            const dances = ["armFlap", "fistPump", "discoPoint"];
+            const dances = ["talk", "celebrate", "talk"];
             const rig = window.quizizzoCharacterRig;
             characterGame = new Phaser.Game({
                 type: Phaser.CANVAS,
@@ -122,7 +122,8 @@
                                 container,
                                 atlasPrefix: "landing-",
                                 armsInFront: true,
-                                headOffsetY: 18
+                                headOffsetY: 30,
+                                handInset: 24
                             });
                             dancer.render(character, "full");
                             if (reducedMotion.matches) dancer.play("idle");

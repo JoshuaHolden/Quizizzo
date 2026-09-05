@@ -85,7 +85,8 @@ window.quizizzoCharacterRig = (() => {
         atlasPrefix,
         includeGroundShadow = false,
         armsInFront = false,
-        headOffsetY = 0
+        headOffsetY = 0,
+        handInset = 0
     } = {}) {
         const target = container || scene.add.container(0, 0);
         const animationTweens = [];
@@ -149,7 +150,9 @@ window.quizizzoCharacterRig = (() => {
                         `${variants.shirt}Arm_long.png`)
                         .setOrigin(left ? .69 : .31, .18)
                         .setFlipX(left);
-                    const hand = scene.add.image(left ? -108 : 108, 83,
+                    const hand = scene.add.image(
+                        left ? -108 + handInset : 108 - handInset,
+                        83 - handInset * .45,
                         `${atlasPrefix}skin`, `tint${variants.skin}_hand.png`)
                         .setOrigin(.5, .12);
                     group.add([sleeve, hand]);
