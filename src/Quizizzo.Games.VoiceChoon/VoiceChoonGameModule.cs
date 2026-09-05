@@ -53,12 +53,12 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         var difficulty = DifficultySettings.For(configuration.Difficulty);
         var song = VoiceChoonSongCatalog.Load(songDefinition.Key);
         var performerCount = Math.Max(context.Participants.Count, songDefinition.MinimumPlayers);
-        var assignments = InstrumentAssignmentService.Assign(
-            song,
-            performerCount,
-            role => string.Equals(songDefinition.Key, VoiceChoonSongCatalog.WubquakeSongKey, StringComparison.Ordinal)
-                ? InstrumentSoundGuide.For(role).Select(prompt => prompt with { Guidance = songDefinition.RecordingMessage }).ToArray()
-                : InstrumentSoundGuide.For(role));
+        Func<VoiceChoonTrackRole, IReadOnlyList<SoundRecordingPrompt>>? promptFactory =
+            string.Equals(songDefinition.Key, VoiceChoonSongCatalog.WubquakeSongKey, StringComparison.Ordinal)
+                ? role => InstrumentSoundGuide.For(role)
+                    .Select(prompt => prompt with { Guidance = songDefinition.RecordingMessage }).ToArray()
+                : null;
+        var assignments = InstrumentAssignmentService.Assign(song, performerCount, promptFactory);
         var generatedCharts = new ChartGenerator(difficulty.ChartOptions).Generate(assignments).ToArray();
         var humans = context.Participants.Select((participant, index) =>
             new VoiceChoonParticipant(participant.PlayerId, participant.DisplayName, index)).ToArray();
@@ -635,7 +635,10 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         PlayerChart chart,
         IReadOnlyDictionary<string, Guid> sampleAssets)
     {
-        var rolePromptKeys = note.SourceRole == VoiceChoonTrackRole.Other &&
+        var rolePromptKeys = note.PlaybackStyle == RecordingStyle.Piano
+            ? chart.RecordingPrompts.Where(prompt => prompt.Key.StartsWith("piano-", StringComparison.Ordinal))
+                .Select(prompt => prompt.Key).ToHashSet(StringComparer.Ordinal)
+            : note.SourceRole == VoiceChoonTrackRole.Other &&
                              note.PlaybackStyle == RecordingStyle.Sustained
             ? chart.RecordingPrompts.Where(prompt => prompt.Key.StartsWith("legato-", StringComparison.Ordinal))
                 .Select(prompt => prompt.Key).ToHashSet(StringComparer.Ordinal)
@@ -662,7 +665,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             plan.Loop,
             plan.LoopStartSeconds,
             plan.LoopEndSeconds,
-            $"{selectedPrompt.Example} · {note.SourceTrack}");
+            $"{selectedPrompt.Example} · {note.SourceTrack}",
+            selectedPrompt.Style.ToString());
     }
 
     private static PlayerControllerView RecordingController(

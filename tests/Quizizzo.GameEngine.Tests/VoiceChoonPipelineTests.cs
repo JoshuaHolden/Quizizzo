@@ -283,7 +283,7 @@ public sealed class VoiceChoonPipelineTests
     }
 
     [Fact]
-    public void Classical_piano_tracks_request_sustained_samples_and_loop_their_long_notes()
+    public void Piano_tracks_request_bell_like_samples_and_decay_instead_of_looping()
     {
         var piano = new RawMidiTrack(0, "Clair de Lune Piano", VoiceChoonTrackRole.Other, false,
             [new RawMidiNote(0, 192, 0, 1.8, 72, 52, 0)], 0);
@@ -291,12 +291,13 @@ public sealed class VoiceChoonPipelineTests
             new RawMidiSong("clair-de-lune.mid", 96, 1.8, [piano], []), 1));
         var note = Assert.Single(new ChartGenerator().Generate([assignment]).Single().PlaybackNotes);
 
-        Assert.True(TrackArticulation.IsLegato(piano));
+        Assert.True(TrackArticulation.IsPiano(piano));
         Assert.All(assignment.RecordingPrompts,
-            prompt => Assert.Equal(RecordingStyle.Sustained, prompt.Style));
-        Assert.Equal(RecordingStyle.Sustained, note.PlaybackStyle);
-        Assert.True(PitchShiftPlanner.Plan(note.TargetMidiNote, note.DurationSeconds,
-            [new RecordedSample("legato", 67, note.PlaybackStyle, 1)]).Loop);
+            prompt => Assert.Equal(RecordingStyle.Piano, prompt.Style));
+        Assert.Equal(["DOONG", "TING"], assignment.RecordingPrompts.Select(prompt => prompt.Example));
+        Assert.Equal(RecordingStyle.Piano, note.PlaybackStyle);
+        Assert.False(PitchShiftPlanner.Plan(note.TargetMidiNote, note.DurationSeconds,
+            [new RecordedSample("piano", 67, note.PlaybackStyle, 1)]).Loop);
     }
 
     [Fact]

@@ -62,7 +62,8 @@ public sealed record RhythmControllerNote(
     bool Loop,
     double? LoopStartSeconds,
     double? LoopEndSeconds,
-    string SoundLabel = "");
+    string SoundLabel = "",
+    string Articulation = "OneShot");
 
 public sealed record RhythmControllerConfiguration(
     DateTimeOffset SongStartsAtUtc,

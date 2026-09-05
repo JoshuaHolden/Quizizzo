@@ -105,7 +105,10 @@ public static class InstrumentSoundGuide
     public static IReadOnlyList<SoundRecordingPrompt> For(RawMidiTrack track)
     {
         ArgumentNullException.ThrowIfNull(track);
-        return track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track)
+        return TrackArticulation.IsPiano(track)
+            ? MelodicPair("piano", "DOONG", "TING", RecordingStyle.Piano, 52, 72,
+                "Make a clean bell-like note: a crisp D or T at the start, then let it fade away. Do not hold the sound steady.")
+            : track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track)
             ? MelodicPair("legato", "AAAAH", "OOOOH", RecordingStyle.Sustained, 55, 67,
                 "Hold a smooth, steady vowel with no wobble; this will be looped for long classical notes.")
             : For(track.Role);
@@ -163,6 +166,17 @@ public static class TrackArticulation
         "clarinet", "oboe", "orchestra", "ensemble", "choir"
     ];
 
+    public static bool IsPiano(RawMidiTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        if (track.IsPercussion) return false;
+        if (track.ProgramNumber is >= 0 and <= 7) return true;
+        var normalized = NormalizeName(track.Name);
+        return normalized.Contains("piano", StringComparison.Ordinal) ||
+               normalized.Contains("grand", StringComparison.Ordinal) ||
+               normalized.Contains("honkytonk", StringComparison.Ordinal);
+    }
+
     public static bool IsLegato(RawMidiTrack track)
     {
         ArgumentNullException.ThrowIfNull(track);
@@ -184,13 +198,12 @@ public static class TrackArticulation
         // General MIDI: pianos/organs and orchestral families need a continuous
         // source; guitars, chromatic percussion and synth/effect banks retain
         // their sharper one-shot articulation.
-        if (track.ProgramNumber is >= 0 and <= 7 or >= 16 and <= 23 or >= 40 and <= 79)
+        if (track.ProgramNumber is >= 16 and <= 23 or >= 40 and <= 79)
         {
             return true;
         }
 
-        var normalized = new string(track.Name.Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant).ToArray());
+        var normalized = NormalizeName(track.Name);
         if (LegatoInstrumentNames.Any(normalized.Contains))
         {
             return true;
@@ -200,4 +213,7 @@ public static class TrackArticulation
         return longNotes >= Math.Ceiling(track.Notes.Count * 0.45) ||
                track.Notes.Average(note => note.DurationSeconds) >= 0.8;
     }
+
+    private static string NormalizeName(string name) => new(name.Where(char.IsLetterOrDigit)
+        .Select(char.ToLowerInvariant).ToArray());
 }

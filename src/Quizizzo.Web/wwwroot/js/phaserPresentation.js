@@ -177,6 +177,7 @@ window.quizizzoPresentation = (() => {
             const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
             const expression = Math.max(.28, Math.sqrt(velocity / 127));
             const percussion = Boolean(note.percussion ?? note.Percussion);
+            const piano = String(note.articulation ?? note.Articulation ?? "").toLowerCase() === "piano";
             const percussionGain = percussion ? 1.65 : 1;
             const levelCeiling = disruptiveMiss ? 0.68 : percussion ? 0.62 : 0.42;
             const level = Math.min(levelCeiling,
@@ -189,8 +190,12 @@ window.quizizzoPresentation = (() => {
                     offKeyCents > 0 ? 70 : -70, startAt + duration);
             }
             gain.gain.setValueAtTime(0, startAt);
-            gain.gain.linearRampToValueAtTime(level, startAt + 0.015);
-            gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));
+            gain.gain.linearRampToValueAtTime(level, startAt + (piano ? 0.008 : 0.015));
+            if (piano) {
+                gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+            } else {
+                gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));
+            }
             gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
             source.connect(gain).connect(output);
             const voice = { source, gain };
@@ -239,7 +244,8 @@ window.quizizzoPresentation = (() => {
                         playbackRate: sourSource.playbackRate ?? sourSource.PlaybackRate,
                         durationSeconds: Math.max(.48, Math.min(.68, Number(
                             sourSource.durationSeconds ?? sourSource.DurationSeconds ?? .55))),
-                        loop: false
+                        loop: false,
+                        articulation: sourSource.articulation ?? sourSource.Articulation
                     }, context.currentTime + .005, 0, sourDirection * 425, generation, true);
                 });
                 notes.forEach(note => {
@@ -266,7 +272,8 @@ window.quizizzoPresentation = (() => {
                         loopEndSeconds: note.loopEndSeconds ?? note.LoopEndSeconds,
                         velocity: note.velocity ?? note.Velocity,
                         percussion: note.percussion ?? note.Percussion,
-                        type: note.type ?? note.Type
+                        type: note.type ?? note.Type,
+                        articulation: note.articulation ?? note.Articulation
                     }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start),
                     offKey ? sourDirection * 175 : 0, generation);
                 });

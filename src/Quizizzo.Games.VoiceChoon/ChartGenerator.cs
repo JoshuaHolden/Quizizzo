@@ -117,6 +117,7 @@ public sealed class ChartGenerator(ChartGenerationOptions? options = null)
     {
         var pitches = track.Notes.Select(note => note.MidiNote).Distinct().Order().ToArray();
         var playbackStyle = track.IsPercussion ? RecordingStyle.Percussion
+            : TrackArticulation.IsPiano(track) ? RecordingStyle.Piano
             : TrackArticulation.IsLegato(track) ? RecordingStyle.Sustained
             : RecordingStyle.OneShot;
         var lastLane = -1;

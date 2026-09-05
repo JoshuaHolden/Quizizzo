@@ -23,7 +23,8 @@ public enum RecordingStyle
 {
     OneShot,
     Sustained,
-    Percussion
+    Percussion,
+    Piano
 }
 
 public enum VoiceChoonDifficulty
