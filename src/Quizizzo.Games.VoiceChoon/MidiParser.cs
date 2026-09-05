@@ -60,12 +60,18 @@ public sealed class MidiParser
         {
             name = $"Track {index + 1}";
         }
-        var notes = chunk.GetNotes()
+        var detectedNotes = chunk.GetNotes().ToArray();
+        var sustainEvents = chunk.GetTimedEvents()
+            .Where(item => item.Event is ControlChangeEvent control && (int)control.ControlNumber == 64)
+            .Select(item => (item.Time, Control: (ControlChangeEvent)item.Event))
+            .OrderBy(item => item.Time)
+            .ToArray();
+        var notes = detectedNotes
             .Select(note => new RawMidiNote(
                 note.Time,
-                note.Length,
+                SustainedEndTime(note, detectedNotes, sustainEvents) - note.Time,
                 SecondsAt(note.Time, tempoMap),
-                SecondsAt(note.EndTime, tempoMap) - SecondsAt(note.Time, tempoMap),
+                SecondsAt(SustainedEndTime(note, detectedNotes, sustainEvents), tempoMap) - SecondsAt(note.Time, tempoMap),
                 note.NoteNumber,
                 note.Velocity,
                 note.Channel))
@@ -77,6 +83,23 @@ public sealed class MidiParser
         var programNumber = programEvent is null ? (int?)null : (int)programEvent.ProgramNumber;
         return new RawMidiTrack(index, name, InferRole(name, isPercussion, notes), isPercussion, notes,
             programNumber);
+    }
+
+    private static long SustainedEndTime(Note note, IReadOnlyList<Note> notes,
+        IReadOnlyList<(long Time, ControlChangeEvent Control)> sustainEvents)
+    {
+        var lastPedal = sustainEvents.LastOrDefault(item =>
+            item.Time <= note.EndTime && item.Control.Channel == note.Channel);
+        if (lastPedal.Control is null || (int)lastPedal.Control.ControlValue < 64) return note.EndTime;
+        var pedalUp = sustainEvents.FirstOrDefault(item => item.Time > note.EndTime &&
+            item.Control.Channel == note.Channel && (int)item.Control.ControlValue < 64).Time;
+        if (pedalUp <= note.EndTime) return note.EndTime;
+        var restrike = notes.Where(candidate => candidate.Channel == note.Channel &&
+                candidate.NoteNumber == note.NoteNumber && candidate.Time > note.Time)
+            .Select(candidate => candidate.Time)
+            .DefaultIfEmpty(pedalUp)
+            .Min();
+        return Math.Min(pedalUp, restrike);
     }
 
     private static double SecondsAt(long ticks, TempoMap tempoMap) =>

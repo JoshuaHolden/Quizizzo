@@ -55,6 +55,27 @@ public sealed class VoiceChoonPipelineTests
         Assert.InRange(song.DurationSeconds, 0.49, 0.51);
     }
 
+    [Fact]
+    public void Parser_extends_notes_while_the_midi_sustain_pedal_is_held()
+    {
+        byte[] midi =
+        [
+            0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, 0, 96,
+            0x4D, 0x54, 0x72, 0x6B, 0, 0, 0, 20,
+            0, 0x90, 60, 100,
+            48, 0xB0, 64, 127,
+            48, 0x80, 60, 0,
+            96, 0xB0, 64, 0,
+            0, 0xFF, 0x2F, 0
+        ];
+
+        using var stream = new MemoryStream(midi);
+        var note = Assert.Single(Assert.Single(VoiceChoonSongCatalog.Load(stream, "pedal.mid").Tracks).Notes);
+
+        Assert.Equal(192, note.DurationTicks);
+        Assert.InRange(note.DurationSeconds, .99, 1.01);
+    }
+
     [Theory]
     [InlineData(3)]
     [InlineData(4)]

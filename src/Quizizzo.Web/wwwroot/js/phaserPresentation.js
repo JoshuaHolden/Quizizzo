@@ -37,6 +37,7 @@ window.quizizzoPresentation = (() => {
         let audioContext = null;
         let output = null;
         let pianoResonance = null;
+        let roomReverb = null;
         let recordingDestination = null;
         let snapshot = null;
         let muted = localStorage.getItem("quizizzo.display.audio-muted") === "true";
@@ -81,6 +82,12 @@ window.quizizzoPresentation = (() => {
                 resonanceGain.gain.value = 0.16;
                 convolver.connect(resonanceGain).connect(output);
                 pianoResonance = convolver;
+                const roomConvolver = audioContext.createConvolver();
+                const roomGain = audioContext.createGain();
+                roomConvolver.buffer = impulse;
+                roomGain.gain.value = 0.035;
+                roomConvolver.connect(roomGain).connect(output);
+                roomReverb = roomConvolver;
             }
             return audioContext;
         }
@@ -226,6 +233,7 @@ window.quizizzoPresentation = (() => {
             gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
             source.connect(gain).connect(output);
             if (articulation === "piano" && pianoResonance) gain.connect(pianoResonance);
+            else if (roomReverb) gain.connect(roomReverb);
             const voice = { source, gain };
             sources.add(voice);
             source.addEventListener("ended", () => sources.delete(voice), { once: true });
@@ -697,7 +705,9 @@ window.quizizzoPresentation = (() => {
                                 : drawing ? [0x082f49, 0x0e7490, 0xf97316]
                                     : showdown ? [0x2e1065, 0x86198f, 0x0891b2]
                                         : gameKey === "estimate"
-                                            ? [0x160b32, 0x39156b, 0x7132a8]
+                                            ? (phase === "Results"
+                                                ? [0x0f172a, 0x1e1b4b, 0x7c3aed]
+                                                : [0x0f172a, 0x1e3a5f, 0x0ea5e9])
                                             : [0x101735, 0x272a68, 0x513487];
             this.background.clear();
             this.background.fillGradientStyle(
@@ -738,6 +748,25 @@ window.quizizzoPresentation = (() => {
                 this.background.fillStyle(0xfacc15, .18);
                 this.background.fillCircle(110, 105, 72);
                 this.background.fillCircle(1170, 610, 110);
+            } else if (gameKey === "estimate") {
+                // Concentric arc rings emanating from bottom-centre — a
+                // "closest to the bullseye" visual that fits the game theme.
+                const ringColour = phase === "Results" ? 0xa78bfa : 0x38bdf8;
+                for (let ring = 1; ring <= 5; ring++) {
+                    this.background.lineStyle(3, ringColour, .06 + ring * .025);
+                    this.background.strokeCircle(width / 2, height + 80, ring * 200);
+                }
+                // Faint crosshair lines through centre bottom
+                this.background.lineStyle(2, ringColour, .08);
+                this.background.lineBetween(width / 2, 0, width / 2, height);
+                this.background.lineStyle(2, ringColour, .06);
+                this.background.lineBetween(0, height / 2, width, height / 2);
+                // Corner glow circles
+                this.background.fillStyle(phase === "Results" ? 0xfacc15 : 0x38bdf8, .11);
+                this.background.fillCircle(72, 72, 90);
+                this.background.fillCircle(width - 72, height - 72, 115);
+                this.background.lineStyle(5, 0xffffff, .07);
+                this.background.strokeRoundedRect(22, 22, width - 44, height - 44, 28);
             } else if (gameKey === "animates") {
                 this.background.lineStyle(3, 0xffffff, .055);
                 for (let offset = -height; offset < width; offset += 120) {
@@ -836,6 +865,11 @@ window.quizizzoPresentation = (() => {
             }
             this.applyVoiceChoon(null);
 
+            // Stop Estimate number particles when leaving Estimate entirely.
+            if (snapshot.gameKey !== "estimate") {
+                this.stopEstimateNumberParticles();
+            }
+
             if (showRoundRanking) {
                 this.applyTutorial(null);
                 this.applyDrawing(null);
@@ -846,11 +880,111 @@ window.quizizzoPresentation = (() => {
 
             this.stopRoundRanking();
             const podiumChanged = this.renderPodium(snapshot);
+
+            // --- Estimate-only presentation logic ---
+            if (snapshot.gameKey === "estimate") {
+                this.applyEstimatePhase(snapshot, initial);
+            }
+
             this.applyPresenter(snapshot.presenterMessage, snapshot.phase);
             this.applyTutorial(snapshot.tutorial);
             this.layoutAvatars(snapshot, initial, podiumChanged);
             this.applyDrawing(snapshot.drawing);
             this.previous = cloneSnapshot(snapshot);
+        }
+
+        // Estimate-specific phase transitions: presenter intro, avatar animations,
+        // floating number particles. All logic here is gated on gameKey === "estimate".
+        applyEstimatePhase(snapshot, initial) {
+            const phase = snapshot.phase;
+            const prevPhase = this.previous?.phase;
+            const phaseChanged = prevPhase !== phase;
+
+            // Start floating number particles on the Answering phase.
+            // Stop them for Results / Completed.
+            if (phase === "Answering") {
+                this.startEstimateNumberParticles(snapshot);
+            } else {
+                this.stopEstimateNumberParticles();
+            }
+
+            // Presenter intro line when a new round of answering begins.
+            if (phase === "Answering" && phaseChanged && !initial && !this.controller.reducedMotion) {
+                // Extract round number from the title if present ("Estimate - Round X/Y")
+                const titleMatch = (snapshot.title || "").match(/Round\s+(\d+)/i);
+                const roundNum = titleMatch ? Number(titleMatch[1]) : null;
+                const introLines = [
+                    "Time to test your number sense — how close can you get?",
+                    "Think carefully… the closest guess takes the points!",
+                    "Last chance to close the gap — make it count!"
+                ];
+                const line = roundNum && roundNum <= introLines.length
+                    ? introLines[roundNum - 1]
+                    : introLines[0];
+                // Brief presenter flash — auto-dismiss after 2.6 s via a delayed null call.
+                this.applyPresenter(line);
+                this.time.delayedCall(2600, () => {
+                    // Only clear if the presenter is still showing the Estimate intro.
+                    if (this.controller.snapshot?.gameKey === "estimate" &&
+                        this.controller.snapshot?.phase === "Answering") {
+                        this.applyPresenter(null);
+                    }
+                });
+                return; // layoutAvatars will run after applyPresenter returns.
+            }
+
+            // During Answering, play idle on every avatar so they look "thinking".
+            // Activity badges ("Locked in") are already set by updateAvatar via snapshot entries.
+            if (phase === "Answering" && !this.controller.reducedMotion) {
+                for (const avatar of this.avatars.values()) {
+                    if (avatar.rig && !avatar.rig.isPlaying?.("idle")) {
+                        avatar.rig.play("idle");
+                    }
+                }
+            }
+        }
+
+        // Spawn text-based number tokens that drift upward — purely cosmetic.
+        startEstimateNumberParticles(snapshot) {
+            if (this.controller.reducedMotion) return;
+            const signature = `estimate-particles|${snapshot.gameInstanceId || ""}`;
+            if (this.estimateParticleSignature === signature) return;
+            this.stopEstimateNumberParticles();
+            this.estimateParticleSignature = signature;
+
+            const numbers = ["1,234", "42", "∞", "3.14", "365", "88", "500", "100K",
+                "0", "7", "√2", "±5", "9,999", "π", "∑", "404"];
+            let ticker = 0;
+            this.estimateParticleTimer = this.time.addEvent({
+                delay: 520,
+                loop: true,
+                callback: () => {
+                    if (this.estimateParticleSignature !== signature) return;
+                    const label = numbers[ticker++ % numbers.length];
+                    const x = Phaser.Math.Between(80, width - 80);
+                    const token = this.add.text(x, height - 30, label, {
+                        color: "#38bdf8",
+                        fontFamily: bodyFont,
+                        fontSize: `${Phaser.Math.Between(16, 28)}px`,
+                        fontStyle: "bold",
+                        alpha: 0.32
+                    }).setOrigin(.5).setDepth(3).setAlpha(.32);
+                    this.tweens.add({
+                        targets: token,
+                        y: token.y - Phaser.Math.Between(220, 380),
+                        alpha: 0,
+                        duration: Phaser.Math.Between(2200, 3600),
+                        ease: "Sine.easeIn",
+                        onComplete: () => token.destroy()
+                    });
+                }
+            });
+        }
+
+        stopEstimateNumberParticles() {
+            this.estimateParticleTimer?.remove(false);
+            this.estimateParticleTimer = null;
+            this.estimateParticleSignature = null;
         }
 
         applyDrawing(drawing) {
@@ -2754,7 +2888,9 @@ window.quizizzoPresentation = (() => {
             const presenterLine = snapshot.gameKey === "animates"
                 && snapshot.phase === "FinalCelebration"
                 ? "That's AniMates! Let's crown our animation champions!"
-                : "That's another round over — let's see how the scores look!";
+                : snapshot.gameKey === "estimate"
+                    ? "Pencils down — let's see who was closest!"
+                    : "That's another round over — let's see how the scores look!";
             this.applyPresenter(presenterLine);
             this.roundRankingTimer = this.time.delayedCall(2800, reveal);
         }
@@ -2834,7 +2970,9 @@ window.quizizzoPresentation = (() => {
             const slopCelebration = snapshot.phase === "WinnerCelebration";
             const aniMatesCelebration = snapshot.gameKey === "animates"
                 && snapshot.phase === "FinalCelebration";
-            const celebration = slopCelebration || aniMatesCelebration;
+            const estimateFinal = snapshot.gameKey === "estimate"
+                && snapshot.phase === "Completed";
+            const celebration = slopCelebration || aniMatesCelebration || estimateFinal;
             const previousOrder = ordered.map(result => ({
                 playerId: result.playerId,
                 score: Math.max(0, (players.get(result.playerId)?.score || 0) -
@@ -2856,31 +2994,41 @@ window.quizizzoPresentation = (() => {
                 .filter(result => biggestGain > 0 && result.pointsAwarded === biggestGain)
                 .map(result => players.get(result.playerId)?.displayName)
                 .filter(Boolean);
+            const isEstimate = snapshot.gameKey === "estimate";
             const items = [
                 this.add.text(width / 2, 56,
                     aniMatesCelebration ? "FINAL RESULTS"
-                        : slopCelebration ? "FINAL CHANNEL RANK" : "ROUND COMPLETE", {
-                    color: "#fde68a", fontFamily: displayFont, fontSize: "24px", fontStyle: "bold",
+                        : slopCelebration ? "FINAL CHANNEL RANK"
+                            : estimateFinal ? "FINAL RESULTS"
+                                : isEstimate ? "ROUND COMPLETE" : "ROUND COMPLETE", {
+                    color: isEstimate ? "#38bdf8" : "#fde68a",
+                    fontFamily: displayFont, fontSize: "24px", fontStyle: "bold",
                     letterSpacing: 5
                 }).setOrigin(.5),
                 this.add.text(width / 2, 96,
                     aniMatesCelebration ? "ANIMATES CHAMPIONS"
-                        : slopCelebration ? "THE ALGORITHM HAS CHOSEN ITS HUMAN" : "CURRENT STANDINGS", {
+                        : slopCelebration ? "THE ALGORITHM HAS CHOSEN ITS HUMAN"
+                            : estimateFinal ? "ESTIMATE CHAMPIONS"
+                                : isEstimate ? "CLOSEST GUESS WINS" : "CURRENT STANDINGS", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "46px", fontStyle: "bold",
                     stroke: "#24123f", strokeThickness: 7
                 }).setOrigin(.5)
             ];
             const subheading = aniMatesCelebration
                 ? "THE FINAL SCORES ARE IN"
-                : slopCelebration
-                    ? snapshot.prompt
-                    : biggestGainers.length
-                        ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
-                        : "THE FEED REFRESHED WITHOUT MERCY";
+                : estimateFinal
+                    ? "THE FINAL SCORES ARE IN"
+                    : slopCelebration
+                        ? snapshot.prompt
+                        : isEstimate && biggestGainers.length
+                            ? `CLOSEST: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
+                            : biggestGainers.length
+                                ? `BIGGEST GAINER: ${biggestGainers.join(" & ")} · +${this.scoreLabel(biggestGain, snapshot)}`
+                                : "THE FEED REFRESHED WITHOUT MERCY";
             items.push(this.add.text(width / 2, 142, subheading, {
-                color: celebration ? "#67e8f9" : "#fff4a8",
+                color: celebration || isEstimate ? "#67e8f9" : "#fff4a8",
                 fontFamily: displayFont,
-                fontSize: celebration ? "20px" : "17px",
+                fontSize: celebration || isEstimate ? "20px" : "17px",
                 fontStyle: "bold",
                 align: "center",
                 wordWrap: { width: 1080 }
@@ -3125,6 +3273,7 @@ window.quizizzoPresentation = (() => {
                 : null;
             const aniMatesFinal = snapshot.gameKey === "animates"
                 && snapshot.phase === "FinalCelebration";
+            const estimateResults = snapshot.gameKey === "estimate";
             players.forEach((player, index) => {
                 const avatar = this.avatars.get(player.playerId);
                 if (avatar) {
@@ -3160,7 +3309,7 @@ window.quizizzoPresentation = (() => {
                                     podiumResult.rank === 1 ? "celebrate"
                                         : podiumResult.rank === lastRank && lastRank !== 1
                                             ? "cry" : "idle");
-                                if (aniMatesFinal && podiumResult.rank === 1) {
+                                if ((aniMatesFinal || estimateResults) && podiumResult.rank === 1) {
                                     this.burst(x, y - 90, 42);
                                 }
                             }
@@ -3177,7 +3326,7 @@ window.quizizzoPresentation = (() => {
                                         podiumResult.rank === 1 ? "celebrate"
                                             : podiumResult.rank === lastRank && lastRank !== 1
                                                 ? "cry" : "idle");
-                                    if (aniMatesFinal && podiumResult.rank === 1) {
+                                    if ((aniMatesFinal || estimateResults) && podiumResult.rank === 1) {
                                         this.burst(x, y - 90, 42);
                                     }
                                 }
