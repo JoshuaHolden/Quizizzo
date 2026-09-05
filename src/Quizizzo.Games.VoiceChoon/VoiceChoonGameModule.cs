@@ -635,8 +635,19 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         PlayerChart chart,
         IReadOnlyDictionary<string, Guid> sampleAssets)
     {
-        var rolePromptKeys = note.PlaybackStyle == RecordingStyle.Piano
-            ? chart.RecordingPrompts.Where(prompt => prompt.Key.StartsWith("piano-", StringComparison.Ordinal))
+        var familyPrefix = note.InstrumentFamily switch
+        {
+            VoiceChoonInstrumentFamily.Piano => "piano-",
+            VoiceChoonInstrumentFamily.Bell => "bell-",
+            VoiceChoonInstrumentFamily.Organ => "organ-",
+            VoiceChoonInstrumentFamily.Guitar => "guitar-",
+            VoiceChoonInstrumentFamily.Strings => "strings-",
+            VoiceChoonInstrumentFamily.Brass => "brass-",
+            VoiceChoonInstrumentFamily.Woodwind => "woodwind-",
+            _ => null
+        };
+        var rolePromptKeys = familyPrefix is not null
+            ? chart.RecordingPrompts.Where(prompt => prompt.Key.StartsWith(familyPrefix, StringComparison.Ordinal))
                 .Select(prompt => prompt.Key).ToHashSet(StringComparer.Ordinal)
             : note.SourceRole == VoiceChoonTrackRole.Other &&
                              note.PlaybackStyle == RecordingStyle.Sustained

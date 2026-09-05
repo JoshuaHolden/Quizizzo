@@ -165,7 +165,7 @@ window.quizizzoPresentation = (() => {
             const playbackRate = Math.max(0.125, Number(note.playbackRate || 1));
             source.playbackRate.value = playbackRate;
             source.detune.value = Number(offKeyCents || 0);
-            source.loop = Boolean(note.loop) || String(note.type || "").toLowerCase() === "hold";
+            source.loop = Boolean(note.loop);
             if (source.loop) {
                 // Derive the loop from the real decoded recording. Older snapshots used a
                 // fictional one-second duration, which produced invalid loop boundaries.
@@ -177,7 +177,12 @@ window.quizizzoPresentation = (() => {
             const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
             const expression = Math.max(.28, Math.sqrt(velocity / 127));
             const percussion = Boolean(note.percussion ?? note.Percussion);
-            const piano = String(note.articulation ?? note.Articulation ?? "").toLowerCase() === "piano";
+            const articulation = String(note.articulation ?? note.Articulation ?? "").toLowerCase();
+            const decaying = articulation === "piano" || articulation === "bell" || articulation === "plucked";
+            const attackSeconds = articulation === "softsustain" ? 0.06
+                : articulation === "woodwind" ? 0.045
+                    : articulation === "brass" ? 0.02
+                        : decaying ? 0.008 : 0.015;
             const percussionGain = percussion ? 1.65 : 1;
             const levelCeiling = disruptiveMiss ? 0.68 : percussion ? 0.62 : 0.42;
             const level = Math.min(levelCeiling,
@@ -190,8 +195,8 @@ window.quizizzoPresentation = (() => {
                     offKeyCents > 0 ? 70 : -70, startAt + duration);
             }
             gain.gain.setValueAtTime(0, startAt);
-            gain.gain.linearRampToValueAtTime(level, startAt + (piano ? 0.008 : 0.015));
-            if (piano) {
+            gain.gain.linearRampToValueAtTime(level, startAt + Math.min(attackSeconds, duration * .35));
+            if (decaying) {
                 gain.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
             } else {
                 gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));

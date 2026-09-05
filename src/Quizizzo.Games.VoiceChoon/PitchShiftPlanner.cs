@@ -27,7 +27,8 @@ public static class PitchShiftPlanner
 
         var playbackNote = FoldNearRoot(targetMidiNote, sample.RootMidiNote);
         var semitones = playbackNote - sample.RootMidiNote;
-        var loop = sample.Style == RecordingStyle.Sustained && noteDurationSeconds >= 0.5;
+        var loop = sample.Style is (RecordingStyle.Sustained or RecordingStyle.SoftSustain or
+            RecordingStyle.Brass or RecordingStyle.Woodwind) && noteDurationSeconds >= 0.5;
         return new PitchShiftPlan(
             sample.Key,
             targetMidiNote,

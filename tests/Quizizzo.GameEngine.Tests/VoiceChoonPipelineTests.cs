@@ -300,6 +300,32 @@ public sealed class VoiceChoonPipelineTests
             [new RecordedSample("piano", 67, note.PlaybackStyle, 1)]).Loop);
     }
 
+    [Theory]
+    [InlineData(10, VoiceChoonInstrumentFamily.Bell, RecordingStyle.Bell, "BONG")]
+    [InlineData(19, VoiceChoonInstrumentFamily.Organ, RecordingStyle.SoftSustain, "VOOO")]
+    [InlineData(25, VoiceChoonInstrumentFamily.Guitar, RecordingStyle.Plucked, "DWANG")]
+    [InlineData(48, VoiceChoonInstrumentFamily.Strings, RecordingStyle.SoftSustain, "VAAAH")]
+    [InlineData(57, VoiceChoonInstrumentFamily.Brass, RecordingStyle.Brass, "BRAAH")]
+    [InlineData(73, VoiceChoonInstrumentFamily.Woodwind, RecordingStyle.Woodwind, "DOOO")]
+    public void General_midi_families_receive_distinct_prompts_and_articulation(
+        int program, VoiceChoonInstrumentFamily family, RecordingStyle style, string example)
+    {
+        var track = new RawMidiTrack(0, "Track", VoiceChoonTrackRole.Other, false,
+            [new RawMidiNote(0, 96, 0, 1, 60, 90, 0)], program);
+
+        Assert.Equal(family, TrackArticulation.FamilyFor(track));
+        Assert.Equal(style, TrackArticulation.RecordingStyleFor(track));
+        Assert.Equal(example, InstrumentSoundGuide.For(track)[0].Example);
+    }
+
+    [Theory]
+    [InlineData(RecordingStyle.SoftSustain)]
+    [InlineData(RecordingStyle.Brass)]
+    [InlineData(RecordingStyle.Woodwind)]
+    public void Sustaining_instrument_families_loop_long_notes(RecordingStyle style) =>
+        Assert.True(PitchShiftPlanner.Plan(60, 1.5,
+            [new RecordedSample("sample", 60, style, 1)]).Loop);
+
     [Fact]
     public void Short_generic_electronic_tracks_keep_one_shot_articulation()
     {

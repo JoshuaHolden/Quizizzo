@@ -24,7 +24,24 @@ public enum RecordingStyle
     OneShot,
     Sustained,
     Percussion,
-    Piano
+    Piano,
+    Bell,
+    Plucked,
+    SoftSustain,
+    Brass,
+    Woodwind
+}
+
+public enum VoiceChoonInstrumentFamily
+{
+    Generic,
+    Piano,
+    Bell,
+    Organ,
+    Guitar,
+    Strings,
+    Brass,
+    Woodwind
 }
 
 public enum VoiceChoonDifficulty
@@ -96,7 +113,8 @@ public sealed record RhythmNote(
     string SourceTrack,
     VoiceChoonTrackRole SourceRole,
     RhythmNoteType Type,
-    RecordingStyle PlaybackStyle = RecordingStyle.OneShot);
+    RecordingStyle PlaybackStyle = RecordingStyle.OneShot,
+    VoiceChoonInstrumentFamily InstrumentFamily = VoiceChoonInstrumentFamily.Generic);
 
 public sealed record ChartGenerationOptions
 {

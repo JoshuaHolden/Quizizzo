@@ -105,13 +105,27 @@ public static class InstrumentSoundGuide
     public static IReadOnlyList<SoundRecordingPrompt> For(RawMidiTrack track)
     {
         ArgumentNullException.ThrowIfNull(track);
-        return TrackArticulation.IsPiano(track)
-            ? MelodicPair("piano", "DOONG", "TING", RecordingStyle.Piano, 52, 72,
-                "Make a clean bell-like note: a crisp D or T at the start, then let it fade away. Do not hold the sound steady.")
-            : track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track)
-            ? MelodicPair("legato", "AAAAH", "OOOOH", RecordingStyle.Sustained, 55, 67,
-                "Hold a smooth, steady vowel with no wobble; this will be looped for long classical notes.")
-            : For(track.Role);
+        return TrackArticulation.FamilyFor(track) switch
+        {
+            VoiceChoonInstrumentFamily.Piano => MelodicPair("piano", "DOONG", "TING", RecordingStyle.Piano, 52, 72,
+                "Make a clean piano-like note: a crisp D or T at the start, then let it fade away. Do not hold it steady."),
+            VoiceChoonInstrumentFamily.Bell => MelodicPair("bell", "BONG", "DING", RecordingStyle.Bell, 55, 76,
+                "Use a hard B or D attack followed by a short ringing vowel, like a bell or marimba bar."),
+            VoiceChoonInstrumentFamily.Organ => MelodicPair("organ", "VOOO", "WEEE", RecordingStyle.SoftSustain, 52, 69,
+                "Hold a smooth unwavering tone. Start gently and keep the volume level like an organ pipe."),
+            VoiceChoonInstrumentFamily.Guitar => MelodicPair("guitar", "DWANG", "TING", RecordingStyle.Plucked, 52, 69,
+                "Make a sharp pluck with a D or T at the front and a very short fading ring."),
+            VoiceChoonInstrumentFamily.Strings => MelodicPair("strings", "VAAAH", "ZHEEE", RecordingStyle.SoftSustain, 55, 72,
+                "Ease into a smooth bowed sound and hold it steadily; avoid a hard consonant at the start."),
+            VoiceChoonInstrumentFamily.Brass => MelodicPair("brass", "BRAAH", "PAAH", RecordingStyle.Brass, 52, 67,
+                "Start with a firm lip buzz or B/P attack, then hold a bold steady vowel."),
+            VoiceChoonInstrumentFamily.Woodwind => MelodicPair("woodwind", "DOOO", "FWEEE", RecordingStyle.Woodwind, 60, 76,
+                "Use a gentle breathy D or F attack and a smooth narrow vowel, like blowing across a tube."),
+            _ when track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track) =>
+                MelodicPair("legato", "AAAAH", "OOOOH", RecordingStyle.Sustained, 55, 67,
+                    "Hold a smooth, steady vowel with no wobble; this will be looped for long classical notes."),
+            _ => For(track.Role)
+        };
     }
 
     public static IReadOnlyList<SoundRecordingPrompt> For(VoiceChoonTrackRole role) => role switch
@@ -166,16 +180,49 @@ public static class TrackArticulation
         "clarinet", "oboe", "orchestra", "ensemble", "choir"
     ];
 
-    public static bool IsPiano(RawMidiTrack track)
+    public static VoiceChoonInstrumentFamily FamilyFor(RawMidiTrack track)
     {
         ArgumentNullException.ThrowIfNull(track);
-        if (track.IsPercussion) return false;
-        if (track.ProgramNumber is >= 0 and <= 7) return true;
+        if (track.IsPercussion) return VoiceChoonInstrumentFamily.Generic;
+        if (track.ProgramNumber is { } program)
+        {
+            return program switch
+            {
+                >= 0 and <= 7 => VoiceChoonInstrumentFamily.Piano,
+                >= 8 and <= 15 => VoiceChoonInstrumentFamily.Bell,
+                >= 16 and <= 23 => VoiceChoonInstrumentFamily.Organ,
+                >= 24 and <= 31 => VoiceChoonInstrumentFamily.Guitar,
+                >= 40 and <= 55 => VoiceChoonInstrumentFamily.Strings,
+                >= 56 and <= 63 => VoiceChoonInstrumentFamily.Brass,
+                >= 64 and <= 79 => VoiceChoonInstrumentFamily.Woodwind,
+                _ => VoiceChoonInstrumentFamily.Generic
+            };
+        }
         var normalized = NormalizeName(track.Name);
-        return normalized.Contains("piano", StringComparison.Ordinal) ||
-               normalized.Contains("grand", StringComparison.Ordinal) ||
-               normalized.Contains("honkytonk", StringComparison.Ordinal);
+        if (ContainsAny(normalized, "piano", "grand", "honkytonk")) return VoiceChoonInstrumentFamily.Piano;
+        if (ContainsAny(normalized, "bell", "marimba", "xylophone", "vibraphone", "glockenspiel")) return VoiceChoonInstrumentFamily.Bell;
+        if (ContainsAny(normalized, "organ", "accordion")) return VoiceChoonInstrumentFamily.Organ;
+        if (ContainsAny(normalized, "guitar", "harp", "banjo", "ukulele")) return VoiceChoonInstrumentFamily.Guitar;
+        if (ContainsAny(normalized, "string", "violin", "viola", "cello", "orchestra", "ensemble")) return VoiceChoonInstrumentFamily.Strings;
+        if (ContainsAny(normalized, "brass", "trumpet", "trombone", "tuba", "horn")) return VoiceChoonInstrumentFamily.Brass;
+        if (ContainsAny(normalized, "flute", "clarinet", "oboe", "bassoon", "sax", "recorder", "whistle")) return VoiceChoonInstrumentFamily.Woodwind;
+        return VoiceChoonInstrumentFamily.Generic;
     }
+
+    public static bool IsPiano(RawMidiTrack track) => FamilyFor(track) == VoiceChoonInstrumentFamily.Piano;
+
+    public static RecordingStyle RecordingStyleFor(RawMidiTrack track) => FamilyFor(track) switch
+    {
+        VoiceChoonInstrumentFamily.Piano => RecordingStyle.Piano,
+        VoiceChoonInstrumentFamily.Bell => RecordingStyle.Bell,
+        VoiceChoonInstrumentFamily.Guitar => RecordingStyle.Plucked,
+        VoiceChoonInstrumentFamily.Organ or VoiceChoonInstrumentFamily.Strings => RecordingStyle.SoftSustain,
+        VoiceChoonInstrumentFamily.Brass => RecordingStyle.Brass,
+        VoiceChoonInstrumentFamily.Woodwind => RecordingStyle.Woodwind,
+        _ when track.IsPercussion => RecordingStyle.Percussion,
+        _ when IsLegato(track) => RecordingStyle.Sustained,
+        _ => RecordingStyle.OneShot
+    };
 
     public static bool IsLegato(RawMidiTrack track)
     {
@@ -198,7 +245,8 @@ public static class TrackArticulation
         // General MIDI: pianos/organs and orchestral families need a continuous
         // source; guitars, chromatic percussion and synth/effect banks retain
         // their sharper one-shot articulation.
-        if (track.ProgramNumber is >= 16 and <= 23 or >= 40 and <= 79)
+        if (FamilyFor(track) is VoiceChoonInstrumentFamily.Organ or VoiceChoonInstrumentFamily.Strings or
+            VoiceChoonInstrumentFamily.Brass or VoiceChoonInstrumentFamily.Woodwind)
         {
             return true;
         }
@@ -216,4 +264,7 @@ public static class TrackArticulation
 
     private static string NormalizeName(string name) => new(name.Where(char.IsLetterOrDigit)
         .Select(char.ToLowerInvariant).ToArray());
+
+    private static bool ContainsAny(string value, params string[] candidates) =>
+        candidates.Any(candidate => value.Contains(candidate, StringComparison.Ordinal));
 }
