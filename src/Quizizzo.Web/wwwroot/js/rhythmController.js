@@ -52,7 +52,7 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         missFlashTimers.set(lane, window.setTimeout(() => {
             button.classList.remove("miss-flash");
             missFlashTimers.delete(lane);
-        }, 520));
+        }, 280));
     }
 
     function judgeLabel(errorSeconds) {

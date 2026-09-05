@@ -160,8 +160,6 @@ window.quizizzoPresentation = (() => {
             if (!context || !buffer || muted || generation !== playbackGeneration) return;
             const source = context.createBufferSource();
             const gain = context.createGain();
-            const brightness = context.createBiquadFilter();
-            const transient = context.createBiquadFilter();
             const duration = Math.max(0.05, Number(note.durationSeconds) - offset);
             source.buffer = buffer;
             const playbackRate = Math.max(0.125, Number(note.playbackRate || 1));
@@ -178,21 +176,11 @@ window.quizizzoPresentation = (() => {
             }
             const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
             const expression = Math.max(.28, Math.sqrt(velocity / 127));
-            // Pitching a voice upward removes energy and is easily masked by unchanged bass.
-            // Compensate only above the recorded pitch, leaving bass gain exactly as it was.
-            const raisedOctaves = Math.max(0, Math.min(2, Math.log2(playbackRate)));
-            const highPitchGain = 1 + raisedOctaves * 0.2;
             const percussion = Boolean(note.percussion ?? note.Percussion);
-            const percussionGain = percussion ? 1.3 : 1;
-            brightness.type = "highshelf";
-            brightness.frequency.value = 1800;
-            brightness.gain.value = raisedOctaves * 3;
-            transient.type = "peaking";
-            transient.frequency.value = 2400;
-            transient.Q.value = 0.8;
-            transient.gain.value = percussion ? 3.5 : 0;
-            const level = Math.min(disruptiveMiss ? 0.68 : 0.42,
-                sampleGain(buffer) * 0.35 * expression * highPitchGain * percussionGain *
+            const percussionGain = percussion ? 1.65 : 1;
+            const levelCeiling = disruptiveMiss ? 0.68 : percussion ? 0.62 : 0.42;
+            const level = Math.min(levelCeiling,
+                sampleGain(buffer) * 0.35 * expression * percussionGain *
                 (disruptiveMiss ? 1.7 : 1));
             const startAt = Math.max(context.currentTime + 0.005, when);
             if (disruptiveMiss) {
@@ -204,7 +192,7 @@ window.quizizzoPresentation = (() => {
             gain.gain.linearRampToValueAtTime(level, startAt + 0.015);
             gain.gain.setValueAtTime(level, startAt + Math.max(0.015, duration - 0.05));
             gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
-            source.connect(brightness).connect(transient).connect(gain).connect(output);
+            source.connect(gain).connect(output);
             const voice = { source, gain };
             sources.add(voice);
             source.addEventListener("ended", () => sources.delete(voice), { once: true });

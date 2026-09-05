@@ -374,15 +374,11 @@
 
 @keyframes rhythm-miss-flash {
     0%, 100% {
-        background-color: transparent;
         box-shadow: none;
     }
 
-    18%, 65% {
-        background-color: rgba(255, 20, 58, 0.88);
-        box-shadow: inset 0 0 0 5px #fff, 0 0 34px #ff143a;
-        color: #fff;
-        filter: saturate(1.4) brightness(1.15);
+    35% {
+        box-shadow: inset 0 0 0 3px rgba(255, 45, 75, 0.72), 0 0 14px rgba(255, 20, 58, 0.35);
     }
 }
 
@@ -395,8 +391,8 @@
 }
 
 .rhythm-pad.miss-flash {
-    animation: rhythm-miss-flash 520ms ease-out;
-    z-index: 2;
+    animation: rhythm-miss-flash 280ms ease-out;
+    pointer-events: auto;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -408,8 +404,7 @@
     }
 
     .rhythm-pad.miss-flash {
-        background-color: #c9002b;
-        box-shadow: inset 0 0 0 5px #fff;
+        box-shadow: inset 0 0 0 3px rgba(255, 45, 75, 0.72);
     }
 }
 
