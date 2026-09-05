@@ -45,6 +45,8 @@ window.quizizzoPresentation = (() => {
         let missedJudgementIds = new Set();
         let soundedMissIds = new Set();
         let scheduleKey = null;
+        let playbackGeneration = 0;
+        let recovering = false;
         const buffers = new Map();
         let countdownBuffer = null;
 
@@ -107,6 +109,7 @@ window.quizizzoPresentation = (() => {
         }
 
         function stop() {
+            playbackGeneration += 1;
             if (schedulerTimer !== null) window.clearInterval(schedulerTimer);
             schedulerTimer = null;
             sources.forEach(voice => {
@@ -149,11 +152,11 @@ window.quizizzoPresentation = (() => {
             return seconds;
         }
 
-        async function play(note, when, offset = 0, offKeyCents = 0) {
+        async function play(note, when, offset = 0, offKeyCents = 0, generation = playbackGeneration) {
             if (muted) return;
             const context = ensureContext();
             const buffer = await load(note.sampleAssetId);
-            if (!context || !buffer || muted) return;
+            if (!context || !buffer || muted || generation !== playbackGeneration) return;
             const source = context.createBufferSource();
             const gain = context.createGain();
             const duration = Math.max(0.05, Number(note.durationSeconds) - offset);
@@ -194,6 +197,7 @@ window.quizizzoPresentation = (() => {
             if (scheduleKey === key && schedulerTimer !== null) return;
             stop();
             scheduleKey = key;
+            const generation = playbackGeneration;
             const context = ensureContext();
             if (!context || !startsAt) return;
             // Decode everything during the lead-in rather than on the note boundary.
@@ -224,7 +228,7 @@ window.quizizzoPresentation = (() => {
                         durationSeconds: Math.min(.32, Number(
                             sourSource.durationSeconds ?? sourSource.DurationSeconds ?? .25)),
                         loop: false
-                    }, context.currentTime + .005, 0, sourDirection * 175);
+                    }, context.currentTime + .005, 0, sourDirection * 175, generation);
                 });
                 notes.forEach(note => {
                     const id = String(note.id ?? note.Id);
@@ -251,12 +255,45 @@ window.quizizzoPresentation = (() => {
                         velocity: note.velocity ?? note.Velocity,
                         type: note.type ?? note.Type
                     }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start),
-                    offKey ? sourDirection * 175 : 0);
+                    offKey ? sourDirection * 175 : 0, generation);
                 });
             };
             tick();
             schedulerTimer = window.setInterval(tick, 50);
         }
+
+        async function recoverPlayback() {
+            if (recovering || muted || snapshot?.gameKey !== "voicechoon" || snapshot.phase !== "Playing") return;
+            recovering = true;
+            try {
+                const context = ensureContext();
+                if (!context) return;
+                if (context.state === "suspended" || context.state === "interrupted") {
+                    await context.resume();
+                }
+                stop();
+                schedule();
+            } catch (error) {
+                console.warn("VoiceChoon audio could not resume yet.", error);
+            } finally {
+                recovering = false;
+            }
+        }
+
+        const reconnectHandler = event => {
+            if (!event.detail?.role || event.detail.role === "Display") void recoverPlayback();
+        };
+        const onlineHandler = () => void recoverPlayback();
+        const pageShowHandler = event => {
+            if (event.persisted) void recoverPlayback();
+        };
+        const visibilityHandler = () => {
+            if (document.visibilityState === "visible") void recoverPlayback();
+        };
+        window.addEventListener("quizizzo:realtime-reconnected", reconnectHandler);
+        window.addEventListener("online", onlineHandler);
+        window.addEventListener("pageshow", pageShowHandler);
+        document.addEventListener("visibilitychange", visibilityHandler);
 
         return {
             update(nextSnapshot) {
@@ -274,6 +311,10 @@ window.quizizzoPresentation = (() => {
             destroy() {
                 stop();
                 document.removeEventListener("pointerdown", gestureHandler);
+                window.removeEventListener("quizizzo:realtime-reconnected", reconnectHandler);
+                window.removeEventListener("online", onlineHandler);
+                window.removeEventListener("pageshow", pageShowHandler);
+                document.removeEventListener("visibilitychange", visibilityHandler);
                 audioContext?.close();
                 audioContext = null;
             },

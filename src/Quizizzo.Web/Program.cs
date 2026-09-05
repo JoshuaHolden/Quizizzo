@@ -44,7 +44,13 @@ if (builder.Environment.IsProduction())
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
-var signalR = builder.Services.AddSignalR();
+var signalR = builder.Services.AddSignalR(options =>
+{
+    // Allow enough tolerance for a busy game snapshot write or a brief reverse-proxy pause
+    // without declaring every phone and display dead at the same time.
+    options.KeepAliveInterval = TimeSpan.FromSeconds(10);
+    options.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+});
 var redisConnectionString = builder.Configuration.GetConnectionString("Redis");
 if (!string.IsNullOrWhiteSpace(redisConnectionString))
 {
@@ -388,7 +394,7 @@ app.MapPlayerSessionEndpoints();
 app.MapHostDisplayEndpoints();
 app.MapDrawingAssetEndpoints();
 app.MapVoiceSampleEndpoints();
-app.MapHub<PartyHub>("/hubs/party");
+app.MapHub<PartyHub>("/hubs/party", options => options.AllowStatefulReconnects = true);
 app.MapHealthChecks("/health/live", new() { Predicate = check => check.Tags.Contains("live") });
 app.MapHealthChecks("/health/ready", new() { Predicate = check => check.Tags.Contains("ready") });
 

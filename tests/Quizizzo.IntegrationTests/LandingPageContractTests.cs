@@ -722,7 +722,9 @@ public sealed class LandingPageContractTests
             "src/Quizizzo.Web/wwwroot/js/partyRealtime.js");
         Assert.Contains("withServerTimeout(60000)", realtime, StringComparison.Ordinal);
         Assert.Contains("withKeepAliveInterval(10000)", realtime, StringComparison.Ordinal);
+        Assert.Contains("withStatefulReconnect({ bufferSize: 100000 })", realtime, StringComparison.Ordinal);
         Assert.Contains("nextRetryDelayInMilliseconds", realtime, StringComparison.Ordinal);
+        Assert.Contains("quizizzo:realtime-reconnected", realtime, StringComparison.Ordinal);
 
         Assert.Contains(
             "role === \"Display\" && message.reason === \"DisplayPaired\"",
@@ -821,6 +823,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("missedJudgementIds", presentation, StringComparison.Ordinal);
         Assert.Contains("sourDirection * 175", presentation, StringComparison.Ordinal);
         Assert.Contains("source.detune.value", presentation, StringComparison.Ordinal);
+        Assert.Contains("recoverPlayback", presentation, StringComparison.Ordinal);
+        Assert.Contains("generation !== playbackGeneration", presentation, StringComparison.Ordinal);
+        Assert.Contains("quizizzo:realtime-reconnected", presentation, StringComparison.Ordinal);
         Assert.Contains("VoiceChoonDisplayPerformer", state, StringComparison.Ordinal);
         Assert.Contains("JudgedNoteIds", state, StringComparison.Ordinal);
     }

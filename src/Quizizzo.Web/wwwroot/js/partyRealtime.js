@@ -28,6 +28,7 @@ window.quizizzoRealtime = (() => {
             .withUrl("/hubs/party")
             .withServerTimeout(60000)
             .withKeepAliveInterval(10000)
+            .withStatefulReconnect({ bufferSize: 100000 })
             .withAutomaticReconnect({
                 nextRetryDelayInMilliseconds: context =>
                     context.previousRetryCount === 0 ? 0 : Math.min(10000, 1000 * 2 ** Math.min(4, context.previousRetryCount))
@@ -54,6 +55,9 @@ window.quizizzoRealtime = (() => {
                 await bind(connection, role, partyId);
                 await notify(reference, "SetConnectionStatus", "Connected");
                 await notify(reference, "HandleStateChanged", "Reconnected");
+                window.dispatchEvent(new CustomEvent("quizizzo:realtime-reconnected", {
+                    detail: { role, partyId }
+                }));
             } catch {
                 await notify(reference, "SetConnectionStatus", "Disconnected");
             }
