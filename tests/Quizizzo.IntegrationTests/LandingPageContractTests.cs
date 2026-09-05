@@ -542,8 +542,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("Host controls", page, StringComparison.Ordinal);
         Assert.Contains("Close party", page, StringComparison.Ordinal);
         Assert.Contains("Chart difficulty", page, StringComparison.Ordinal);
-        Assert.Contains("Solo autoplay test", page, StringComparison.Ordinal);
-        Assert.Contains("requires exactly one joined player", page, StringComparison.Ordinal);
+        Assert.Contains("Moosik Bots fill the empty instruments", page, StringComparison.Ordinal);
+        Assert.Contains("bots fill the band", page, StringComparison.Ordinal);
+        Assert.DoesNotContain("Solo autoplay test", page, StringComparison.Ordinal);
         Assert.Contains("@media (max-width: 480px)", styles, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", styles, StringComparison.Ordinal);
         Assert.Contains("forced-colors: active", styles, StringComparison.Ordinal);
@@ -768,6 +769,14 @@ public sealed class LandingPageContractTests
         Assert.Contains("drawVoiceChoonMarbling", presentation, StringComparison.Ordinal);
         Assert.Contains("drawVoiceChoonFractal", presentation, StringComparison.Ordinal);
         Assert.Contains("drawVoiceChoonMandelbrot", presentation, StringComparison.Ordinal);
+        Assert.Contains("snapshot.phase === \"Countdown\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("GET READY", presentation, StringComparison.Ordinal);
+        Assert.Contains("Date.parse(snapshot.phaseEndsAtUtc) - Date.now()", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("voicechoon-countdown-blip.wav", presentation, StringComparison.Ordinal);
+        Assert.Contains("playCountdownBlip", presentation, StringComparison.Ordinal);
+        Assert.Contains("scale: 2.05", presentation, StringComparison.Ordinal);
+        Assert.Contains("alpha: 0", presentation, StringComparison.Ordinal);
         Assert.Contains("const fractalStyle", presentation, StringComparison.Ordinal);
         Assert.Contains("texture.getSourceImage()", presentation, StringComparison.Ordinal);
         Assert.Contains("context.createImageData", presentation, StringComparison.Ordinal);
@@ -847,6 +856,24 @@ public sealed class LandingPageContractTests
         Assert.Contains("navigator.mediaDevices.getUserMedia", recorder, StringComparison.Ordinal);
         Assert.Contains("globalThis.addEventListener(\"focus\", recheckPermission)", recorder,
             StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VoiceChoon_records_locally_then_sends_one_pack_without_a_pad_confirmation_gate()
+    {
+        var controller = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/RecordingController.razor");
+        var module = ReadRepositoryFile(
+            "src/Quizizzo.Games.VoiceChoon/VoiceChoonGameModule.cs");
+
+        Assert.Contains("Send my sound pack", controller, StringComparison.Ordinal);
+        Assert.Contains("UploadAllAsync", controller, StringComparison.Ordinal);
+        Assert.Contains("Configuration.Prompts.ToArray()", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("Use sound", controller, StringComparison.Ordinal);
+        Assert.DoesNotContain("My four pads are ready", module, StringComparison.Ordinal);
+        Assert.Contains("Countdown(updated, context.ReceivedAtUtc)", module, StringComparison.Ordinal);
+        Assert.Contains("Moosik Bot", module, StringComparison.Ordinal);
+        Assert.Contains("ApplyPerfectBots", module, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)

@@ -9,7 +9,12 @@ public enum VoiceNoteRating
     Perfect
 }
 
-public sealed record VoiceChoonParticipant(Guid PlayerId, string DisplayName, int PlayerIndex);
+public sealed record VoiceChoonParticipant(
+    Guid PlayerId,
+    string DisplayName,
+    int PlayerIndex,
+    bool IsBot = false,
+    Guid? SampleOwnerPlayerId = null);
 
 public sealed record VoiceNoteJudgement(
     Guid NoteId,
@@ -47,7 +52,6 @@ public sealed record VoiceChoonGameState(
     int EnergyPercent,
     IReadOnlyList<VoiceChoonResult> Results,
     VoiceChoonDifficulty Difficulty = VoiceChoonDifficulty.Medium,
-    bool SoloAutoplayTest = false,
     string SongKey = VoiceChoonSongCatalog.DefaultSongKey,
     IReadOnlyDictionary<Guid, VoiceActiveHold>? ActiveHoldsByPlayer = null);
 

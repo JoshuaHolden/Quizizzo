@@ -35,7 +35,6 @@ public enum VoiceChoonDifficulty
 
 public sealed record VoiceChoonGameConfiguration(
     VoiceChoonDifficulty Difficulty = VoiceChoonDifficulty.Medium,
-    bool SoloAutoplayTest = false,
     string SongKey = VoiceChoonSongCatalog.DefaultSongKey);
 
 public sealed record RawMidiSong(

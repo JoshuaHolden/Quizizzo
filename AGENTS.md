@@ -836,6 +836,18 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Give Brave on iPhone concise native Settings directions, a same-code Safari fallback, and an immediate retry action.
 - [x] Recheck permission automatically when a player returns from iPhone Settings without attempting to bypass browser consent.
 
+### VoiceChoon one-tap sound-pack and automatic start flow (completed 2026-09-05)
+
+- [x] Keep every new voice sample local while players record, redo, and preview their complete assigned set.
+- [x] Replace per-sound submission controls with one resilient sound-pack upload that preserves completed recordings across a partial retry.
+- [x] Remove the redundant four-pad confirmation phase and enter the authoritative countdown as soon as every player locks their sound pack.
+- [x] Remove VoiceChoon host skip controls and let briefing, recording readiness, countdown, performance, results, and completion progress automatically.
+- [x] Recompose recording cards and the final action for narrow portrait and short landscape phones without controls covering instructional copy.
+- [x] Replace solo debug mode with server-owned Moosik Bots that fill a song's missing minimum seats, appear as dancers, and hit their assigned notes perfectly.
+- [x] Allocate bot instrument samples across the real players' sound packs while keeping phones and persistent party scoring human-owned.
+- [x] Render a large animated countdown directly from the authoritative UTC phase deadline on the main display.
+- [x] Make the five-beat countdown expand and fade with a synchronized main-display WAV blip.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

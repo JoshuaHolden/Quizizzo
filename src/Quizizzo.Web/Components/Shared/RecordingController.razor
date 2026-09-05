@@ -5,8 +5,8 @@
 <section class="voice-recording-controller" aria-label="VoiceChoon sound recorder">
     <header class="voice-recording-header">
         <div>
-            <span>Build your instrument</span>
-            <strong>@AcceptedCount / @Configuration.Prompts.Count sounds ready</strong>
+            <span>Your voice · your instrument</span>
+            <strong>@RecordedCount of @Configuration.Prompts.Count recorded</strong>
         </div>
         @if (EndsAtUtc is not null)
         {
@@ -18,7 +18,8 @@
         @foreach (var prompt in Configuration.Prompts)
         {
             var state = StateFor(prompt);
-            <article class="voice-recording-card @(state.AssetId is not null ? "accepted" : null)">
+            <article class="voice-recording-card @(state.AssetId is not null ? "accepted" : state.HasRecording ? "recorded" : null)">
+                <span class="voice-recording-number" aria-hidden="true">@PromptNumber(prompt)</span>
                 <div class="voice-recording-copy">
                     <span class="voice-recording-label">@prompt.Label</span>
                     <strong>@prompt.Example</strong>
@@ -41,17 +42,15 @@
                             <span aria-hidden="true">●</span> @(state.HasRecording ? "Redo" : "Record")
                         </button>
                     }
-                    @if (state.HasRecording && state.Status != "recording")
+                    @if (state.HasRecording && state.Status != "recording" && state.AssetId is null)
                     {
                         <button type="button" class="voice-preview-button" @onclick="() => PreviewAsync(prompt.Key)">
                             <span aria-hidden="true">▶</span> Play
                         </button>
-                        <button type="button"
-                                class="voice-use-button"
-                                disabled="@(Disabled || state.Status == "uploading" || state.AssetId is not null)"
-                                @onclick="() => UploadAsync(prompt.Key)">
-                            @(state.Status == "uploading" ? "Sending…" : state.AssetId is not null ? "Ready ✓" : "Use sound")
-                        </button>
+                    }
+                    @if (state.AssetId is not null)
+                    {
+                        <span class="voice-recording-done" aria-label="Uploaded">✓</span>
                     }
                 </div>
             </article>
@@ -91,10 +90,19 @@
     }
     <button type="button"
             class="voice-lock-button"
-            disabled="@(Disabled || AcceptedCount != Configuration.Prompts.Count || confirming)"
-            @onclick="ConfirmAsync">
-        @(confirming ? "Locking in…" : "Lock in my sounds")
+            disabled="@(Disabled || RecordedCount != Configuration.Prompts.Count || confirming)"
+            @onclick="UploadAllAsync">
+        @if (confirming)
+        {
+            <span class="voice-upload-spinner" aria-hidden="true"></span>
+            <span>Sending sound pack… @AcceptedCount/@Configuration.Prompts.Count</span>
+        }
+        else
+        {
+            <span>Send my sound pack</span><span aria-hidden="true">↗</span>
+        }
     </button>
+    <small class="voice-upload-note">Record and replay everything first. Your sounds upload together at the end.</small>
 </section>
 
 @code {
@@ -115,6 +123,8 @@
     private string? retryPromptKey;
     private bool microphoneBlocked;
     private int AcceptedCount => Configuration.Prompts.Count(prompt => StateFor(prompt).AssetId is not null);
+    private int RecordedCount => Configuration.Prompts.Count(prompt =>
+        StateFor(prompt) is { HasRecording: true } || StateFor(prompt).AssetId is not null);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -151,6 +161,15 @@
     private RecordingUiState StateFor(RecordingPromptConfiguration prompt) =>
         states.GetValueOrDefault(prompt.Key)
         ?? new RecordingUiState(prompt.AssetId is not null, prompt.AssetId, "idle");
+
+    private int PromptNumber(RecordingPromptConfiguration prompt)
+    {
+        for (var index = 0; index < Configuration.Prompts.Count; index++)
+        {
+            if (string.Equals(Configuration.Prompts[index].Key, prompt.Key, StringComparison.Ordinal)) return index + 1;
+        }
+        return 0;
+    }
 
     private async Task StartAsync(string promptKey)
     {
@@ -226,36 +245,38 @@
         }
     }
 
-    private async Task UploadAsync(string promptKey)
+    private async Task UploadAllAsync()
     {
-        if (controller is null)
+        if (controller is null || confirming || RecordedCount != Configuration.Prompts.Count)
         {
             return;
         }
-        error = null;
-        states[promptKey] = states[promptKey] with { Status = "uploading" };
-        try
-        {
-            var assetId = await controller.InvokeAsync<Guid>(
-                "upload",
-                promptKey,
-                Configuration.UploadEndpoint,
-                GameInstanceId.ToString("D"));
-            states[promptKey] = new RecordingUiState(true, assetId, "ready");
-        }
-        catch (JSException exception)
-        {
-            states[promptKey] = states[promptKey] with { Status = "ready" };
-            error = exception.Message;
-        }
-    }
-
-    private async Task ConfirmAsync()
-    {
         confirming = true;
+        error = null;
         try
         {
+            var prompts = Configuration.Prompts.ToArray();
+            foreach (var prompt in prompts.Where(item => StateFor(item).AssetId is null))
+            {
+                states[prompt.Key] = states[prompt.Key] with { Status = "uploading" };
+                await InvokeAsync(StateHasChanged);
+                var assetId = await controller.InvokeAsync<Guid>(
+                    "upload",
+                    prompt.Key,
+                    Configuration.UploadEndpoint,
+                    GameInstanceId.ToString("D"));
+                states[prompt.Key] = new RecordingUiState(true, assetId, "ready");
+                await InvokeAsync(StateHasChanged);
+            }
             await Confirmed.InvokeAsync();
+        }
+        catch (JSException)
+        {
+            foreach (var prompt in Configuration.Prompts.Where(item => StateFor(item).Status == "uploading"))
+            {
+                states[prompt.Key] = states[prompt.Key] with { Status = "ready" };
+            }
+            error = "One sound did not upload. Your recordings are still here — tap Send again.";
         }
         finally
         {

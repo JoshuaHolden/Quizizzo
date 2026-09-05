@@ -46,6 +46,7 @@ window.quizizzoPresentation = (() => {
         let soundedMissIds = new Set();
         let scheduleKey = null;
         const buffers = new Map();
+        let countdownBuffer = null;
 
         function ensureContext() {
             const AudioContextType = globalThis.AudioContext ?? globalThis.webkitAudioContext;
@@ -83,6 +84,26 @@ window.quizizzoPresentation = (() => {
             })().catch(() => null);
             buffers.set(assetId, pending);
             return pending;
+        }
+
+        async function playCountdownBlip() {
+            if (muted) return;
+            const context = ensureContext();
+            if (!context || context.state !== "running") return;
+            countdownBuffer ??= fetch("/assets/audio/voicechoon-countdown-blip.wav", {
+                credentials: "same-origin"
+            }).then(response => response.ok ? response.arrayBuffer() : null)
+                .then(bytes => bytes ? context.decodeAudioData(bytes) : null)
+                .catch(() => null);
+            const buffer = await countdownBuffer;
+            if (!buffer || muted) return;
+            const source = context.createBufferSource();
+            const gain = context.createGain();
+            gain.gain.value = 0.7;
+            source.buffer = buffer;
+            source.connect(gain);
+            gain.connect(output);
+            source.start();
         }
 
         function stop() {
@@ -256,7 +277,8 @@ window.quizizzoPresentation = (() => {
             recordingStream() {
                 ensureContext();
                 return recordingDestination?.stream || null;
-            }
+            },
+            playCountdownBlip
         };
     }
 
@@ -1308,6 +1330,42 @@ window.quizizzoPresentation = (() => {
                         wordWrap: { width: rows === 1 ? 255 : 205 }
                     }).setOrigin(.5).setDepth(54));
             });
+
+            if (snapshot.phase === "Countdown" && snapshot.phaseEndsAtUtc) {
+                const countdown = this.add.text(width / 2, height / 2 - 45, "", {
+                    color: "#c8ff36", fontFamily: displayFont, fontSize: "148px", fontStyle: "bold",
+                    stroke: "#160a31", strokeThickness: 18, align: "center",
+                    shadow: { offsetX: 0, offsetY: 12, color: "#ff3fa4", blur: 22, fill: true }
+                }).setOrigin(.5).setDepth(95);
+                const countdownLabel = this.add.text(width / 2, height / 2 + 78, "GET READY", {
+                    color: "#ffffff", fontFamily: displayFont, fontSize: "34px", fontStyle: "bold",
+                    stroke: "#160a31", strokeThickness: 8, letterSpacing: 5
+                }).setOrigin(.5).setDepth(95);
+                let previousSecond = null;
+                const updateCountdown = () => {
+                    const remaining = Math.max(0, Date.parse(snapshot.phaseEndsAtUtc) - Date.now());
+                    const second = Math.max(1, Math.ceil(remaining / 1000));
+                    if (second !== previousSecond) {
+                        previousSecond = second;
+                        countdown.setText(String(second)).setAlpha(1).setScale(.48)
+                            .setAngle(second % 2 === 0 ? -3 : 3);
+                        void this.controller.voiceAudio?.playCountdownBlip();
+                        this.tweens.killTweensOf(countdown);
+                        if (this.controller.reducedMotion) countdown.setScale(1).setAngle(0);
+                        else this.tweens.add({
+                            targets: countdown,
+                            scale: 2.05,
+                            alpha: 0,
+                            angle: 0,
+                            duration: 880,
+                            ease: "Cubic.easeOut"
+                        });
+                    }
+                };
+                updateCountdown();
+                this.voiceTimer = this.time.addEvent({ delay: 100, loop: true, callback: updateCountdown });
+                items.push(countdown, countdownLabel);
+            }
 
             if (playing) {
                 const sectionText = this.add.text(35, 674, "INTRO", {

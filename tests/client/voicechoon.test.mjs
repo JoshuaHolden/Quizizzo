@@ -23,7 +23,7 @@ test("microphone permission state distinguishes a saved grant from a fresh promp
         else delete globalThis.isSecureContext;
     }
 });
-import { dueAutoplayNotes, nearestLaneNote, songPositionSeconds, visibleNotes } from
+import { nearestLaneNote, songPositionSeconds, visibleNotes } from
     "../../src/Quizizzo.Web/wwwroot/js/rhythmController.js";
 
 test("recording processing trims silence, normalizes peaks and emits PCM wave", () => {
@@ -49,16 +49,3 @@ test("rhythm helpers derive song time and choose only the nearest matching lane"
     assert.equal(nearestLaneNote(notes, 0, 1.08)?.id, "a");
     assert.equal(nearestLaneNote(notes, 1, 2), null);
 });
-
-test("solo autoplay schedules each newly due note exactly once", () => {
-    const notes = [
-        { id: "past", startTimeSeconds: 0.8 },
-        { id: "due-a", startTimeSeconds: 1.1 },
-        { id: "due-b", startTimeSeconds: 1.2 },
-        { id: "future", startTimeSeconds: 1.3 }
-    ];
-
-    assert.deepEqual(
-        dueAutoplayNotes(notes, 1, 1.2, new Set(["due-b"])).map(note => note.id),
-        ["due-a"]);
-    });

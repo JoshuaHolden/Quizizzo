@@ -72,8 +72,7 @@ public sealed record RhythmControllerConfiguration(
     double NoteTravelSeconds = 2,
     double GoodWindowSeconds = 0.2,
     double GreatWindowSeconds = 0.12,
-    double PerfectWindowSeconds = 0.06,
-    bool Autoplay = false);
+    double PerfectWindowSeconds = 0.06);
 
 public sealed record VoiceChoonDisplayPlayback(
     Guid Id,

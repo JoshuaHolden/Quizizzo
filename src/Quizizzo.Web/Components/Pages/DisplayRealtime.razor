@@ -257,11 +257,7 @@
                                                     </select>
                                                     <small>@VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).RecordingMessage</small>
                                                     <small>Changes note density and timing windows, not the song.</small>
-                                                    <label class="display-host-game-test-mode">
-                                                        <input type="checkbox" @bind="voiceChoonSoloAutoplayTest" />
-                                                        Solo autoplay test
-                                                    </label>
-                                                    <small>One player records every sound; the performance then plays perfectly without pad input.</small>
+                                                    <small>Short on players? Moosik Bots fill the empty instruments and play them perfectly.</small>
                                                 </div>
                                             </details>
                                         }
@@ -392,7 +388,6 @@
     private int aniMatesDrawingSecondsPerFrame = AniMatesGameModule.DefaultDrawingSecondsPerFrame;
     private VoiceChoonDifficulty voiceChoonDifficulty = VoiceChoonDifficulty.Medium;
         private string voiceChoonSongKey = VoiceChoonSongCatalog.DefaultSongKey;
-    private bool voiceChoonSoloAutoplayTest;
     private PhaserPresentation? phaserPresentation;
     private bool phaserFailed;
     private VoiceChoonReplayView? savedReplay;
@@ -614,7 +609,6 @@
             VoiceChoonGameDefinition.GameKey =>
                 GameJson.From(new VoiceChoonGameConfiguration(
                     voiceChoonDifficulty,
-                    voiceChoonSoloAutoplayTest,
                     voiceChoonSongKey)),
             _ => GameJson.Empty
         };
@@ -630,13 +624,12 @@
 
     private bool CanPlay(GameDescriptor game) =>
         hostParty?.Status == PartyStatus.Lobby &&
-        (game.Key != VoiceChoonGameDefinition.GameKey || !voiceChoonSoloAutoplayTest || players.Count == 1) &&
         players.Count >= MinimumPlayersForCurrentSetup(game) &&
         players.Count <= MaximumPlayersForCurrentSetup(game);
 
     private int MinimumPlayersForCurrentSetup(GameDescriptor game) =>
-        game.Key == VoiceChoonGameDefinition.GameKey && !voiceChoonSoloAutoplayTest
-            ? VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers
+        game.Key == VoiceChoonGameDefinition.GameKey
+            ? 1
             : game.MinimumPlayers;
 
     private int MaximumPlayersForCurrentSetup(GameDescriptor game) =>
@@ -646,7 +639,7 @@
 
     private string PlayerRangeLabel(GameDescriptor game) =>
         game.Key == VoiceChoonGameDefinition.GameKey
-            ? $"{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MinimumPlayers}–{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MaximumPlayers} players · 1-player test"
+            ? $"1–{VoiceChoonSongCatalog.GetDefinition(voiceChoonSongKey).MaximumPlayers} players · bots fill the band"
             : $"{game.MinimumPlayers}–{game.MaximumPlayers} players";
 
     private bool PlaylistCanStart => hostParty is { Status: PartyStatus.Lobby, GameQueue.Count: > 0 } &&
@@ -656,9 +649,7 @@
         $"Start playlist · {hostParty!.GameQueue.Count} game{(hostParty.GameQueue.Count == 1 ? string.Empty : "s")}";
 
     private string GameAvailability(GameDescriptor game) =>
-        game.Key == VoiceChoonGameDefinition.GameKey && voiceChoonSoloAutoplayTest && players.Count != 1
-            ? "Solo autoplay test requires exactly one joined player"
-            : players.Count < MinimumPlayersForCurrentSetup(game)
+        players.Count < MinimumPlayersForCurrentSetup(game)
         ? $"Needs {MinimumPlayersForCurrentSetup(game) - players.Count} more player{(MinimumPlayersForCurrentSetup(game) - players.Count == 1 ? string.Empty : "s")}"
         : $"Supports up to {MaximumPlayersForCurrentSetup(game)} players";
 
@@ -684,8 +675,7 @@
                 var configuration = JsonSerializer.Deserialize<VoiceChoonGameConfiguration>(item.ConfigurationJson);
                 return configuration is null
                     ? "Medium difficulty"
-                                        : $"{VoiceChoonSongCatalog.GetDefinition(configuration.SongKey).DisplayName} · {configuration.Difficulty}"
-                                            + (configuration.SoloAutoplayTest ? " · solo autoplay test" : string.Empty);
+                                        : $"{VoiceChoonSongCatalog.GetDefinition(configuration.SongKey).DisplayName} · {configuration.Difficulty}";
             }
             catch (JsonException)
             {

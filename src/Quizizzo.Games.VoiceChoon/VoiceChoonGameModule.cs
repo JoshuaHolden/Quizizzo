@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using Quizizzo.GameContracts;
 
@@ -9,7 +11,7 @@ public sealed record VoiceChoonFlowOptions
     public TimeSpan BriefingDuration { get; init; } = TimeSpan.FromSeconds(8);
     public TimeSpan RecordingDuration { get; init; } = TimeSpan.FromSeconds(90);
     public TimeSpan ControllerReadyDuration { get; init; } = TimeSpan.FromSeconds(20);
-    public TimeSpan CountdownDuration { get; init; } = TimeSpan.FromSeconds(4);
+    public TimeSpan CountdownDuration { get; init; } = TimeSpan.FromSeconds(5);
     public TimeSpan ResultsDuration { get; init; } = TimeSpan.FromSeconds(12);
 
     public void Validate()
@@ -41,30 +43,50 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     {
         var configuration = ReadConfiguration(context.Configuration);
         var songDefinition = VoiceChoonSongCatalog.GetDefinition(configuration.SongKey);
-        var validPlayerCount = configuration.SoloAutoplayTest
-            ? context.Participants.Count == 1
-            : context.Participants.Count >= songDefinition.MinimumPlayers &&
-              context.Participants.Count <= songDefinition.MaximumPlayers;
-        if (!validPlayerCount)
+        if (context.Participants.Count is < 1 || context.Participants.Count > songDefinition.MaximumPlayers)
         {
             throw new GameRuleViolationException(
                 "invalid-player-count",
-                configuration.SoloAutoplayTest
-                    ? "VoiceChoon solo autoplay test mode requires exactly one player."
-                    : $"{songDefinition.DisplayName} requires {songDefinition.MinimumPlayers} to eight players unless solo autoplay test mode is enabled.");
+                $"{songDefinition.DisplayName} supports one to {songDefinition.MaximumPlayers} people; Moosik Bots fill its empty minimum seats.");
         }
 
         var difficulty = DifficultySettings.For(configuration.Difficulty);
         var song = VoiceChoonSongCatalog.Load(songDefinition.Key);
+        var performerCount = Math.Max(context.Participants.Count, songDefinition.MinimumPlayers);
         var assignments = InstrumentAssignmentService.Assign(
             song,
-            context.Participants.Count,
+            performerCount,
             role => string.Equals(songDefinition.Key, VoiceChoonSongCatalog.WubquakeSongKey, StringComparison.Ordinal)
                 ? InstrumentSoundGuide.For(role).Select(prompt => prompt with { Guidance = songDefinition.RecordingMessage }).ToArray()
                 : InstrumentSoundGuide.For(role));
-        var charts = new ChartGenerator(difficulty.ChartOptions).Generate(assignments);
-        var participants = context.Participants.Select((participant, index) =>
+        var generatedCharts = new ChartGenerator(difficulty.ChartOptions).Generate(assignments).ToArray();
+        var humans = context.Participants.Select((participant, index) =>
             new VoiceChoonParticipant(participant.PlayerId, participant.DisplayName, index)).ToArray();
+        var bots = Enumerable.Range(0, performerCount - humans.Length)
+            .Select(index => new VoiceChoonParticipant(
+                BotPlayerId(context.GameInstanceId, index),
+                $"Moosik Bot {index + 1}",
+                humans.Length + index,
+                true,
+                humans[index % humans.Length].PlayerId))
+            .ToArray();
+        var participants = humans.Concat(bots).ToArray();
+        var charts = generatedCharts.Select(chart =>
+        {
+            if (chart.PlayerIndex >= humans.Length) return chart;
+            var human = humans[chart.PlayerIndex];
+            var suppliedBotIndexes = bots
+                .Where(bot => bot.SampleOwnerPlayerId == human.PlayerId)
+                .Select(bot => bot.PlayerIndex)
+                .ToHashSet();
+            var prompts = generatedCharts
+                .Where(candidate => candidate.PlayerIndex == chart.PlayerIndex ||
+                                    suppliedBotIndexes.Contains(candidate.PlayerIndex))
+                .SelectMany(candidate => candidate.RecordingPrompts)
+                .DistinctBy(prompt => prompt.Key, StringComparer.Ordinal)
+                .ToArray();
+            return chart with { RecordingPrompts = prompts };
+        }).ToArray();
         var state = new VoiceChoonGameState(
             song.SourceName,
             song.DurationSeconds,
@@ -87,7 +109,6 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             50,
             [],
             configuration.Difficulty,
-            configuration.SoloAutoplayTest,
             songDefinition.Key);
         return ModuleState(BriefingPhase, context.StartedAtUtc.Add(flowOptions.BriefingDuration), false, state);
     }
@@ -187,15 +208,14 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
 
         var ready = game.RecordingReadyPlayerIds.Append(playerId).ToArray();
         var updated = game with { RecordingReadyPlayerIds = ready };
-        return ready.Length == game.Participants.Count
+        return ready.Length == game.Participants.Count(player => !player.IsBot)
             ? new GameTransition(
-                ModuleState(
-                    ControllerReadyPhase,
-                    context.ReceivedAtUtc.Add(flowOptions.ControllerReadyDuration),
-                    false,
-                    updated),
+                Countdown(updated, context.ReceivedAtUtc).State,
                 [],
-                [new GameEvent("VoiceRecordingsReady", GameJson.Empty)])
+                [
+                    new GameEvent("VoiceRecordingsReady", GameJson.Empty),
+                    new GameEvent("VoiceCountdownStarted", GameJson.Empty)
+                ])
             : GameTransition.To(current with { Data = GameJson.From(updated) });
     }
 
@@ -213,7 +233,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
 
         var ready = game.ControllerReadyPlayerIds.Append(playerId).ToArray();
         var updated = game with { ControllerReadyPlayerIds = ready };
-        return ready.Length == game.Participants.Count
+        return ready.Length == game.Participants.Count(player => !player.IsBot)
             ? Countdown(updated, context.ReceivedAtUtc)
             : GameTransition.To(current with { Data = GameJson.From(updated) });
     }
@@ -226,11 +246,6 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     {
         RequirePhase(current, PlayingPhase);
         var playerId = RequirePlayer(game, context);
-        if (game.SoloAutoplayTest)
-        {
-            throw new GameRuleViolationException(
-                "autoplay-active", "The solo test performs VoiceChoon inputs automatically.");
-        }
         if (action.Lane is < 0 or > 3)
         {
             throw new GameRuleViolationException("invalid-lane", "A VoiceChoon lane must be between zero and three.");
@@ -242,7 +257,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
 
         var participant = game.Participants.Single(player => player.PlayerId == playerId);
         var chart = game.Charts.Single(item => item.PlayerIndex == participant.PlayerIndex);
-    var difficulty = DifficultySettings.For(game.Difficulty);
+        var difficulty = DifficultySettings.For(game.Difficulty);
         var songStartedAt = game.SongStartsAtUtc
             ?? throw new InvalidOperationException("VoiceChoon has no authoritative song start.");
         var judged = game.JudgementsByPlayer[playerId];
@@ -319,11 +334,14 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             activeHolds[playerId] = new VoiceActiveHold(note.Note.Id, note.Note.Lane, context.ReceivedAtUtc, startPoints);
             var holdSequences = game.LastSequenceByPlayer.ToDictionary();
             holdSequences[playerId] = action.Sequence;
-            return GameTransition.To(current with { Data = GameJson.From(game with
+            return GameTransition.To(current with
             {
-                ActiveHoldsByPlayer = activeHolds,
-                LastSequenceByPlayer = holdSequences
-            }) });
+                Data = GameJson.From(game with
+                {
+                    ActiveHoldsByPlayer = activeHolds,
+                    LastSequenceByPlayer = holdSequences
+                })
+            });
         }
 
         var rating = note.Error <= difficulty.PerfectWindowMilliseconds
@@ -386,14 +404,13 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         {
             BriefingPhase => GameTransition.To(ModuleState(
                 RecordingPhase,
-                now.Add(game.SoloAutoplayTest
-                    ? flowOptions.RecordingDuration * 3
-                    : flowOptions.RecordingDuration),
+                now.Add(flowOptions.RecordingDuration),
                 false,
                 game)),
+            RecordingPhase when game.RecordingReadyPlayerIds.Count == game.Participants.Count(player => !player.IsBot) => Countdown(game, now),
             RecordingPhase => GameTransition.To(ModuleState(
-                ControllerReadyPhase,
-                now.Add(flowOptions.ControllerReadyDuration),
+                RecordingPhase,
+                now.Add(flowOptions.RecordingDuration),
                 false,
                 game)),
             ControllerReadyPhase => Countdown(game, now),
@@ -410,32 +427,35 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
 
     private static GameTransition StartSong(VoiceChoonGameState game, DateTimeOffset now)
     {
-        var started = game.SoloAutoplayTest ? ApplyPerfectAutoplay(game, now) : game with { SongStartsAtUtc = now };
+        var started = ApplyPerfectBots(game, now);
         return new GameTransition(
             ModuleState(PlayingPhase, now.AddSeconds(game.SongDurationSeconds), false, started),
             [],
             [new GameEvent("VoicePerformanceStarted", GameJson.From(new { songStartsAtUtc = now }))]);
     }
 
-    private static VoiceChoonGameState ApplyPerfectAutoplay(VoiceChoonGameState game, DateTimeOffset now)
+    private static VoiceChoonGameState ApplyPerfectBots(VoiceChoonGameState game, DateTimeOffset now)
     {
-        var judgements = game.Participants.ToDictionary(
-            player => player.PlayerId,
-            player => (IReadOnlyList<VoiceNoteJudgement>)game.Charts
-                .Single(chart => chart.PlayerIndex == player.PlayerIndex)
-                .Notes
+        var judgements = game.JudgementsByPlayer.ToDictionary();
+        var scores = game.ScoresByPlayer.ToDictionary();
+        foreach (var bot in game.Participants.Where(player => player.IsBot))
+        {
+            var perfect = game.Charts.Single(chart => chart.PlayerIndex == bot.PlayerIndex).Notes
                 .Select(note => new VoiceNoteJudgement(note.Id, note.Lane, VoiceNoteRating.Perfect, 0, 1000))
-                .ToArray());
-        var scores = judgements.ToDictionary(item => item.Key, item => item.Value.Count * 1000);
-        var totalNotes = judgements.Values.Sum(items => items.Count);
+                .ToArray();
+            judgements[bot.PlayerId] = perfect;
+            scores[bot.PlayerId] = perfect.Length * 1000;
+        }
+        var botNotes = game.Participants.Where(player => player.IsBot)
+            .Sum(bot => judgements[bot.PlayerId].Count);
         return game with
         {
             SongStartsAtUtc = now,
             JudgementsByPlayer = judgements,
             ScoresByPlayer = scores,
-            BandCombo = totalNotes,
-            MaximumBandCombo = totalNotes,
-            EnergyPercent = 100
+            BandCombo = botNotes,
+            MaximumBandCombo = Math.Max(game.MaximumBandCombo, botNotes),
+            EnergyPercent = Math.Min(100, game.EnergyPercent + botNotes)
         };
     }
 
@@ -477,7 +497,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     private static GameTransition Complete(VoiceChoonGameState game) => new(
         ModuleState(CompletedPhase, null, true, game),
         game.Results
-            .Where(result => result.Score > 0)
+            .Where(result => result.Score > 0 && game.Participants.Any(player =>
+                player.PlayerId == result.PlayerId && !player.IsBot))
             .Select(result => new ScoreAward(result.PlayerId, result.Score, "VoiceChoon performance score"))
             .ToArray(),
         [new GameEvent("GameCompleted", GameJson.Empty)]);
@@ -487,10 +508,10 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         game.SongName,
         PhaseMessage(current, game),
         ActivityCount(current, game),
-        game.Participants.Count,
-        !current.IsComplete && current.Phase != PlayingPhase,
-        current.IsComplete || current.Phase == PlayingPhase ? null : AdvanceVoiceChoonAction.ActionKind,
-        current.IsComplete || current.Phase == PlayingPhase ? null : "Continue now",
+        game.Participants.Count(player => !player.IsBot),
+        false,
+        null,
+        null,
         Entries(game));
 
     private static DisplayGameViewPayload DisplayView(GameModuleState current, VoiceChoonGameState game) => new(
@@ -521,7 +542,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                 ? game.Charts.SelectMany(chart => chart.PlaybackNotes.Select(note =>
                 {
                     var participant = game.Participants.Single(player => player.PlayerIndex == chart.PlayerIndex);
-                    var playback = PlaybackNote(note, chart, game.SampleAssetIdsByPlayer[participant.PlayerId]);
+                    var sampleOwnerId = participant.SampleOwnerPlayerId ?? participant.PlayerId;
+                    var playback = PlaybackNote(note, chart, game.SampleAssetIdsByPlayer[sampleOwnerId]);
                     var judgementNote = chart.Notes.FirstOrDefault(candidate =>
                         candidate.Id == note.Id ||
                         (candidate.Lane == note.Lane &&
@@ -563,20 +585,15 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             ?? throw new GameRuleViolationException("player-required", "That player is not in VoiceChoon.");
         var chart = game.Charts.Single(item => item.PlayerIndex == player.PlayerIndex);
         var recordingReady = game.RecordingReadyPlayerIds.Contains(playerId);
-        var controllerReady = game.ControllerReadyPlayerIds.Contains(playerId);
         var controller = current.Phase switch
         {
             RecordingPhase when !recordingReady => RecordingController(chart, game.SampleAssetIdsByPlayer[playerId]),
-            ControllerReadyPhase when !controllerReady => ChoiceController(
-                ReadyVoiceControllerAction.ActionKind,
-                "My four pads are ready",
-                "voicechoon-controller"),
             PlayingPhase => RhythmController(game, playerId, chart),
             _ => WaitingController()
         };
         return new PlayerGameViewPayload(
             chart.InstrumentName,
-            PlayerInstructions(current, game, recordingReady, controllerReady),
+            PlayerInstructions(current, game, recordingReady),
             controller,
             GameJson.From(new VoiceChoonPlayerState(
                 chart.InstrumentName,
@@ -594,9 +611,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         Guid playerId,
         PlayerChart chart)
     {
-        var notes = game.SoloAutoplayTest && chart.PlaybackNotes is { Count: > 0 }
-            ? chart.PlaybackNotes
-            : chart.Notes;
+        var notes = chart.Notes;
         return new PlayerControllerView(
             PlayerControllerKind.Rhythm,
             SubmitVoiceInputAction.ActionKind,
@@ -610,8 +625,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                 2,
                 DifficultySettings.For(game.Difficulty).GoodWindowMilliseconds / 1000d,
                 DifficultySettings.For(game.Difficulty).GreatWindowMilliseconds / 1000d,
-                DifficultySettings.For(game.Difficulty).PerfectWindowMilliseconds / 1000d,
-                game.SoloAutoplayTest)));
+                DifficultySettings.For(game.Difficulty).PerfectWindowMilliseconds / 1000d)));
     }
 
     private static RhythmControllerNote PlaybackNote(
@@ -652,7 +666,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         PlayerControllerKind.Recording,
         ConfirmVoiceRecordingsAction.ActionKind,
         true,
-        "Lock in my sounds",
+        "Send my sound pack",
         GameJson.From(new RecordingControllerConfiguration(
             chart.RecordingPrompts.Select(prompt => new RecordingPromptConfiguration(
                 prompt.Key,
@@ -665,16 +679,6 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             "/api/voicechoon/samples",
             6,
             2 * 1024 * 1024)));
-
-    private static PlayerControllerView ChoiceController(string actionKind, string label, string scope) => new(
-        PlayerControllerKind.Choice,
-        actionKind,
-        true,
-        label,
-        GameJson.From(new ChoiceControllerConfiguration(
-            [new ControllerOption("ready", "READY")],
-            SelectionProperty: "ready",
-            SelectionScope: scope)));
 
     private static PlayerControllerView WaitingController() => new(
         PlayerControllerKind.Waiting,
@@ -699,8 +703,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     private static string PlayerInstructions(
         GameModuleState current,
         VoiceChoonGameState game,
-        bool recordingReady,
-        bool controllerReady)
+        bool recordingReady)
     {
         var song = VoiceChoonSongCatalog.GetDefinition(game.SongKey);
         return current.Phase switch
@@ -708,8 +711,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             BriefingPhase => song.BriefingMessage,
             RecordingPhase when recordingReady => "Sounds locked. Waiting for the rest of the band.",
             RecordingPhase => song.RecordingMessage,
-            ControllerReadyPhase when controllerReady => "Pads ready. Waiting for the rest of the band.",
-            ControllerReadyPhase => "Turn your phone sideways and check all four pads.",
+            ControllerReadyPhase => "Hands ready. The performance is about to begin.",
             CountdownPhase => "Hands ready. The performance is about to begin.",
             PlayingPhase => "Hit each lane as its note reaches the line.",
             ResultsPhase => "The band survived. Results are on the main screen.",
@@ -720,8 +722,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
     private static string PhaseMessage(GameModuleState current, VoiceChoonGameState game) => current.Phase switch
     {
         BriefingPhase => "Meet your extremely human orchestra",
-        RecordingPhase => $"{game.RecordingReadyPlayerIds.Count}/{game.Participants.Count} sound kits ready",
-        ControllerReadyPhase => $"{game.ControllerReadyPlayerIds.Count}/{game.Participants.Count} controllers ready",
+        RecordingPhase => $"{game.RecordingReadyPlayerIds.Count}/{game.Participants.Count(player => !player.IsBot)} sound kits ready",
+        ControllerReadyPhase => "Preparing the band",
         CountdownPhase => "Performance starts in…",
         PlayingPhase => "The band is live",
         ResultsPhase => "Final band performance",
@@ -791,6 +793,13 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             throw new GameRuleViolationException("player-required", "A current VoiceChoon player is required.");
         }
         return playerId;
+    }
+
+    private static Guid BotPlayerId(GameInstanceId gameInstanceId, int botIndex)
+    {
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
+            $"voicechoon:{gameInstanceId.Value:N}:moosik-bot:{botIndex}"));
+        return new Guid(hash.AsSpan(0, 16));
     }
 
     private static void RequirePhase(GameModuleState current, string expected)

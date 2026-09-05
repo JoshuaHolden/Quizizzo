@@ -17,13 +17,6 @@ export function nearestLaneNote(notes, lane, position, maximumDistance = 0.25) {
             Math.abs(Number(right.startTimeSeconds) - position))[0] ?? null;
 }
 
-export function dueAutoplayNotes(notes, previousPosition, position, playedNoteIds = new Set()) {
-    return notes.filter(note => {
-        const noteTime = Number(note.startTimeSeconds);
-        return noteTime > previousPosition && noteTime <= position && !playedNoteIds.has(note.id);
-    });
-}
-
 export function createRhythmController(element, connectionKey, actionKind, initialState) {
     const abort = new AbortController();
     const canvas = element.querySelector("[data-rhythm-canvas]");
@@ -36,7 +29,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
     let configuration = initialState.configuration;
     let disabled = Boolean(initialState.disabled);
     let nextSequence = Number(configuration.nextSequence ?? 1);
-    let lastAutoplayPosition = songPositionSeconds(configuration.songStartsAtUtc) - 0.05;
     const tapPulseTimers = new Map();
     const holdReleaseTimers = new Map();
     const laneHitEffects = new Map();
@@ -139,12 +131,6 @@ export function createRhythmController(element, connectionKey, actionKind, initi
         const laneWidth = width / 4;
         const position = songPositionSeconds(configuration.songStartsAtUtc);
         const travel = Number(configuration.noteTravelSeconds ?? 2);
-        if (configuration.autoplay) {
-            for (const note of dueAutoplayNotes(configuration.notes, lastAutoplayPosition, position, playedNotes)) {
-                playedNotes.add(note.id);
-            }
-            lastAutoplayPosition = position;
-        }
         context.clearRect(0, 0, width, height);
         context.fillStyle = "#050719";
         context.fillRect(0, 0, width, height);

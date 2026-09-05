@@ -167,7 +167,18 @@ public static class PhaserPresentationMapper
                 (int)player.Character.TrouserStyle,
                 player.Character.BodySize.ToString()),
             player.TotalWins,
-            player.GameWins)).ToArray();
+            player.GameWins)).ToList();
+        if (string.Equals(gameView?.GameKey, "voicechoon", StringComparison.Ordinal))
+        {
+            var botEntries = game?.Entries.Where(entry => !playerIds.Contains(entry.PlayerId)).ToArray() ?? [];
+            presentationPlayers.AddRange(botEntries.Select((entry, index) => new PhaserPlayerSnapshot(
+                entry.PlayerId.ToString("N"),
+                entry.Label,
+                entry.PointsAwarded,
+                "Connected",
+                entry.Value,
+                BotCharacter(index))));
+        }
         var results = game?.ShowRoundRanking == true
             ? RankedScores(presentationPlayers, game.Entries)
             : game?.Entries
@@ -234,6 +245,30 @@ public static class PhaserPresentationMapper
                 statistic.Label, statistic.Value)).ToArray(),
             game?.State);
     }
+
+    private static PhaserCharacterSnapshot BotCharacter(int index) => new(
+        index % 2 == 0 ? "Bean" : "Round",
+        index % 2 == 0 ? "#4ce0ff" : "#c8ff36",
+        "Bright",
+        "Grin",
+        "None",
+        index % 2 == 0 ? "Man" : "Woman",
+        3 + index % 4,
+        index % 2 == 0 ? "Blue" : "Red",
+        index % 2 == 0 ? "Blue" : "Green",
+        "Navy",
+        "FullLength",
+        "Black",
+        1 + index % 4,
+        "Blue",
+        "Large",
+        "Round",
+        1,
+        1,
+        1,
+        index % 2 == 0 ? 2 : 4,
+        1,
+        "Normal");
 
     private static PhaserResultSnapshot[] RankedScores(
         IReadOnlyList<PhaserPlayerSnapshot> players,

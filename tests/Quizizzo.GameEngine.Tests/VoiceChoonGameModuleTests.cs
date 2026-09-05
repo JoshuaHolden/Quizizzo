@@ -9,7 +9,7 @@ public sealed class VoiceChoonGameModuleTests
     private static readonly DateTimeOffset Now = new(2026, 9, 4, 12, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public void Greensleeves_supports_two_players_while_the_full_showdown_still_requires_three()
+    public void Songs_fill_missing_minimum_seats_with_bots()
     {
         var module = new VoiceChoonGameModule();
         var players = Participants().Take(2).ToArray();
@@ -21,11 +21,12 @@ public sealed class VoiceChoonGameModuleTests
 
         Assert.Equal(2, state.Participants.Count);
         Assert.Equal("gs.mid", state.SongName);
-        var defaultError = Assert.Throws<GameRuleViolationException>(() => module.Start(context with
+        var defaultState = module.Start(context with
         {
             Configuration = GameJson.From(new VoiceChoonGameConfiguration())
-        }));
-        Assert.Equal("invalid-player-count", defaultError.Code);
+        }).Data.Deserialize<VoiceChoonGameState>()!;
+        Assert.Equal(3, defaultState.Participants.Count);
+        Assert.Equal("Moosik Bot 1", Assert.Single(defaultState.Participants, player => player.IsBot).DisplayName);
     }
 
     [Fact]
@@ -55,14 +56,6 @@ public sealed class VoiceChoonGameModuleTests
                 state,
                 Context(gameId, partyId, GameActor.Player(player.PlayerId), Now.AddSeconds(2)),
                 new ConfirmVoiceRecordingsAction()).State;
-        }
-        Assert.Equal(VoiceChoonGameModule.ControllerReadyPhase, state.Phase);
-        foreach (var player in players)
-        {
-            state = module.Apply(
-                state,
-                Context(gameId, partyId, GameActor.Player(player.PlayerId), Now.AddSeconds(3)),
-                new ReadyVoiceControllerAction()).State;
         }
         Assert.Equal(VoiceChoonGameModule.CountdownPhase, state.Phase);
         state = Deadline(module, state, gameId, partyId);
@@ -297,7 +290,6 @@ public sealed class VoiceChoonGameModuleTests
             Now,
             GameJson.From(new VoiceChoonGameConfiguration(
                 VoiceChoonDifficulty.Medium,
-                true,
                 VoiceChoonSongCatalog.WubquakeSongKey))));
         var game = started.Data.Deserialize<VoiceChoonGameState>()!;
         var payload = module.CreateView(
@@ -347,20 +339,21 @@ public sealed class VoiceChoonGameModuleTests
     }
 
     [Fact]
-    public void One_player_requires_explicit_solo_autoplay_test_mode()
+    public void One_player_can_start_and_receives_automatic_bandmates()
     {
         var module = new VoiceChoonGameModule(FastFlow());
         var soloPlayer = Participants()[..1];
         var normalContext = new GameStartContext(
             GameInstanceId.New(), Guid.NewGuid(), "host", soloPlayer, Now);
 
-        var error = Assert.Throws<GameRuleViolationException>(() => module.Start(normalContext));
+        var state = module.Start(normalContext).Data.Deserialize<VoiceChoonGameState>()!;
 
-        Assert.Equal("invalid-player-count", error.Code);
+        Assert.Equal(3, state.Participants.Count);
+        Assert.Equal(2, state.Participants.Count(player => player.IsBot));
     }
 
     [Fact]
-    public void Solo_autoplay_test_scores_every_note_perfectly_without_player_input()
+    public void Missing_minimum_seats_become_perfect_bots_supplied_by_the_human_sound_pack()
     {
         var module = new VoiceChoonGameModule(FastFlow());
         var gameId = GameInstanceId.New();
@@ -373,26 +366,34 @@ public sealed class VoiceChoonGameModuleTests
             [player],
             Now,
             GameJson.From(new VoiceChoonGameConfiguration(
-                VoiceChoonDifficulty.Medium,
-                SoloAutoplayTest: true))));
+                VoiceChoonDifficulty.Medium))));
 
         state = Deadline(module, state, gameId, partyId);
-        state = Deadline(module, state, gameId, partyId);
-        state = Deadline(module, state, gameId, partyId);
-        state = Deadline(module, state, gameId, partyId);
-
         var game = state.Data.Deserialize<VoiceChoonGameState>()!;
-        var chart = Assert.Single(game.Charts);
+        Assert.Equal(3, game.Participants.Count);
+        var bots = game.Participants.Where(participant => participant.IsBot).ToArray();
+        Assert.Collection(
+            bots,
+            bot => Assert.Equal("Moosik Bot 1", bot.DisplayName),
+            bot => Assert.Equal("Moosik Bot 2", bot.DisplayName));
+        Assert.All(bots, bot => Assert.Equal(player.PlayerId, bot.SampleOwnerPlayerId));
+        var chart = game.Charts.Single(item => item.PlayerIndex == 0);
         var sampleAssets = chart.RecordingPrompts.ToDictionary(prompt => prompt.Key, _ => Guid.NewGuid());
-        game = game with
+        foreach (var sample in sampleAssets)
         {
-            SampleAssetIdsByPlayer = new Dictionary<Guid, IReadOnlyDictionary<string, Guid>>
-            {
-                [player.PlayerId] = sampleAssets
-            }
-        };
-        state = state with { Data = GameJson.From(game) };
-        var judgements = Assert.Single(game.JudgementsByPlayer).Value;
+            state = module.Apply(
+                state,
+                Context(gameId, partyId, GameActor.Player(player.PlayerId), Now.AddSeconds(1)),
+                new RegisterVoiceSampleAction(sample.Key, sample.Value)).State;
+        }
+        state = module.Apply(
+            state,
+            Context(gameId, partyId, GameActor.Player(player.PlayerId), Now.AddSeconds(1)),
+            new ConfirmVoiceRecordingsAction()).State;
+        Assert.Equal(VoiceChoonGameModule.CountdownPhase, state.Phase);
+        state = Deadline(module, state, gameId, partyId);
+
+        game = state.Data.Deserialize<VoiceChoonGameState>()!;
         var payload = module.CreateView(
             state,
             new GameViewContext(GameAudienceRole.Player, player.PlayerId.ToString("N"), player.PlayerId))
@@ -400,26 +401,25 @@ public sealed class VoiceChoonGameModuleTests
         var controller = payload.Controller.Configuration.Deserialize<RhythmControllerConfiguration>()!;
 
         Assert.Equal(VoiceChoonGameModule.PlayingPhase, state.Phase);
-        Assert.True(game.SoloAutoplayTest);
-        Assert.Equal(18, chart.RecordingPrompts.Count);
-        Assert.Equal(chart.Notes.Count, judgements.Count);
-        Assert.All(judgements, judgement => Assert.Equal(VoiceNoteRating.Perfect, judgement.Rating));
-        Assert.Equal(chart.Notes.Count * 1000, game.ScoresByPlayer[player.PlayerId]);
-        Assert.True(controller.Autoplay);
-        Assert.Equal(chart.PlaybackNotes.Count, controller.Notes.Count);
-        Assert.True(controller.Notes.Count > chart.Notes.Count);
+        Assert.Equal(12, chart.RecordingPrompts.Count);
+        Assert.Empty(game.JudgementsByPlayer[player.PlayerId]);
+        Assert.Equal(0, game.ScoresByPlayer[player.PlayerId]);
+        Assert.Equal(chart.Notes.Count, controller.Notes.Count);
         Assert.All(controller.Notes, note => Assert.NotEmpty(note.SoundLabel));
-        Assert.All(controller.Notes, controllerNote =>
+        foreach (var bot in bots)
         {
-            var sourceNote = chart.PlaybackNotes.Single(note => note.Id == controllerNote.Id);
-            var expectedAssets = InstrumentSoundGuide.For(sourceNote.SourceRole)
-                .Select(prompt => sampleAssets[prompt.Key]);
-            Assert.Contains(controllerNote.SampleAssetId!.Value, expectedAssets);
-        });
-        Assert.Equal("autoplay-active", Assert.Throws<GameRuleViolationException>(() => module.Apply(
-            state,
-            Context(gameId, partyId, GameActor.Player(player.PlayerId), Now),
-            new SubmitVoiceInputAction(1, 0, Now))).Code);
+            var botChart = game.Charts.Single(item => item.PlayerIndex == bot.PlayerIndex);
+            var judgements = game.JudgementsByPlayer[bot.PlayerId];
+            Assert.Equal(botChart.Notes.Count, judgements.Count);
+            Assert.All(judgements, judgement => Assert.Equal(VoiceNoteRating.Perfect, judgement.Rating));
+            Assert.Equal(botChart.Notes.Count * 1000, game.ScoresByPlayer[bot.PlayerId]);
+        }
+
+        var display = module.CreateView(state, new GameViewContext(GameAudienceRole.Display, "display", null))
+            .Data.Deserialize<DisplayGameViewPayload>()!;
+        var displayState = display.State!.Value.Deserialize<VoiceChoonDisplayState>()!;
+        Assert.NotEmpty(displayState.Playback!);
+        Assert.All(displayState.Playback!, note => Assert.NotEqual(Guid.Empty, note.SampleAssetId));
     }
 
     private static GameModuleState Deadline(
