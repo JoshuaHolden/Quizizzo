@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using Quizizzo.Application.Displays;
 using Quizizzo.Application.Parties;
+using Quizizzo.Infrastructure.Identity;
 using Quizizzo.Web.Realtime;
 
 namespace Quizizzo.Web.Endpoints;
@@ -12,7 +14,7 @@ public static class HostDisplayEndpoints
     public static IEndpointRouteBuilder MapHostDisplayEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/host", LaunchAsync)
-            .RequireAuthorization();
+            .RequireRateLimiting("guest-host");
         return endpoints;
     }
 
@@ -21,10 +23,27 @@ public static class HostDisplayEndpoints
         PartyService parties,
         DisplaySessionService displays,
         IPartyRealtimeNotifier notifier,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        UserManager<ApplicationUser> users,
+        SignInManager<ApplicationUser> signIn)
     {
-        var hostUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
-            ?? throw new PartyAccessDeniedException();
+        var hostUserId = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (hostUserId is null)
+        {
+            var guest = new ApplicationUser
+            {
+                UserName = $"guest-{Guid.NewGuid():N}",
+                EmailConfirmed = true
+            };
+            var created = await users.CreateAsync(guest);
+            if (!created.Succeeded)
+            {
+                throw new InvalidOperationException("Quizizzo could not start a guest host session.");
+            }
+
+            await signIn.SignInAsync(guest, isPersistent: false);
+            hostUserId = guest.Id;
+        }
         var party = await parties.GetActiveAsync(hostUserId, context.RequestAborted);
         if (party is null)
         {

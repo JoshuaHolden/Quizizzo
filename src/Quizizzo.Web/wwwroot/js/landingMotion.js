@@ -11,6 +11,7 @@
         const layers = [...root.querySelectorAll("[data-parallax-layer]")];
         const confetti = [...root.querySelectorAll("[data-scroll-confetti] i")];
         const reveals = [...root.querySelectorAll("[data-reveal]")];
+        const rigHost = root.querySelector("[data-landing-character-rig]");
         let pointerX = 0;
         let pointerY = 0;
         let frame = 0;
@@ -76,7 +77,7 @@
         const revealObserver = new IntersectionObserver(entries => {
             for (const entry of entries) {
                 if (entry.isIntersecting) {
-                    entry.target.classList.add("is-visible");
+                    entry.target.classList.add("is-revealing");
                     revealObserver.unobserve(entry.target);
                 }
             }
@@ -84,15 +85,49 @@
 
         for (const reveal of reveals) {
             if (reducedMotion.matches) {
-                reveal.classList.add("is-visible");
+                reveal.classList.remove("is-revealing");
             } else {
                 revealObserver.observe(reveal);
             }
         }
 
+        let characterGame = null;
+        if (rigHost && window.Phaser && window.quizizzoCharacterRig) {
+            const characters = [
+                { presentation: "Woman", skinTone: "Tint3", hairColour: "Red", hairStyle: "Style4", shirtColour: "Red", shirtStyle: "Style8", trouserColour: "Navy", shoeColour: "Brown", mouth: "Grin" },
+                { presentation: "Man", skinTone: "Tint5", hairColour: "Black", hairStyle: "Style2", shirtColour: "Green", shirtStyle: "Style3", trouserColour: "Blue", shoeColour: "Blue", mouth: "Tongue" },
+                { presentation: "Woman", skinTone: "Tint7", hairColour: "Brown", hairStyle: "Style2", shirtColour: "Blue", shirtStyle: "Style4", trouserColour: "Tan", shoeColour: "Red", mouth: "Smile" }
+            ];
+            const dances = ["armFlap", "fistPump", "discoPoint"];
+            const rig = window.quizizzoCharacterRig;
+            characterGame = new Phaser.Game({
+                type: Phaser.CANVAS,
+                parent: rigHost,
+                width: 640,
+                height: 340,
+                transparent: true,
+                render: { antialias: true, roundPixels: false },
+                scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+                scene: {
+                    preload() { rig.loadAtlases(this, "landing-"); },
+                    create() {
+                        characters.forEach((character, index) => {
+                            const container = this.add.container(150 + index * 170, index === 1 ? 150 : 168)
+                                .setScale(index === 1 ? .34 : .3)
+                                .setDepth(index === 1 ? 2 : 1);
+                            const dancer = rig.create(this, { container, atlasPrefix: "landing-" });
+                            dancer.render(character, "full");
+                            if (reducedMotion.matches) dancer.play("idle");
+                            else dancer.play(dances[index], { beatMs: 650 });
+                        });
+                    }
+                }
+            });
+        }
+
         controller.signal.addEventListener("abort", () => revealObserver.disconnect(), { once: true });
 
-        mountedRoots.set(root, { controller, get frame() { return frame; } });
+        mountedRoots.set(root, { controller, characterGame, get frame() { return frame; } });
         requestRender();
     }
 
@@ -103,6 +138,7 @@
                 if (state.frame) {
                     window.cancelAnimationFrame(state.frame);
                 }
+                state.characterGame?.destroy(true);
                 mountedRoots.delete(root);
             }
         }
@@ -118,4 +154,5 @@
         refresh();
     }
     document.addEventListener("enhancedload", refresh);
+    window.addEventListener("pageshow", refresh);
 })();

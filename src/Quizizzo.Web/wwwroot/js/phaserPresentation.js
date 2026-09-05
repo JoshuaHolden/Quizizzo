@@ -319,13 +319,25 @@ window.quizizzoPresentation = (() => {
         return (mix(16) << 16) | (mix(8) << 8) | mix(0);
     }
 
-    function drawVoiceChoonMarbling(graphics, elapsed, pulse = 0, songProgress = 0) {
-        const palettes = [
+    function stableVisualSeed(value) {
+        let hash = 2166136261;
+        for (const character of String(value || "voicechoon")) {
+            hash ^= character.charCodeAt(0);
+            hash = Math.imul(hash, 16777619);
+        }
+        return hash >>> 0;
+    }
+
+    function drawVoiceChoonMarbling(graphics, elapsed, pulse = 0, songProgress = 0, seed = 0) {
+        const availablePalettes = [
             [0xf6c637, 0xef8db5, 0xf15d5d, 0x7ea3d3, 0xf4eadc, 0xd681b5, 0xf6c637],
             [0x9ad8cf, 0xc9a7eb, 0xf49ac2, 0x789dda, 0xffe49b, 0x94d2e6, 0xc9a7eb],
             [0xb7df72, 0xffa77a, 0xf56fa1, 0x77c9c2, 0xffefaa, 0xa993db, 0xb7df72],
             [0xffcf4a, 0xff82b2, 0xff7167, 0x6ecce8, 0xfff1cf, 0xca8de0, 0xffcf4a]
         ];
+        const paletteOffset = seed % availablePalettes.length;
+        const palettes = availablePalettes.map((_, index) =>
+            availablePalettes[(index + paletteOffset) % availablePalettes.length]);
         const palettePosition = Math.max(0, Math.min(1, songProgress)) * (palettes.length - 1);
         const paletteIndex = Math.min(palettes.length - 2, Math.floor(palettePosition));
         const paletteMix = palettePosition - paletteIndex;
@@ -359,6 +371,47 @@ window.quizizzoPresentation = (() => {
             graphics.lineStyle(3 + pulse * 1.5, 0x281a2b, .88);
             graphics.strokePoints(points, true);
         }
+    }
+
+    function drawVoiceChoonFractal(graphics, elapsed, pulse = 0, songProgress = 0, seed = 0) {
+        const symmetry = 5 + (seed % 5);
+        const depth = 5 + ((seed >>> 4) % 2);
+        const direction = (seed & 1) ? 1 : -1;
+        const speed = .12 + ((seed >>> 7) % 7) * .012;
+        const centreX = width * (.5 + Math.sin(seed * .000013) * .08);
+        const centreY = height * (.48 + Math.cos(seed * .000017) * .06);
+        const beatExpansion = 1 + pulse * .075;
+        const baseAngle = elapsed * speed * direction + songProgress * Math.PI * .8;
+        const hueBase = (elapsed * .035 * direction + (seed % 997) / 997 + songProgress * .42) % 1;
+        const colourAt = (branch, level) => Phaser.Display.Color.HSVToRGB(
+            (hueBase + branch / symmetry + level * .075 + 1) % 1,
+            .54 + pulse * .18,
+            .92).color;
+        graphics.clear();
+        graphics.fillStyle(0x10051f, 1);
+        graphics.fillRect(0, 0, width, height);
+
+        const branch = (x, y, length, angle, level, arm) => {
+            if (level <= 0 || length < 4) return;
+            const wobble = Math.sin(elapsed * .42 + level * 1.7 + arm) * .15;
+            const endX = x + Math.cos(angle + wobble) * length * beatExpansion;
+            const endY = y + Math.sin(angle + wobble) * length * beatExpansion;
+            const colour = colourAt(arm, depth - level);
+            graphics.lineStyle(Math.max(1.4, level * 2.15), colour, .38 + level / depth * .42);
+            graphics.lineBetween(x, y, endX, endY);
+            graphics.fillStyle(colour, .2 + pulse * .13);
+            graphics.fillCircle(endX, endY, Math.max(2, level * 2.8 + pulse * 4));
+            const fork = .43 + Math.sin(seed * .0001 + level) * .07;
+            branch(endX, endY, length * .72, angle + fork, level - 1, arm);
+            branch(endX, endY, length * .67, angle - fork * .84, level - 1, arm + .35);
+        };
+
+        for (let arm = 0; arm < symmetry; arm++) {
+            const angle = baseAngle + arm * Math.PI * 2 / symmetry;
+            branch(centreX, centreY, 116 + ((seed >>> 10) % 44), angle, depth, arm);
+        }
+        graphics.lineStyle(3 + pulse * 5, colourAt(0, 0), .5);
+        graphics.strokeCircle(centreX, centreY, 26 + pulse * 20);
     }
 
     class PartyPresentationScene extends Phaser.Scene {
@@ -1065,14 +1118,16 @@ window.quizizzoPresentation = (() => {
                 .filter(value => value >= .22 && value <= .9).sort((a, b) => a - b);
             const beatSeconds = intervals.length ? intervals[Math.floor(intervals.length / 2)] : .48;
             const beatMs = Math.round(beatSeconds * 1000);
+            const visualSeed = stableVisualSeed(snapshot.gameInstanceId);
             const psychedelic = this.add.graphics().setDepth(0);
+            const fractal = this.add.graphics().setDepth(1).setAlpha(0);
             const beams = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
             const stageShade = this.add.graphics().setDepth(3);
             stageShade.fillStyle(0x03030d, .18);
             stageShade.fillRect(0, 0, width, height);
             stageShade.fillStyle(0x090516, .55);
             stageShade.fillRect(0, 655, width, 65);
-            items.push(psychedelic, beams, stageShade);
+            items.push(psychedelic, fractal, beams, stageShade);
             if (!showingResults) items.push(
                 this.add.text(38, 28, playing ? "VOICECHOON · LIVE" : "VOICECHOON", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold",
@@ -1084,7 +1139,7 @@ window.quizizzoPresentation = (() => {
                 }).setOrigin(1, 0));
 
             if (showingResults) {
-                drawVoiceChoonMarbling(psychedelic, 18, .35, 1);
+                drawVoiceChoonMarbling(psychedelic, 18, .35, 1, visualSeed);
                 const winner = rankedResults.length
                     ? players.find(player => normalizedId(player.playerId) === normalizedId(rankedResults[0].playerId))
                     : null;
@@ -1224,7 +1279,18 @@ window.quizizzoPresentation = (() => {
                     const pulse = 1 - Math.min(1, beatPhase * 2.4);
                     const visualElapsed = this.controller.reducedMotion ? 0 : elapsed;
                     const visualPulse = this.controller.reducedMotion ? 0 : pulse;
-                    drawVoiceChoonMarbling(psychedelic, visualElapsed, visualPulse, elapsed / duration);
+                    const songProgress = elapsed / duration;
+                    const transitionSeconds = 17 + (visualSeed % 11);
+                    const transitionPhase = ((visualElapsed + (visualSeed % 19)) % transitionSeconds)
+                        / transitionSeconds;
+                    const transitionWave = (Math.sin(transitionPhase * Math.PI * 2) + 1) / 2;
+                    const fractalMix = transitionWave * transitionWave * (3 - 2 * transitionWave);
+                    drawVoiceChoonMarbling(
+                        psychedelic, visualElapsed, visualPulse, songProgress, visualSeed);
+                    drawVoiceChoonFractal(
+                        fractal, visualElapsed, visualPulse, songProgress, visualSeed);
+                    psychedelic.setAlpha(1 - fractalMix * .92);
+                    fractal.setAlpha(fractalMix);
                     const spotlightColours = [0xfff1a8, 0xf9a8d4, 0x93c5fd, 0xffffff];
                     beams.clear();
                     [0, 1, 2, 3].forEach(index => {

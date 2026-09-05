@@ -797,6 +797,22 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Retain the browser-owned permission prompt and recording indicator without attempting to imitate or bypass them.
 - [x] Pass 30 client tests, all 364 .NET tests, a zero-warning Release build, and a full Edge WAV/Greensleeves journey proving one-time guidance and subsequent direct recording.
 
+### Account-free hosting and landing-page polish (completed 2026-09-05)
+
+- [x] Let a signed-out visitor start a server-owned party immediately through a temporary, browser-session host identity with no registration, password, or login redirect.
+- [x] Preserve existing signed-in host ownership and keep the temporary host cookie non-persistent so accounts remain an optional future save/monetisation boundary.
+- [x] Make landing content visible by default and remount motion on browser page restoration so Back/forward navigation can never strand the page behind reveal styles.
+- [x] Rewrite the landing page around the concrete VoiceChoon mechanic while retaining the established visual design and reducing interchangeable marketing slogans.
+- [x] Replace the hero's placeholder figures with three animated full-body characters assembled from the production Kenney atlas rig.
+- [x] Pass the clean-page, scrolling, and browser-Back Edge journeys, 30 client tests, all 364 .NET tests, a clean production container build, and a live guest-host smoke test.
+
+### VoiceChoon generative fractal backgrounds (completed 2026-09-05)
+
+- [x] Add a recursive colour-chasing fractal background alongside the existing morphing pastel marbling.
+- [x] Drive fractal expansion, colour travel, rotation, spotlights, and crossfades from the inferred song beat and playback progress.
+- [x] Seed palette order, symmetry, direction, centre, speed, depth, and transition timing from the game instance so each performance differs while reconnects remain visually stable.
+- [x] Crossfade continuously between marbling and fractals without covering the dancers, score, streak callouts, or stage lighting.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.
@@ -822,3 +838,4 @@ Before deviating, record the change, reason, benefit, and trade-off here. Preser
 | 2026-08-30 | Add a private Redis container and SignalR backplane before multi-replica actor coordination | Cross-process SignalR hint delivery was requested ahead of Milestone 13 | Establishes the supported SignalR scale-out transport and readiness boundary without moving authoritative state | Adds an ephemeral service and password; multiple Web replicas remain unsupported because actor and presence ownership are still process-local and sticky sessions are not yet configured |
 | 2026-08-30 | Replace generated polygon player characters with semantic Kenney atlas selections | Players need to design persistent avatars that work as both full actors and face-only reaction portraits | One reconstructable character definition can drive join previews, the bottom portrait rail, emotes, podiums, and winner animations | Requires a player migration and a controlled compatibility mapping for characters created before the designer ships |
 | 2026-09-02 | Replace the shared display's complete HTML fallback with a canvas-only Phaser presentation | The product direction requires one consistent TV composition and an explicit unsupported-browser failure state | Eliminates duplicate/stale presentation layers and keeps every audience state in the same renderer | Browsers that cannot initialize Phaser no longer receive a functional display fallback |
+| 2026-09-05 | Issue signed-out hosts a temporary ASP.NET Identity principal without requiring account registration | Hosting must start immediately while existing services continue to enforce durable server-side ownership | Removes the login wall without weakening authorization or duplicating the host ownership model | Temporary user rows remain after the browser-session cookie expires until a future retention/conversion policy is added |

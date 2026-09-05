@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const publicPages = [
-    { name: "home", path: "/", heading: /your voices/i },
+    { name: "home", path: "/", heading: /your voice.*becomes.*instrument/i },
     { name: "join", path: "/join", heading: /join the party/i },
     { name: "display", path: "/display", heading: /Quizizzo|display/i },
     { name: "player", path: "/play", heading: /no active player/i },
@@ -122,7 +122,19 @@ test("home tells the complete couch co-op story while scrolling", async ({ page 
         expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth))
             .toBeLessThanOrEqual(1);
     }
-    await expect(page.getByRole("heading", { name: /become every instrument/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /you don't need to sing well/i })).toBeVisible();
     await expect(page.getByRole("heading", { name: /Pile-Up Panic/i })).toBeAttached();
     await expect(page.getByRole("heading", { name: /Ani Mates/i })).toBeAttached();
+});
+
+test("browser back restores the complete landing page", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    await page.getByRole("link", { name: "Join game" }).click();
+    await expect(page).toHaveURL(/\/join$/);
+    await page.goBack({ waitUntil: "networkidle" });
+
+    await expect(page.getByRole("heading", { name: /your voice becomes the instrument/i }))
+        .toBeVisible();
+    await expect(page.locator(".hero-copy")).toHaveCSS("opacity", "1");
+    await expect(page.locator(".voice-section")).toBeAttached();
 });

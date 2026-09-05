@@ -11,12 +11,15 @@ public sealed class LandingPageContractTests
 
         Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", home,
             StringComparison.Ordinal);
-        Assert.Contains("Big-screen chaos.", home, StringComparison.Ordinal);
+        Assert.Contains("Your voice", home, StringComparison.Ordinal);
+        Assert.Contains("becomes the", home, StringComparison.Ordinal);
+        Assert.Contains("One surprisingly decent song.", home, StringComparison.Ordinal);
         Assert.Contains("VOICECHOON", home, StringComparison.Ordinal);
         Assert.Contains("Pile-Up", home, StringComparison.Ordinal);
         Assert.Contains("AniMates", home, StringComparison.Ordinal);
         Assert.Contains("Laptop + browser", home, StringComparison.Ordinal);
         Assert.Contains("Friends + phones", home, StringComparison.Ordinal);
+        Assert.Contains("data-landing-character-rig", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/join\"", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/host\"", home, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"/display\"", home, StringComparison.Ordinal);
@@ -41,6 +44,10 @@ public sealed class LandingPageContractTests
         Assert.Contains("requestAnimationFrame", motion, StringComparison.Ordinal);
         Assert.Contains("AbortController", motion, StringComparison.Ordinal);
         Assert.Contains("IntersectionObserver", motion, StringComparison.Ordinal);
+        Assert.Contains("window.addEventListener(\"pageshow\", refresh)", motion,
+            StringComparison.Ordinal);
+        Assert.Contains("opacity:1", homeCss, StringComparison.Ordinal);
+        Assert.Contains("quizizzoCharacterRig", motion, StringComparison.Ordinal);
         Assert.Contains(".scroll-confetti", homeCss, StringComparison.Ordinal);
     }
 
@@ -195,6 +202,9 @@ public sealed class LandingPageContractTests
             "src/Quizizzo.Web/Endpoints/HostDisplayEndpoints.cs");
 
         Assert.Contains("MapGet(\"/host\", LaunchAsync)", endpoint, StringComparison.Ordinal);
+        Assert.DoesNotContain("RequireAuthorization", endpoint, StringComparison.Ordinal);
+        Assert.Contains("SignInAsync(guest, isPersistent: false)", endpoint,
+            StringComparison.Ordinal);
         Assert.Contains("parties.GetActiveAsync(hostUserId", endpoint, StringComparison.Ordinal);
         Assert.Contains("parties.CreateAsync(hostUserId", endpoint, StringComparison.Ordinal);
         Assert.Contains("Results.Redirect(\"/display\")", endpoint, StringComparison.Ordinal);
@@ -704,6 +714,19 @@ public sealed class LandingPageContractTests
     }
 
     [Fact]
+    public void Host_entry_point_creates_a_non_persistent_guest_identity_without_a_login_redirect()
+    {
+        var endpoint = ReadRepositoryFile(
+            "src/Quizizzo.Web/Endpoints/HostDisplayEndpoints.cs");
+
+        Assert.Contains("new ApplicationUser", endpoint, StringComparison.Ordinal);
+        Assert.Contains("UserName = $\"guest-", endpoint, StringComparison.Ordinal);
+        Assert.Contains("SignInAsync(guest, isPersistent: false)", endpoint,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain("/Account/Login", endpoint, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void VoiceChoon_display_is_a_beat_driven_character_music_video()
     {
         var presentation = ReadRepositoryFile(
@@ -725,6 +748,13 @@ public sealed class LandingPageContractTests
         Assert.Contains("targets: parts.armLeft, y:", rig, StringComparison.Ordinal);
         Assert.Contains("★", rig, StringComparison.Ordinal);
         Assert.Contains("drawVoiceChoonMarbling", presentation, StringComparison.Ordinal);
+        Assert.Contains("drawVoiceChoonFractal", presentation, StringComparison.Ordinal);
+        Assert.Contains("stableVisualSeed(snapshot.gameInstanceId)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("const fractalMix", presentation, StringComparison.Ordinal);
+        Assert.Contains("transitionSeconds = 17 + (visualSeed % 11)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("HSVToRGB", presentation, StringComparison.Ordinal);
         Assert.Contains("fillPoints(points, true)", presentation, StringComparison.Ordinal);
         Assert.Contains("strokePoints(points, true)", presentation, StringComparison.Ordinal);
         Assert.Contains("broadWave", presentation, StringComparison.Ordinal);

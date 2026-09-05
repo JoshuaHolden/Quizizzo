@@ -135,18 +135,6 @@ public sealed class HealthEndpointTests : IClassFixture<WebApplicationFactory<Pr
     }
 
     [Fact]
-    public async Task Host_dashboard_requires_authentication()
-    {
-        using var response = await client.GetAsync("/host");
-
-        var responseBody = await response.Content.ReadAsStringAsync();
-        Assert.True(
-            response.StatusCode == System.Net.HttpStatusCode.Redirect,
-            $"Expected redirect but received {response.StatusCode}: {responseBody}");
-        Assert.Equal("/Account/Login", response.Headers.Location?.AbsolutePath);
-    }
-
-    [Fact]
     public void Qr_code_service_generates_a_png_data_uri()
     {
         var qrCodes = new QrCodeService();

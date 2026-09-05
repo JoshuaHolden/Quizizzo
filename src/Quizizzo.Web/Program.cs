@@ -187,6 +187,15 @@ builder.Services.AddHostedService<VoiceChoonSongCatalogLoader>();
 builder.Services.AddSingleton<IPartyRealtimeNotifier, SignalRPartyRealtimeNotifier>();
 builder.Services.AddRateLimiter(options =>
 {
+    options.AddPolicy("guest-host", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            RequestPartitionKey.RemoteAddress(context),
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 12,
+                QueueLimit = 0,
+                Window = TimeSpan.FromMinutes(1)
+            }));
     options.AddPolicy("player-join", context =>
         RateLimitPartition.GetFixedWindowLimiter(
             RequestPartitionKey.RemoteAddress(context),
