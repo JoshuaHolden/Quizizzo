@@ -229,3 +229,21 @@ export function createVoiceRecorder(dotNet, maximumDurationSeconds, maximumBytes
 
     return { start, stop, play, upload, dispose };
 }
+
+export async function microphonePermissionState() {
+    if (!globalThis.isSecureContext || !navigator.mediaDevices?.getUserMedia) return "unavailable";
+    try {
+        if (navigator.permissions?.query) {
+            const permission = await navigator.permissions.query({ name: "microphone" });
+            if (["granted", "prompt", "denied"].includes(permission.state)) return permission.state;
+        }
+    } catch {
+        // Safari and older browsers may support microphone capture without exposing
+        // the microphone descriptor through the Permissions API.
+    }
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices?.();
+        if (devices?.some(device => device.kind === "audioinput" && device.label)) return "granted";
+    } catch { }
+    return "unknown";
+}

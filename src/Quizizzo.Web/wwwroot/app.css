@@ -3971,3 +3971,119 @@ body:has(.phone-controller-shell) {
         grid-row: 1 / 3;
     }
 }
+.voicechoon-replay-badge {
+    position: fixed;
+    z-index: 12;
+    left: max(1rem, env(safe-area-inset-left));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    display: grid;
+    padding: .65rem 1rem;
+    border: 2px solid rgba(255,255,255,.75);
+    border-radius: 1rem;
+    color: #fff;
+    background: rgba(20, 9, 45, .78);
+    backdrop-filter: blur(12px);
+    text-align: left;
+}
+
+.voicechoon-replay-badge span { opacity: .82; }
+
+.replay-unavailable {
+    min-height: 100dvh;
+    display: grid;
+    place-content: center;
+    padding: 2rem;
+    text-align: center;
+}
+
+.voicechoon-share-panel {
+    position: fixed;
+    z-index: 30;
+    right: max(1rem, env(safe-area-inset-right));
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    width: min(28rem, calc(100vw - 2rem));
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem;
+    padding: .8rem;
+    border: 2px solid rgba(255,255,255,.72);
+    border-radius: 1.15rem;
+    color: #fff;
+    background: rgba(20, 9, 45, .88);
+    box-shadow: 0 1rem 3rem rgba(0,0,0,.34);
+    backdrop-filter: blur(14px);
+    text-align: left;
+}
+
+.voicechoon-share-panel strong,
+.voicechoon-share-panel small { flex-basis: 100%; }
+.voicechoon-share-panel a,
+.voicechoon-share-panel button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    padding: .55rem .75rem;
+    border: 1px solid rgba(255,255,255,.5);
+    border-radius: .7rem;
+    color: #fff;
+    background: rgba(255,255,255,.1);
+    font-weight: 750;
+    text-decoration: none;
+}
+.voicechoon-share-panel .share-primary { background: #db2777; }
+.voicechoon-share-panel .share-delete { color: #fecaca; }
+
+.microphone-permission-backdrop {
+    position: fixed;
+    z-index: 1000;
+    inset: 0;
+    display: grid;
+    place-items: end center;
+    padding: 1rem max(1rem, env(safe-area-inset-right)) max(1rem, env(safe-area-inset-bottom));
+    background: rgba(8, 3, 20, .76);
+    backdrop-filter: blur(10px);
+}
+
+.microphone-permission-dialog {
+    width: min(100%, 30rem);
+    padding: 1.35rem;
+    border: 2px solid rgba(255,255,255,.24);
+    border-radius: 1.4rem;
+    color: #fff;
+    background: linear-gradient(150deg, #26114b, #120820);
+    box-shadow: 0 1.5rem 5rem rgba(0,0,0,.55);
+    text-align: left;
+}
+
+.microphone-permission-icon {
+    display: grid;
+    place-items: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin-bottom: .8rem;
+    border-radius: 1rem;
+    background: linear-gradient(135deg, #ff4fa3, #7c3cff);
+    font-size: 1.7rem;
+}
+
+.microphone-permission-dialog > p:first-of-type {
+    margin: 0 0 .25rem;
+    color: #67e8f9;
+    font-size: .72rem;
+    font-weight: 900;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+}
+
+.microphone-permission-dialog h2 { margin: 0; font-size: clamp(1.55rem, 7vw, 2.15rem); }
+.microphone-permission-dialog p { line-height: 1.55; }
+.microphone-permission-dialog small { display: block; margin-top: .85rem; color: #c9c1d8; }
+.microphone-permission-actions { display: grid; gap: .6rem; }
+.microphone-permission-actions button { min-height: 48px; border-radius: .75rem; font-weight: 850; }
+.microphone-permission-allow { border: 0; background: #c8ff36; color: #130b20; }
+.microphone-permission-cancel { border: 1px solid rgba(255,255,255,.3); background: transparent; color: #fff; }
+
+@media (min-width: 48rem) {
+    .microphone-permission-backdrop { place-items: center; }
+}

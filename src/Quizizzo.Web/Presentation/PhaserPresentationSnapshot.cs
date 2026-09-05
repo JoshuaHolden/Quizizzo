@@ -29,7 +29,9 @@ public sealed record PhaserPresentationSnapshot(
     PhaserMediaPresentationSnapshot? Media = null,
     string ScoreUnit = "pts",
     IReadOnlyList<PhaserStatisticSnapshot>? Statistics = null,
-    JsonElement? GameState = null);
+    JsonElement? GameState = null,
+    string? VoiceSampleBaseUrl = null,
+    bool CaptureReplay = false);
 
 public sealed record PhaserEntrySnapshot(
     string Label,

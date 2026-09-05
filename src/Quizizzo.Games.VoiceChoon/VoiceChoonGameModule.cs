@@ -517,7 +517,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
             game.MaximumBandCombo,
             game.EnergyPercent,
             game.Results,
-            current.Phase == PlayingPhase
+            current.Phase is PlayingPhase or ResultsPhase
                 ? game.Charts.SelectMany(chart => chart.PlaybackNotes.Select(note =>
                 {
                     var participant = game.Participants.Single(player => player.PlayerIndex == chart.PlayerIndex);
@@ -541,7 +541,7 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                         judgementNote?.StartTimeSeconds);
                 })).Where(note => note.SampleAssetId != Guid.Empty).ToArray()
                 : null,
-            current.Phase == PlayingPhase
+            current.Phase is PlayingPhase or ResultsPhase
                 ? game.Participants.Select(participant =>
                 {
                     var chart = game.Charts.Single(item => item.PlayerIndex == participant.PlayerIndex);

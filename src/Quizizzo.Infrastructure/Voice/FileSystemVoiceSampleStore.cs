@@ -166,6 +166,18 @@ public sealed partial class FileSystemVoiceSampleStore : IVoiceSampleStore
         return Task.CompletedTask;
     }
 
+    public Task RetainAsync(string key, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var path = ResolveKey(key);
+        if (!File.Exists(path))
+        {
+            throw new FileNotFoundException("The voice sample is unavailable.", path);
+        }
+        File.SetLastWriteTimeUtc(path, DateTime.MaxValue.AddDays(-1));
+        return Task.CompletedTask;
+    }
+
     private string ResolveKey(string key)
     {
         if (string.IsNullOrWhiteSpace(key) || !KeyPattern().IsMatch(key))

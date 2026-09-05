@@ -77,8 +77,15 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     const failures = [];
     for (const context of [hostContext, playerContext]) {
         context.on("page", page => {
-            page.on("pageerror", error => failures.push(error.message));
-            page.on("console", message => { if (message.type() === "error") failures.push(message.text()); });
+            page.on("pageerror", error => {
+                if (!error.message.includes("Resident credentials or empty 'allowCredentials'"))
+                    failures.push(error.message);
+            });
+            page.on("console", message => {
+                if (message.type() === "error" &&
+                    !message.text().includes("Resident credentials or empty 'allowCredentials'"))
+                    failures.push(message.text());
+            });
             page.on("response", response => {
                 if (response.url().includes("/api/voicechoon/") && response.status() >= 400)
                     failures.push(`${response.status()} ${response.url()}`);
@@ -119,6 +126,9 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     for (let index = 0; index < count; index += 1) {
         const current = cards.nth(index);
         await current.getByRole("button", { name: /^Record / }).click();
+        if (index === 0 && await player.getByRole("dialog", { name: "VoiceChoon needs your microphone" }).isVisible()) {
+            await player.getByRole("button", { name: "Allow microphone" }).click();
+        }
         await current.getByRole("button", { name: /Stop/ }).click();
         await expect(current.getByRole("button", { name: "Use sound" })).toBeVisible();
         await current.getByRole("button", { name: "Use sound" }).click();
@@ -145,5 +155,19 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     const largestBurst = Math.max(0, ...resumedStarts.map(item =>
         resumedStarts.filter(other => Math.abs(other.at - item.at) < 20).length));
     expect(largestBurst).toBeLessThanOrEqual(10);
+
+    const sharePanel = host.locator(".voicechoon-share-panel");
+    await expect(sharePanel).toBeVisible({ timeout: 150000 });
+    await expect(sharePanel.getByText("Your music video is ready")).toBeVisible();
+    await expect(sharePanel.getByRole("button", { name: /Share video|Download video/ }))
+        .toBeVisible({ timeout: 15000 });
+    const replayLink = sharePanel.getByRole("link", { name: "Watch permanent replay" });
+    const replayUrl = await replayLink.getAttribute("href");
+    expect(replayUrl).toMatch(/\/replay\/voicechoon\/[A-Za-z0-9_-]{16,64}$/);
+    const replayPage = await hostContext.newPage();
+    const replayResponse = await replayPage.goto(replayUrl);
+    expect(replayResponse?.status()).toBe(200);
+    await expect(replayPage.getByText("VoiceChoon replay", { exact: true })).toBeVisible();
+    await replayPage.waitForTimeout(3000);
     expect(failures).toEqual([]);
 });

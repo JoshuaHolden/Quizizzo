@@ -43,6 +43,13 @@ public sealed class VoiceSampleMetadata
     public long Length { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset ExpiresAtUtc { get; private set; }
+    public bool IsRetainedForReplay { get; private set; }
+
+    public void RetainForReplay()
+    {
+        IsRetainedForReplay = true;
+        ExpiresAtUtc = DateTimeOffset.MaxValue;
+    }
 
     public static VoiceSampleMetadata Create(
         Guid submissionId,

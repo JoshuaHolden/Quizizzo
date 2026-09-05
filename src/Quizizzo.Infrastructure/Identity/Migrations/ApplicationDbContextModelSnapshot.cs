@@ -377,6 +377,24 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
                     b.ToTable("Players", (string)null);
                 });
 
+            modelBuilder.Entity("Quizizzo.Domain.Voice.VoiceChoonReplay", b =>
+                {
+                    b.Property<Guid>("Id").HasColumnType("uuid");
+                    b.Property<DateTimeOffset>("CreatedAtUtc").HasColumnType("timestamp with time zone");
+                    b.Property<Guid>("GameInstanceId").HasColumnType("uuid");
+                    b.Property<string>("HostUserId").IsRequired().HasMaxLength(450).HasColumnType("character varying(450)");
+                    b.Property<Guid>("PartyId").HasColumnType("uuid");
+                    b.Property<Guid[]>("SampleAssetIds").IsRequired().HasColumnType("uuid[]");
+                    b.Property<string>("ShareCode").IsRequired().HasMaxLength(64).HasColumnType("character varying(64)");
+                    b.Property<string>("SnapshotJson").IsRequired().HasColumnType("jsonb");
+                    b.Property<string>("Title").IsRequired().HasMaxLength(160).HasColumnType("character varying(160)");
+                    b.HasKey("Id");
+                    b.HasIndex("GameInstanceId").IsUnique();
+                    b.HasIndex("HostUserId");
+                    b.HasIndex("ShareCode").IsUnique();
+                    b.ToTable("VoiceChoonReplays", (string)null);
+                });
+
             modelBuilder.Entity("Quizizzo.Domain.Voice.VoiceChoonSong", b =>
                 {
                     b.Property<Guid>("Id")
@@ -450,6 +468,11 @@ namespace Quizizzo.Infrastructure.Identity.Migrations
 
                     b.Property<Guid>("GameInstanceId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsRetainedForReplay")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<long>("Length")
                         .HasColumnType("bigint");

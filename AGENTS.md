@@ -766,7 +766,27 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Slow VoiceChoon dance cycles to span multiple beats and layer independent hand rotation plus opposing shoulder-height waves for an inflatable-air-dancer feel.
 - [x] Replace the radial VoiceChoon tunnel with outlined pastel marbling whose broad ribbons and smaller curls morph slowly under a subtle beat pulse, retaining additive sweeping spotlights.
 - [x] Continuously interpolate the pastel marbling through warm, cool, citrus, and finale palettes according to authoritative song progress.
+- [x] Remove duplicate VoiceChoon finale chrome and give tied results unique podium slots with non-overlapping name/score plates so no player is hidden behind another.
 - [x] Preserve a static, readable presentation under reduced-motion preferences and add automated presentation contracts.
+
+### VoiceChoon permanent replays and native sharing (completed 2026-09-05)
+
+- [x] Save a compact deterministic performance recipe at Results instead of permanently storing a large rendered video.
+- [x] Retain only the compressed voice samples referenced by a replay and serve them through unguessable public replay URLs with immutable caching.
+- [x] Reconstruct the complete beat-timed music video and final podium on a permanent public replay page.
+- [x] Record the live Phaser canvas and Web Audio mix at bounded bitrate in main-display browser memory without adding server video storage.
+- [x] Offer native file sharing for Facebook-capable devices, with a download-and-copied-caption fallback plus ordinary Facebook link sharing.
+- [x] Let the authenticated party host delete the replay and its retained voice assets.
+- [x] Add the PostgreSQL replay migration, retention/domain/presentation coverage, and a full Edge Greensleeves journey through WAV injection, recording, Results, and public replay playback.
+
+### VoiceChoon-led couch co-op landing page (completed 2026-09-05)
+
+- [x] Reframe Quizizzo around the one-laptop, one-TV, phones-as-controllers couch co-op proposition.
+- [x] Make VoiceChoon the headline experience with an original psychedelic stage, rigged dancers, live score, and Piano Tiles phone illustration.
+- [x] Explain recording voices, playing individual parts, the shared-screen music video, podium, and permanent replay in three concise steps.
+- [x] Give Pile-Up Panic and AniMates large visual feature treatments while retaining Estimate, Majority Rules, Bullshit, and Slop Machine as the wider party mix.
+- [x] Preserve keyboard focus, reduced motion, forced colours, safe areas, touch targets, progressive reveals, and the existing no-download/no-player-account promises.
+- [x] Pass desktop and 320 px scrolling browser journeys with no horizontal overflow, 29 client tests, all 363 .NET tests, and a zero-warning Release build.
 
 ## Verification requirements
 

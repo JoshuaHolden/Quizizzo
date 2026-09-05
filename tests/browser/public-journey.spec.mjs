@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const publicPages = [
-    { name: "home", path: "/", heading: /big-screen chaos/i },
+    { name: "home", path: "/", heading: /your voices/i },
     { name: "join", path: "/join", heading: /join the party/i },
     { name: "display", path: "/display", heading: /Quizizzo|display/i },
     { name: "player", path: "/play", heading: /no active player/i },
@@ -109,4 +109,20 @@ test("skip link is hidden until keyboard navigation reaches it", async ({ page }
     await expect.poll(async () => (await skipLink.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0);
     expect(await skipLink.evaluate(element => getComputedStyle(element).clipPath))
         .not.toContain("100%");
+});
+
+test("home tells the complete couch co-op story while scrolling", async ({ page }) => {
+    await page.goto("/", { waitUntil: "networkidle" });
+    for (const section of [".voice-section", ".pile-feature", ".animates-feature", ".how-section", ".final-cta"]) {
+        const target = page.locator(section);
+        await target.scrollIntoViewIfNeeded();
+        await expect(target).toBeVisible();
+        await expect.poll(async () => target.evaluate(element =>
+            Number.parseFloat(getComputedStyle(element).opacity))).toBeGreaterThan(.9);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth))
+            .toBeLessThanOrEqual(1);
+    }
+    await expect(page.getByRole("heading", { name: /become every instrument/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Pile-Up Panic/i })).toBeAttached();
+    await expect(page.getByRole("heading", { name: /Ani Mates/i })).toBeAttached();
 });

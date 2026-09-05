@@ -25,6 +25,7 @@
     [Parameter] public EventCallback Failed { get; set; }
     [Parameter] public bool CanManagePlayers { get; set; }
     [Parameter] public EventCallback<Guid> RemovePlayerRequested { get; set; }
+    [Parameter] public EventCallback<bool> ReplayRecordingReady { get; set; }
 
     private readonly string presentationKey = Guid.NewGuid().ToString("N");
     private readonly string elementId = $"quizizzo-phaser-{Guid.NewGuid():N}";
@@ -113,6 +114,17 @@
         }
     }
 
+    public async Task<bool> ShareReplayAsync(string caption) => started &&
+        await JavaScript.InvokeAsync<bool>("quizizzoPresentation.shareReplay", presentationKey, caption);
+
+    public async Task DownloadReplayAsync(string fileName)
+    {
+        if (started)
+        {
+            await JavaScript.InvokeVoidAsync("quizizzoPresentation.downloadReplay", presentationKey, fileName);
+        }
+    }
+
     private async Task ToggleAudioAsync()
     {
         if (started)
@@ -143,4 +155,8 @@
         Guid.TryParse(playerId, out var parsed)
             ? RemovePlayerRequested.InvokeAsync(parsed)
             : Task.CompletedTask;
+
+    [JSInvokable]
+    public Task ReplayReady(bool nativeShareAvailable) =>
+        ReplayRecordingReady.InvokeAsync(nativeShareAvailable);
 }

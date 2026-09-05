@@ -13,11 +13,15 @@
 @using Quizizzo.Games.VoiceChoon
 @using Quizizzo.Web.Presentation
 @using Quizizzo.Web.Realtime
+@using Quizizzo.Web.Voice
+@using Microsoft.JSInterop
 @inject DisplayRealtimeStateLoader StateLoader
 @inject HostPartyRealtimeService HostPartyState
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject QrCodeService QrCodes
+@inject VoiceChoonReplayService VoiceChoonReplays
+@inject IJSRuntime JavaScript
 
 <PartyRealtimeConnection Role="Display"
                          PartyId="session.PartyId"
@@ -37,7 +41,8 @@
                         CanManagePlayers="HasHostControls"
                         RemovePlayerRequested="RemovePlayerAsync"
                         Started="HandlePhaserStartedAsync"
-                        Failed="HandlePhaserFailedAsync" />
+                        Failed="HandlePhaserFailedAsync"
+                        ReplayRecordingReady="HandleReplayRecordingReady" />
     @if (phaserFailed)
     {
         <section class="display-unsupported" role="alert">
@@ -53,6 +58,37 @@
                 @onclick="OpenHostControls">
             <span aria-hidden="true">⚙</span> Host controls
         </button>
+    }
+
+    @if (IsVoiceChoonResult)
+    {
+        <section class="voicechoon-share-panel" aria-label="Save and share this VoiceChoon performance">
+            <strong>Your music video is ready</strong>
+            @if (savedReplay is not null)
+            {
+                <a href="@ReplayUrl" target="_blank" rel="noopener">Watch permanent replay</a>
+                <button type="button" @onclick="CopyReplayLinkAsync">Copy replay link</button>
+                <a href="@FacebookShareUrl" target="_blank" rel="noopener">Share link on Facebook</a>
+                @if (HasHostControls)
+                {
+                    <button type="button" class="share-delete" @onclick="DeleteReplayAsync">Delete replay</button>
+                }
+            }
+            @if (replayRecordingReady)
+            {
+                <button type="button" class="share-primary" @onclick="ShareVideoAsync">
+                    @(nativeReplayShareAvailable ? "Share video" : "Download video")
+                </button>
+            }
+            else
+            {
+                <span>Finishing video…</span>
+            }
+            @if (!string.IsNullOrWhiteSpace(replayStatus))
+            {
+                <small role="status">@replayStatus</small>
+            }
+        </section>
     }
 </main>
 
@@ -359,13 +395,30 @@
     private bool voiceChoonSoloAutoplayTest;
     private PhaserPresentation? phaserPresentation;
     private bool phaserFailed;
+    private VoiceChoonReplayView? savedReplay;
+    private Guid? savedReplayGameInstanceId;
+    private bool replayRecordingReady;
+    private bool nativeReplayShareAvailable;
+    private string? replayStatus;
     private bool HasHostControls => hostParty is not null && hostUserId is not null && session.PartyId is not null;
     private string JoinUrl => $"{Navigation.BaseUri}join/{session.RoomCode}";
     private PhaserPresentationSnapshot PresentationSnapshot =>
         PhaserPresentationMapper.Create(
             session, players, gameView, game,
             session.IsPaired ? JoinUrl : null,
-            session.IsPaired ? QrCodes.CreatePngDataUri(JoinUrl) : null);
+            session.IsPaired ? QrCodes.CreatePngDataUri(JoinUrl) : null) with
+        {
+            CaptureReplay = string.Equals(gameView?.GameKey, VoiceChoonGameDefinition.GameKey,
+                StringComparison.Ordinal)
+        };
+    private bool IsVoiceChoonResult => gameView?.GameKey == VoiceChoonGameDefinition.GameKey &&
+        gameView.Phase == VoiceChoonGameModule.ResultsPhase;
+    private string ReplayUrl => savedReplay is null ? string.Empty :
+        $"{Navigation.BaseUri}replay/voicechoon/{savedReplay.ShareCode}";
+    private string FacebookShareUrl =>
+        $"https://www.facebook.com/sharer/sharer.php?u={Uri.EscapeDataString(ReplayUrl)}";
+    private const string ReplayCaption =
+        "We made this song using only our voices in Quizizzo VoiceChoon 🎤😂 Nobody asked for this, but here it is.";
 
     private Task HandlePhaserStartedAsync()
     {
@@ -419,6 +472,58 @@
         players = state.Players;
         gameView = state.Game;
         game = gameView?.Data.Deserialize<DisplayGameViewPayload>();
+        await EnsureReplaySavedAsync();
+    }
+
+    private async Task EnsureReplaySavedAsync()
+    {
+        if (!IsVoiceChoonResult || session.PartyId is not { } partyId ||
+            gameView is null || savedReplayGameInstanceId == gameView.GameInstanceId) return;
+        try
+        {
+            savedReplay = await VoiceChoonReplays.SaveAsync(partyId, PresentationSnapshot);
+            savedReplayGameInstanceId = gameView.GameInstanceId;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or ArgumentException)
+        {
+            replayStatus = exception.Message;
+        }
+    }
+
+    private Task HandleReplayRecordingReady(bool nativeShareAvailable)
+    {
+        replayRecordingReady = true;
+        nativeReplayShareAvailable = nativeShareAvailable;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ShareVideoAsync()
+    {
+        if (phaserPresentation is null) return;
+        if (nativeReplayShareAvailable && await phaserPresentation.ShareReplayAsync(ReplayCaption))
+        {
+            replayStatus = "Video handed to your sharing app.";
+        }
+        else
+        {
+            await phaserPresentation.DownloadReplayAsync("quizizzo-voicechoon");
+            await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", ReplayCaption);
+            replayStatus = "Video downloaded and funny caption copied.";
+        }
+    }
+
+    private async Task CopyReplayLinkAsync()
+    {
+        await JavaScript.InvokeVoidAsync("navigator.clipboard.writeText", $"{ReplayCaption} {ReplayUrl}");
+        replayStatus = "Replay link and caption copied.";
+    }
+
+    private async Task DeleteReplayAsync()
+    {
+        if (savedReplay is null || hostUserId is null) return;
+        await VoiceChoonReplays.DeleteAsync(savedReplay.ShareCode, hostUserId);
+        savedReplay = null;
+        replayStatus = "Permanent replay and retained voice samples deleted.";
     }
 
     private async Task InitialiseHostControlsAsync()

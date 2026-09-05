@@ -26,6 +26,8 @@ public static class VoiceSampleEndpoints
             .RequireRateLimiting("voice-samples");
         endpoints.MapGet("/api/voicechoon/display-samples/{assetId:guid}", GetDisplayAsync)
             .RequireRateLimiting("voice-samples");
+        endpoints.MapGet("/api/voicechoon/replays/{shareCode}/samples/{assetId:guid}", GetReplayAsync)
+            .RequireRateLimiting("voice-samples");
         return endpoints;
     }
 
@@ -224,5 +226,17 @@ public static class VoiceSampleEndpoints
                 "audio/mp4" or "audio/m4a" => value,
             _ => throw new InvalidDataException("Recordings must use a supported browser audio format.")
         };
+    }
+
+    private static async Task<IResult> GetReplayAsync(
+        string shareCode,
+        Guid assetId,
+        HttpContext context,
+        VoiceChoonReplayService replays)
+    {
+        var sample = await replays.GetSampleAsync(shareCode, assetId, context.RequestAborted);
+        if (sample is null) return Results.NotFound();
+        context.Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+        return Results.File(sample.Content.ToArray(), sample.ContentType, enableRangeProcessing: true);
     }
 }

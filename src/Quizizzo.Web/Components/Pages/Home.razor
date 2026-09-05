@@ -1,179 +1,101 @@
 @page "/"
 @layout Quizizzo.Web.Components.Layout.LandingLayout
 
-<PageTitle>Quizizzo — big-screen party games for everyone</PageTitle>
+<PageTitle>Quizizzo — couch co-op party games with phones</PageTitle>
 <HeadContent>
-    <meta name="description" content="Put Quizizzo on the big screen, use every phone as a controller, and turn any room into a party." />
+    <meta name="description" content="Turn any laptop or TV into a couch co-op party. Friends use their phones as controllers for VoiceChoon, Pile-Up Panic, AniMates and more." />
 </HeadContent>
 
 <div class="landing-page" data-landing-motion>
     <div class="scroll-confetti" data-scroll-confetti aria-hidden="true">
-        <i style="--x: 7%; --y: 7%; --r: 18deg; --drift: 1.15"></i>
-        <i style="--x: 20%; --y: 19%; --r: -32deg; --drift: .72"></i>
-        <i style="--x: 91%; --y: 28%; --r: 64deg; --drift: 1.35"></i>
-        <i style="--x: 75%; --y: 44%; --r: 12deg; --drift: .88"></i>
-        <i style="--x: 12%; --y: 56%; --r: 42deg; --drift: 1.5"></i>
-        <i style="--x: 87%; --y: 67%; --r: -18deg; --drift: .65"></i>
-        <i style="--x: 27%; --y: 79%; --r: 73deg; --drift: 1.05"></i>
-        <i style="--x: 68%; --y: 91%; --r: -46deg; --drift: 1.28"></i>
+        <i style="--x:5%;--y:8%;--r:18deg;--drift:1.15"></i><i style="--x:22%;--y:24%;--r:-32deg;--drift:.72"></i>
+        <i style="--x:94%;--y:18%;--r:64deg;--drift:1.35"></i><i style="--x:78%;--y:43%;--r:12deg;--drift:.88"></i>
+        <i style="--x:9%;--y:59%;--r:42deg;--drift:1.5"></i><i style="--x:91%;--y:72%;--r:-18deg;--drift:.65"></i>
+        <i style="--x:25%;--y:82%;--r:73deg;--drift:1.05"></i><i style="--x:66%;--y:94%;--r:-46deg;--drift:1.28"></i>
     </div>
-    <section class="hero-section" aria-labelledby="hero-title">
-        <div class="hero-orb hero-orb-one" data-parallax-layer data-depth="0.45" aria-hidden="true"></div>
-        <div class="hero-orb hero-orb-two" data-parallax-layer data-depth="0.8" aria-hidden="true"></div>
-        <span class="hero-confetti hero-confetti-one" data-parallax-layer data-depth="1.1" aria-hidden="true"></span>
-        <span class="hero-confetti hero-confetti-two" data-parallax-layer data-depth="0.75" aria-hidden="true"></span>
 
+    <section class="hero-section" aria-labelledby="hero-title">
+        <div class="hero-glow glow-one" data-parallax-layer data-depth=".25" aria-hidden="true"></div>
+        <div class="hero-glow glow-two" data-parallax-layer data-depth=".55" aria-hidden="true"></div>
         <div class="hero-grid page-width">
             <div class="hero-copy" data-reveal>
-                <p class="eyebrow"><span aria-hidden="true"></span> Browser party games, ready when you are</p>
-                <h1 id="hero-title">Big-screen chaos.<br /><em>Tiny-screen controls.</em></h1>
-                <p class="hero-intro">
-                    Put the game on a TV. Everyone joins from their phone. Quizizzo keeps the
-                    laughs, drawings, votes, and scores moving—even when somebody refreshes.
-                </p>
+                <p class="eyebrow"><span aria-hidden="true"></span>The browser is your console</p>
+                <h1 id="hero-title">Your voices.<br />Your phones.<br /><em>Absolute scenes.</em></h1>
+                <p class="hero-intro">Couch co-op party games built for the big screen. Open Quizizzo on a laptop, put it on the TV, and your friends join with the phones already in their hands.</p>
                 <div class="hero-actions">
-                    <a class="hero-button hero-button-primary" href="/join">
-                        Join with a room code
-                        <span aria-hidden="true">→</span>
-                    </a>
-                    <a class="hero-button hero-button-secondary" href="/host">Open display</a>
+                    <a class="hero-button primary" href="/host">Start a party <span aria-hidden="true">↗</span></a>
+                    <a class="hero-button secondary" href="/join">Join with a code</a>
                 </div>
-                <ul class="hero-reassurance" aria-label="Quizizzo benefits">
-                    <li><span aria-hidden="true">✓</span> No app download</li>
-                    <li><span aria-hidden="true">✓</span> No player accounts</li>
-                    <li><span aria-hidden="true">✓</span> Reconnect-safe</li>
+                <ul class="hero-reassurance" aria-label="What you need">
+                    <li><b>01</b> Laptop + browser</li><li><b>02</b> Any TV</li><li><b>03</b> Friends + phones</li>
                 </ul>
             </div>
 
-            <div class="hero-visual" data-reveal data-reveal-delay="1" aria-hidden="true">
-                <div class="party-card" data-parallax-layer data-depth="0.24">
-                    <div class="party-card-topline">
-                        <span class="party-live"><i aria-hidden="true"></i> Live party</span>
-                        <span class="party-room">Room <strong>ZAPY</strong></span>
+            <div class="hero-visual" data-reveal data-reveal-delay="1" aria-label="VoiceChoon playing on a shared screen">
+                <div class="voice-stage" data-parallax-layer data-depth=".18">
+                    <div class="stage-waves" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+                    <div class="stage-header"><span>VOICECHOON</span><b>LIVE</b></div>
+                    <div class="stage-callout">42 HIT STREAK!</div>
+                    <div class="stage-dancers" aria-hidden="true">
+                        <div class="dancer coral"><i class="head"></i><i class="body"></i><i class="arm left"></i><i class="arm right"></i><i class="leg left"></i><i class="leg right"></i></div>
+                        <div class="dancer lime"><i class="head"></i><i class="body"></i><i class="arm left"></i><i class="arm right"></i><i class="leg left"></i><i class="leg right"></i></div>
+                        <div class="dancer blue"><i class="head"></i><i class="body"></i><i class="arm left"></i><i class="arm right"></i><i class="leg left"></i><i class="leg right"></i></div>
                     </div>
-
-                    <div class="party-question">
-                        <span>MAJORITY RULES</span>
-                        <strong>Who would make the best secret agent?</strong>
-                    </div>
-
-                    <div class="party-players" aria-hidden="true">
-                        <div class="party-person person-pink"><i></i><i></i><b></b></div>
-                        <div class="party-person person-yellow"><i></i><i></i><b></b></div>
-                        <div class="party-person person-blue"><i></i><i></i><b></b></div>
-                        <div class="party-person person-purple"><i></i><i></i><b></b></div>
-                    </div>
-
-                    <div class="party-status">
-                        <span>4 answers are in</span>
-                        <div aria-hidden="true"><i></i><i></i><i></i><i></i></div>
-                    </div>
+                    <div class="stage-score"><span>BAND SCORE</span><strong>229,735</strong></div>
                 </div>
-
-                <div class="phone-card" data-parallax-layer data-depth="0.82">
-                    <div class="phone-speaker" aria-hidden="true"></div>
-                    <p>YOUR CONTROLLER</p>
-                    <strong>Pick your favourite</strong>
-                    <button type="button" tabindex="-1">Jamie</button>
-                    <button type="button" tabindex="-1">Mika</button>
-                    <span>18s left</span>
+                <div class="rhythm-phone" data-parallax-layer data-depth=".72" aria-hidden="true">
+                    <div class="phone-notch"></div><span>YOUR PART</span><strong>MELODY</strong>
+                    <div class="phone-lanes"><i></i><i></i><i></i><i></i><b></b><b></b><b></b></div><small>PERFECT! +500</small>
                 </div>
-
-                <div class="reaction-bubble reaction-one" data-parallax-layer data-depth="1.05" aria-hidden="true">+500!</div>
-                <div class="reaction-bubble reaction-two" data-parallax-layer data-depth="0.7" aria-hidden="true">😂</div>
+                <div class="hero-sticker" data-parallax-layer data-depth=".92" aria-hidden="true">NO<br />APP!</div>
             </div>
         </div>
+        <div class="hero-marquee" aria-hidden="true"><div>BIG SCREEN ENERGY <i>✦</i> PHONES ARE CONTROLLERS <i>✦</i> BIG SCREEN ENERGY <i>✦</i> PHONES ARE CONTROLLERS <i>✦</i></div></div>
     </section>
 
-    <section class="game-strip" aria-label="Games included">
-        <p>Four ways to cause friendly chaos</p>
-        <div>
-            <span>ESTIMATE</span><i aria-hidden="true"></i>
-            <span>MAJORITY RULES</span><i aria-hidden="true"></i>
-            <span>BULLSHIT</span><i aria-hidden="true"></i>
-            <span>ANIMATES</span>
+    <section class="voice-section page-width" aria-labelledby="voice-title">
+        <div class="section-heading" data-reveal><p class="eyebrow">The headline act</p><h2 id="voice-title">Don't sing the song.<br /><em>Become every instrument.</em></h2></div>
+        <div class="voice-steps">
+            <article data-reveal><span>01</span><div class="voice-icon mouth" aria-hidden="true">AAH</div><h3>Make ridiculous noises</h3><p>Record bass, drums, chords and lead sounds into your phone. Musical talent may actually be a disadvantage.</p></article>
+            <article data-reveal data-reveal-delay="1"><span>02</span><div class="voice-icon tiles" aria-hidden="true"><i></i><i></i><i></i><i></i></div><h3>Play it like Piano Tiles</h3><p>Each player gets a part. Tap and hold together while the TV turns your voices into the full arrangement.</p></article>
+            <article data-reveal data-reveal-delay="2"><span>03</span><div class="voice-icon replay" aria-hidden="true">▶</div><h3>Watch and share the chaos</h3><p>Your characters dance through a psychedelic music video, hit the podium, and leave you with a permanent replay.</p></article>
         </div>
+        <aside class="voice-quote" data-reveal><span>VOICECHOON</span><p>“Like karaoke, Rock Band and a group-chat voice note had a beautiful accident.”</p><b>2–8 PLAYERS</b></aside>
     </section>
 
-    <section class="games-section page-width" aria-labelledby="games-title">
-        <div class="section-heading" data-reveal>
-            <p class="eyebrow">Pick your kind of ridiculous</p>
-            <h2 id="games-title">A party mix with actual personality.</h2>
-            <p>Quick guesses, suspicious bluffs, group votes, and tiny hand-drawn masterpieces.</p>
-        </div>
-
-        <div class="game-grid">
-            <article class="game-card game-card-estimate" data-reveal>
-                <div class="game-icon" aria-hidden="true">≈</div>
-                <p>GUESS CLOSEST</p>
-                <h3>Estimate</h3>
-                <span>Big questions. Wild guesses. Points for whoever gets closest.</span>
+    <section class="games-section" aria-labelledby="games-title"><div class="page-width">
+        <div class="section-heading" data-reveal><p class="eyebrow">More games. Same sofa.</p><h2 id="games-title">Pick tonight's<br /><em>flavour of chaos.</em></h2></div>
+        <div class="feature-games">
+            <article class="feature-game pile-feature" data-reveal>
+                <div class="game-copy"><span>REAL-TIME COUCH BATTLE</span><h3>Pile-Up<br />Panic</h3><p>Our falling-block battle where everybody plays at once. Build, survive, sabotage your friends, and don't get buried in junk.</p><ul><li>Phones become gamepads</li><li>Live attacks and abilities</li><li>Last player standing wins</li></ul><b>2–8 PLAYERS</b></div>
+                <div class="pile-art" aria-hidden="true"><div class="pile-board back"><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="pile-board"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>PLAYER 2<br /><strong>INCOMING!</strong></span></div>
             </article>
-            <article class="game-card game-card-majority" data-reveal data-reveal-delay="1">
-                <div class="game-icon" aria-hidden="true">62%</div>
-                <p>THINK ALIKE</p>
-                <h3>Majority Rules</h3>
-                <span>Write your answer, then back the response the room loves most.</span>
-            </article>
-            <article class="game-card game-card-bullshit" data-reveal>
-                <div class="game-icon" aria-hidden="true">?!</div>
-                <p>BLUFF WELL</p>
-                <h3>Bullshit</h3>
-                <span>Invent a convincing fake and lure your mates away from the truth.</span>
-            </article>
-            <article class="game-card game-card-animates" data-reveal data-reveal-delay="1">
-                <div class="game-icon animation-icon" aria-hidden="true"><i></i><i></i><i></i></div>
-                <p>DRAW TOGETHER</p>
-                <h3>AniMates</h3>
-                <span>Sketch a tiny animation, watch it move, then vote for a favourite.</span>
+            <article class="feature-game animates-feature" data-reveal>
+                <div class="game-copy"><span>DRAW · ANIMATE · EXPOSE</span><h3>Ani<br />Mates</h3><p>Draw tiny flipbook animations on your phone. The big screen plays every masterpiece before the room votes.</p><ul><li>Finger-drawn animation</li><li>Anonymous gallery reveals</li><li>Made for terrible artists</li></ul><b>3–6 PLAYERS</b></div>
+                <div class="animates-art" aria-hidden="true"><div class="paper one"><span>1</span><i></i><b></b></div><div class="paper two"><span>2</span><i></i><b></b></div><div class="paper three"><span>3</span><i></i><b></b></div><strong>MASTERPIECE?</strong></div>
             </article>
         </div>
-    </section>
-
-    <section id="how-it-works" class="how-section" aria-labelledby="how-title">
-        <div class="page-width">
-            <div class="section-heading section-heading-centred">
-                <p class="eyebrow">From sofa to game night in three steps</p>
-                <h2 id="how-title">No setup speech required.</h2>
-            </div>
-
-            <ol class="step-grid">
-                <li data-reveal>
-                    <span class="step-number">01</span>
-                    <div class="step-visual step-screen" aria-hidden="true"><i>Q</i><b>ZAPY</b></div>
-                    <h3>Open the big screen</h3>
-                    <p>Sign in on a TV, monitor, or projector and Quizizzo creates your room automatically.</p>
-                </li>
-                <li data-reveal data-reveal-delay="1">
-                    <span class="step-number">02</span>
-                    <div class="step-visual step-phones" aria-hidden="true"><i></i><i></i><i></i></div>
-                    <h3>Everyone joins</h3>
-                    <p>Players enter the four-letter room code on any phone—no account needed.</p>
-                </li>
-                <li data-reveal data-reveal-delay="2">
-                    <span class="step-number">03</span>
-                    <div class="step-visual step-party" aria-hidden="true">🎉</div>
-                    <h3>Make some noise</h3>
-                    <p>Choose a game and let Quizizzo handle every round, reveal, and score.</p>
-                </li>
-            </ol>
+        <div class="more-games" data-reveal>
+            <article><span>01</span><div><b>Estimate</b><p>Wild guesses. Closest wins.</p></div><i>≈</i></article>
+            <article><span>02</span><div><b>Majority Rules</b><p>Can you think like the room?</p></div><i>62%</i></article>
+            <article><span>03</span><div><b>Bullshit</b><p>Write lies. Catch your mates.</p></div><i>?!</i></article>
+            <article><span>04</span><div><b>Slop Machine</b><p>Feed the machine. Blame the humans.</p></div><i>AI</i></article>
         </div>
-    </section>
+    </div></section>
+
+    <section id="how-it-works" class="how-section" aria-labelledby="how-title"><div class="page-width how-layout">
+        <div class="how-copy" data-reveal><p class="eyebrow">A console you already own</p><h2 id="how-title">From “what should we do?” to playing in sixty seconds.</h2><p>No downloads. No controllers to pair. No pile of plastic instruments in a cupboard.</p><a class="hero-button primary" href="/host">Put it on the big screen <span aria-hidden="true">→</span></a></div>
+        <ol class="setup-list">
+            <li data-reveal><span>1</span><div><h3>Open Quizizzo</h3><p>Use any modern browser on a laptop. HDMI, cast, or mirror it to the TV.</p></div></li>
+            <li data-reveal data-reveal-delay="1"><span>2</span><div><h3>Scan the room code</h3><p>Friends join with their phone browser. No app and no player account.</p></div></li>
+            <li data-reveal data-reveal-delay="2"><span>3</span><div><h3>Choose your chaos</h3><p>Queue a party mix and let the shared screen handle rules, rounds and scores.</p></div></li>
+        </ol>
+    </div></section>
 
     <section class="final-cta page-width" data-reveal aria-labelledby="cta-title">
-        <div>
-            <p class="eyebrow">Your next running joke starts here</p>
-            <h2 id="cta-title">Ready to wake up the group chat?</h2>
-            <p>One big screen, a handful of phones, and absolutely no app installs.</p>
-            <div class="hero-actions final-actions">
-                <a class="hero-button hero-button-primary" href="/host">Open host display <span aria-hidden="true">→</span></a>
-                <a class="hero-button hero-button-secondary" href="/join">Join a game</a>
-            </div>
-        </div>
-        <div class="cta-sticker" data-parallax-layer data-depth="0.55" aria-hidden="true">
-            <span>ROOM</span>
-            <strong>ZAPY</strong>
-            <i>LET'S GO!</i>
-        </div>
+        <div class="cta-noise" aria-hidden="true">OOOH! BLEEP! WAAAH! BOOM!</div><p class="eyebrow">Tonight's plans: sorted</p>
+        <h2 id="cta-title">Big-screen chaos.<br /><em>Bring your own humans.</em></h2>
+        <p>All you need is a browser, a TV, some phones, and friends willing to make questionable noises.</p>
+        <div class="hero-actions"><a class="hero-button primary" href="/host">Start the party <span aria-hidden="true">↗</span></a><a class="hero-button secondary" href="/join">I have a room code</a></div>
     </section>
 </div>

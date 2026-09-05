@@ -14,6 +14,7 @@ internal sealed class VoiceSampleMetadataConfiguration : IEntityTypeConfiguratio
         builder.Property(sample => sample.PromptKey).HasMaxLength(128).IsRequired();
         builder.Property(sample => sample.StorageKey).HasMaxLength(64).IsRequired();
         builder.Property(sample => sample.ContentType).HasMaxLength(32).IsRequired();
+        builder.Property(sample => sample.IsRetainedForReplay).HasDefaultValue(false);
         builder.HasIndex(sample => sample.ExpiresAtUtc);
         builder.HasIndex(sample => new
         {

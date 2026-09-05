@@ -171,6 +171,7 @@ builder.Services.AddSingleton<IPartyGameRuntime, GameRuntimeGateway>();
 builder.Services.AddSingleton<IGameRuntimeObserver, GameRuntimeRealtimeObserver>();
 builder.Services.AddSingleton<QrCodeService>();
 builder.Services.AddSingleton<DisplayRealtimeStateLoader>();
+builder.Services.AddSingleton<Quizizzo.Web.Voice.VoiceChoonReplayService>();
 builder.Services.AddSingleton<PlayerRealtimeStateLoader>();
 builder.Services.AddSingleton<HostPartyRealtimeService>();
 builder.Services.AddOptions<RealtimePresenceOptions>()

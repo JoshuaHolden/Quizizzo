@@ -1,0 +1,89 @@
+@page "/replay/voicechoon/{ShareCode}"
+@layout Quizizzo.Web.Components.Layout.DisplayLayout
+@implements IAsyncDisposable
+@using System.Text.Json
+@using Quizizzo.Games.VoiceChoon
+@using Quizizzo.Web.Presentation
+@using Quizizzo.Web.Voice
+@inject VoiceChoonReplayService Replays
+@inject NavigationManager Navigation
+
+<PageTitle>@(replay?.Title ?? "VoiceChoon replay") · Quizizzo</PageTitle>
+<HeadContent>
+    <meta property="og:title" content="@(replay is null ? "VoiceChoon replay" : $"{replay.Title} · VoiceChoon")" />
+    <meta property="og:description" content="We made this song using only our voices in Quizizzo VoiceChoon." />
+    <meta property="og:type" content="video.other" />
+    <meta property="og:url" content="@Navigation.Uri" />
+</HeadContent>
+
+@if (replay is null || snapshot is null)
+{
+    <main class="replay-unavailable">
+        <h1>Replay unavailable</h1>
+        <p>This VoiceChoon performance could not be found.</p>
+    </main>
+}
+else
+{
+    <main class="display-stage text-center voicechoon-replay-stage">
+        <PhaserPresentation Snapshot="snapshot" />
+        <aside class="voicechoon-replay-badge">
+            <strong>VoiceChoon replay</strong>
+            <span>@replay.Title</span>
+        </aside>
+    </main>
+}
+
+@code {
+    [Parameter] public string ShareCode { get; set; } = string.Empty;
+
+    private VoiceChoonReplayView? replay;
+    private PhaserPresentationSnapshot? snapshot;
+    private CancellationTokenSource? playbackCancellation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        replay = await Replays.GetAsync(ShareCode);
+        if (replay is null) return;
+        var state = replay.Snapshot.GameState?.Deserialize<VoiceChoonDisplayState>();
+        if (state is null) return;
+        var startsAt = DateTimeOffset.UtcNow.AddSeconds(2);
+        snapshot = replay.Snapshot with
+        {
+            Phase = VoiceChoonGameModule.PlayingPhase,
+            PhaseEndsAtUtc = startsAt.AddSeconds(state.SongDurationSeconds),
+            ShowRoundRanking = false,
+            GameState = JsonSerializer.SerializeToElement(state with { SongStartsAtUtc = startsAt }),
+            VoiceSampleBaseUrl = $"/api/voicechoon/replays/{replay.ShareCode}/samples"
+        };
+        playbackCancellation = new CancellationTokenSource();
+        _ = RevealResultsAsync(startsAt, state.SongDurationSeconds, playbackCancellation.Token);
+    }
+
+    private async Task RevealResultsAsync(DateTimeOffset startsAt, double durationSeconds, CancellationToken token)
+    {
+        try
+        {
+            var delay = startsAt.AddSeconds(durationSeconds) - DateTimeOffset.UtcNow;
+            if (delay > TimeSpan.Zero) await Task.Delay(delay, token);
+            await InvokeAsync(() =>
+            {
+                snapshot = snapshot! with
+                {
+                    Phase = VoiceChoonGameModule.ResultsPhase,
+                    PhaseEndsAtUtc = null,
+                    ShowRoundRanking = true
+                };
+                StateHasChanged();
+            });
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        playbackCancellation?.Cancel();
+        playbackCancellation?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

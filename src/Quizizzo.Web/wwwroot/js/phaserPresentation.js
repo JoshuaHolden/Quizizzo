@@ -36,6 +36,7 @@ window.quizizzoPresentation = (() => {
     function createVoiceChoonDisplayAudio() {
         let audioContext = null;
         let output = null;
+        let recordingDestination = null;
         let snapshot = null;
         let muted = localStorage.getItem("quizizzo.display.audio-muted") === "true";
         let schedulerTimer = null;
@@ -59,6 +60,8 @@ window.quizizzoPresentation = (() => {
                 output.attack.value = 0.01;
                 output.release.value = 0.18;
                 output.connect(audioContext.destination);
+                recordingDestination = audioContext.createMediaStreamDestination();
+                output.connect(recordingDestination);
             }
             return audioContext;
         }
@@ -73,7 +76,8 @@ window.quizizzoPresentation = (() => {
             const context = ensureContext();
             if (!context) return null;
             const pending = (async () => {
-                const response = await fetch(`/api/voicechoon/display-samples/${assetId}`, { credentials: "same-origin" });
+                const sampleBase = snapshot?.voiceSampleBaseUrl || "/api/voicechoon/display-samples";
+                const response = await fetch(`${sampleBase}/${assetId}`, { credentials: "same-origin" });
                 if (!response.ok) return null;
                 return context.decodeAudioData(await response.arrayBuffer());
             })().catch(() => null);
@@ -248,8 +252,61 @@ window.quizizzoPresentation = (() => {
                 document.removeEventListener("pointerdown", gestureHandler);
                 audioContext?.close();
                 audioContext = null;
+            },
+            recordingStream() {
+                ensureContext();
+                return recordingDestination?.stream || null;
             }
         };
+    }
+
+    function preferredReplayMimeType() {
+        const choices = [
+            "video/mp4;codecs=h264,aac",
+            "video/mp4",
+            "video/webm;codecs=vp9,opus",
+            "video/webm;codecs=vp8,opus",
+            "video/webm"
+        ];
+        return choices.find(type => globalThis.MediaRecorder?.isTypeSupported?.(type)) || "";
+    }
+
+    function startReplayRecording(controller) {
+        if (!controller.snapshot?.captureReplay || controller.replayRecorder ||
+            !globalThis.MediaRecorder || !controller.game?.canvas?.captureStream) return;
+        try {
+            const stream = controller.game.canvas.captureStream(30);
+            const audioStream = controller.voiceAudio?.recordingStream();
+            audioStream?.getAudioTracks().forEach(track => stream.addTrack(track));
+            const mimeType = preferredReplayMimeType();
+            const recorder = new MediaRecorder(stream, mimeType ? {
+                mimeType,
+                videoBitsPerSecond: 1_600_000,
+                audioBitsPerSecond: 96_000
+            } : undefined);
+            const chunks = [];
+            recorder.addEventListener("dataavailable", event => {
+                if (event.data?.size) chunks.push(event.data);
+            });
+            recorder.addEventListener("stop", () => {
+                controller.replayBlob = new Blob(chunks, { type: recorder.mimeType || mimeType || "video/webm" });
+                controller.replayRecorder = null;
+                stream.getTracks().forEach(track => track.stop());
+                const extension = controller.replayBlob.type.includes("mp4") ? "mp4" : "webm";
+                const file = new File([controller.replayBlob], `quizizzo-voicechoon.${extension}`,
+                    { type: controller.replayBlob.type });
+                const canShare = Boolean(navigator.share && navigator.canShare?.({ files: [file] }));
+                controller.dotNetReference?.invokeMethodAsync("ReplayReady", canShare).catch(() => { });
+            }, { once: true });
+            controller.replayRecorder = recorder;
+            recorder.start(1000);
+        } catch (error) {
+            console.warn("VoiceChoon replay recording is unavailable.", error);
+        }
+    }
+
+    function finishReplayRecording(controller) {
+        if (controller.replayRecorder?.state === "recording") controller.replayRecorder.stop();
     }
 
     function laneColoursForVoice(index) {
@@ -987,9 +1044,15 @@ window.quizizzoPresentation = (() => {
             const items = [];
             const playing = snapshot.phase === "Playing";
             const showingResults = snapshot.phase === "Results";
-            const rankedResults = [...(snapshot.results || [])].sort((a, b) => a.rank - b.rank);
+            const rankedResults = [...(snapshot.results || [])].sort((a, b) =>
+                a.rank - b.rank || b.pointsAwarded - a.pointsAwarded ||
+                normalizedId(a.playerId).localeCompare(normalizedId(b.playerId)));
             const resultByPlayer = new Map(rankedResults.map(result => [normalizedId(result.playerId), result]));
+            const podiumSlotByPlayer = new Map(rankedResults.map((result, index) =>
+                [normalizedId(result.playerId), index + 1]));
+            const topRank = Math.min(...rankedResults.map(result => Number(result.rank || 0)));
             const lastRank = Math.max(0, ...rankedResults.map(result => Number(result.rank || 0)));
+            const hasLosingRank = lastRank > topRank;
             if (this.voiceStreakGame !== snapshot.gameInstanceId) {
                 this.voiceStreakGame = snapshot.gameInstanceId;
                 this.voiceLastStreak = 0;
@@ -1010,9 +1073,8 @@ window.quizizzoPresentation = (() => {
             stageShade.fillStyle(0x090516, .55);
             stageShade.fillRect(0, 655, width, 65);
             items.push(psychedelic, beams, stageShade);
-            items.push(
-                this.add.text(38, 28, playing ? "VOICECHOON · LIVE"
-                    : showingResults ? "VOICECHOON · FINAL SCORE" : "VOICECHOON", {
+            if (!showingResults) items.push(
+                this.add.text(38, 28, playing ? "VOICECHOON · LIVE" : "VOICECHOON", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold",
                     stroke: "#130828", strokeThickness: 7, letterSpacing: 2
                 }),
@@ -1044,12 +1106,12 @@ window.quizizzoPresentation = (() => {
                     { x: 350, y: 598, w: 235, h: 94, colour: 0x94a3b8, rank: 2 },
                     { x: 930, y: 620, w: 235, h: 72, colour: 0xd97706, rank: 3 }
                 ];
-                podiumSteps.slice(0, Math.min(3, rankedResults.length)).forEach(step => {
+                podiumSteps.slice(0, Math.min(3, rankedResults.length)).forEach((step, index) => {
                     podium.fillStyle(0x130925, .94).fillRoundedRect(
                         step.x - step.w / 2, step.y, step.w, step.h, 18);
                     podium.lineStyle(5, step.colour, .95).strokeRoundedRect(
                         step.x - step.w / 2, step.y, step.w, step.h, 18);
-                    items.push(this.add.text(step.x, step.y + 34, `#${step.rank}`, {
+                    items.push(this.add.text(step.x, step.y + 34, `#${rankedResults[index].rank}`, {
                         color: `#${step.colour.toString(16).padStart(6, "0")}`,
                         fontFamily: displayFont, fontSize: "31px", fontStyle: "bold"
                     }).setOrigin(.5).setDepth(55));
@@ -1062,16 +1124,17 @@ window.quizizzoPresentation = (() => {
                 this.tweens.killTweensOf(avatar.container);
                 const result = resultByPlayer.get(normalizedId(player.playerId));
                 const rank = Number(result?.rank || 0);
+                const podiumSlot = podiumSlotByPlayer.get(normalizedId(player.playerId)) || 0;
                 const columns = Math.min(4, players.length);
                 const rows = Math.ceil(players.length / columns);
                 const row = Math.floor(index / columns);
                 const rowCount = Math.min(columns, players.length - row * columns);
                 const column = index % columns;
                 const spacing = Math.min(300, 1140 / Math.max(1, rowCount));
-                const podiumPosition = rank === 1 ? { x: 640, y: 555, scale: .76 }
-                    : rank === 2 ? { x: 350, y: 595, scale: .62 }
-                        : rank === 3 ? { x: 930, y: 617, scale: .58 } : null;
-                const remainingIndex = Math.max(0, rank - 4);
+                const podiumPosition = podiumSlot === 1 ? { x: 640, y: 555, scale: .76 }
+                    : podiumSlot === 2 ? { x: 350, y: 595, scale: .62 }
+                        : podiumSlot === 3 ? { x: 930, y: 617, scale: .58 } : null;
+                const remainingIndex = Math.max(0, podiumSlot - 4);
                 const remainingCount = Math.max(1, players.length - 3);
                 const x = showingResults ? podiumPosition?.x
                     ?? width / 2 + (remainingIndex - (remainingCount - 1) / 2) * Math.min(190, 900 / remainingCount)
@@ -1081,28 +1144,30 @@ window.quizizzoPresentation = (() => {
                     : rows === 1 ? .94 : players.length <= 6 ? .67 : .58;
                 avatar.container.setVisible(true).setDepth(48 + row).setPosition(x, y).setScale(scale);
                 avatar.character
-                    .setScale(showingResults ? (rank === 1 ? .62 : .54) : rows === 1 ? .72 : .56)
-                    .setPosition(0, showingResults ? (rank <= 3 ? -330 : -295) : rows === 1 ? -365 : -325);
+                    .setScale(showingResults ? (podiumSlot === 1 ? .62 : .54) : rows === 1 ? .72 : .56)
+                    .setPosition(0, showingResults ? (podiumSlot <= 3 ? -330 : -295) : rows === 1 ? -365 : -325);
                 avatar.card.setVisible(false);
                 avatar.cardShadow.setVisible(false);
                 avatar.shadow.setVisible(true);
                 avatar.presence.setVisible(player.status === "Disconnected");
-                avatar.name.setVisible(true).setY(38);
+                avatar.name.setVisible(!showingResults).setY(38);
                 avatar.score.setVisible(false).setY(70);
                 avatar.wins.setVisible(false);
                 avatar.activity.setVisible(false);
                 avatar.remove.setVisible(false);
                 if (this.controller.reducedMotion) avatar.rig?.stop();
                 else avatar.rig?.play(playing ? dances[index % dances.length]
-                    : showingResults && rank === 1 ? "celebrate"
-                        : showingResults && rank === lastRank && lastRank > 1 ? "cry"
+                    : showingResults && rank === topRank ? "celebrate"
+                        : showingResults && rank === lastRank && hasLosingRank ? "cry"
                             : showingResults ? dances[index % dances.length] : "idle", { beatMs });
                 const roleLabel = players.length === 1 ? "ONE-HUMAN ORCHESTRA"
                     : entries[index]?.value || "Band member";
                 const resultLabel = showingResults
-                    ? `#${rank} · ${Number(result?.pointsAwarded || 0).toLocaleString()} PTS`
+                    ? `${player.displayName.toUpperCase()}\n#${rank} · ${Number(result?.pointsAwarded || 0).toLocaleString()} PTS`
                     : roleLabel;
-                items.push(this.add.text(x, showingResults ? y - (rank <= 3 ? 250 : 150)
+                const resultLabelY = podiumSlot === 1 ? 205
+                    : podiumSlot === 2 ? 300 : podiumSlot === 3 ? 335 : 525;
+                items.push(this.add.text(x, showingResults ? resultLabelY
                     : rows === 1 ? 116 : y - 205, resultLabel, {
                         color: laneColoursForVoice(index), backgroundColor: "#160a31cc",
                         padding: { x: 12, y: 6 }, fontFamily: displayFont,
@@ -1202,11 +1267,6 @@ window.quizizzoPresentation = (() => {
                 };
                 update();
                 this.voiceTimer = this.time.addEvent({ delay: 50, loop: true, callback: update });
-            } else if (snapshot.phase === "Results") {
-                items.push(this.add.text(width / 2, 135,
-                    `${Number(field(state, "bandScore", 0)).toLocaleString()} BAND POINTS`, {
-                    color: "#fff36e", fontFamily: displayFont, fontSize: "28px", fontStyle: "bold"
-                }).setOrigin(.5));
             }
 
             this.voiceContainer = this.add.container(0, 0, items).setDepth(42);
@@ -2995,8 +3055,10 @@ window.quizizzoPresentation = (() => {
             resizeTimer: null,
             dotNetReference,
             canManagePlayers,
-            audio: null
-            , voiceAudio: null
+            audio: null,
+            voiceAudio: null,
+            replayRecorder: null,
+            replayBlob: null
         };
         controller.ready = new Promise(resolve => { controller.readyResolve = resolve; });
         controller.audio = window.quizizzoPresentationAudio?.create((muted, blocked) => {
@@ -3066,6 +3128,9 @@ window.quizizzoPresentation = (() => {
         controller.resizeObserver.observe(parent);
         window.addEventListener("resize", controller.resizeHandler, { passive: true });
         presentations.set(key, controller);
+        if (controller.snapshot.gameKey === "voicechoon" && controller.snapshot.phase === "Playing") {
+            startReplayRecording(controller);
+        }
     }
 
     function update(key, snapshot) {
@@ -3073,10 +3138,16 @@ window.quizizzoPresentation = (() => {
         if (!controller) {
             throw new Error("The Phaser presentation has not started.");
         }
+        const previousPhase = controller.snapshot?.phase;
         controller.snapshot = cloneSnapshot(snapshot);
         controller.audio?.update(controller.snapshot);
         controller.voiceAudio?.update(controller.snapshot);
         controller.scene?.applySnapshot(controller.snapshot);
+        if (controller.snapshot.gameKey === "voicechoon" && controller.snapshot.phase === "Playing") {
+            startReplayRecording(controller);
+        } else if (previousPhase === "Playing" && controller.snapshot.phase === "Results") {
+            finishReplayRecording(controller);
+        }
     }
 
     function react(key, playerId, reaction) {
@@ -3107,9 +3178,37 @@ window.quizizzoPresentation = (() => {
             window.removeEventListener("resize", controller.resizeHandler);
         }
         controller.audio?.destroy();
+        finishReplayRecording(controller);
         controller.voiceAudio?.destroy();
         controller.game?.destroy(true);
     }
 
-    return { start, update, react, toggleAudio, configureHost, stop };
+    async function shareReplay(key, caption) {
+        const controller = presentations.get(key);
+        if (!controller?.replayBlob || !navigator.share) return false;
+        const extension = controller.replayBlob.type.includes("mp4") ? "mp4" : "webm";
+        const file = new File([controller.replayBlob], `quizizzo-voicechoon.${extension}`,
+            { type: controller.replayBlob.type });
+        if (!navigator.canShare?.({ files: [file] })) return false;
+        try {
+            await navigator.share({ files: [file], title: "Our VoiceChoon performance", text: caption });
+            return true;
+        } catch (error) {
+            if (error?.name !== "AbortError") console.warn("Unable to share the VoiceChoon replay.", error);
+            return error?.name === "AbortError";
+        }
+    }
+
+    function downloadReplay(key, fileName) {
+        const blob = presentations.get(key)?.replayBlob;
+        if (!blob) return;
+        const extension = blob.type.includes("mp4") ? "mp4" : "webm";
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `${fileName || "quizizzo-voicechoon"}.${extension}`;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+    }
+
+    return { start, update, react, toggleAudio, configureHost, stop, shareReplay, downloadReplay };
 })();

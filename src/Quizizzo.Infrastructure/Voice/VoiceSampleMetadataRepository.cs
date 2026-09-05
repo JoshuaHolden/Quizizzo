@@ -40,10 +40,33 @@ public sealed class VoiceSampleMetadataRepository(ApplicationDbContext dbContext
         }
     }
 
+    public async Task<IReadOnlyList<VoiceSampleMetadata>> RetainForReplayAsync(
+        IReadOnlyCollection<Guid> assetIds,
+        Guid gameInstanceId,
+        CancellationToken cancellationToken = default)
+    {
+        var samples = await dbContext.VoiceSamples
+            .Where(sample => assetIds.Contains(sample.Id) && sample.GameInstanceId == gameInstanceId)
+            .ToListAsync(cancellationToken);
+        if (samples.Count != assetIds.Distinct().Count())
+        {
+            throw new InvalidOperationException("One or more replay voice samples are unavailable.");
+        }
+        foreach (var sample in samples)
+        {
+            sample.RetainForReplay();
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return samples;
+    }
+
     public Task<int> DeleteExpiredAsync(
         DateTimeOffset expiresAtOrBeforeUtc,
         CancellationToken cancellationToken = default) =>
         dbContext.VoiceSamples
-            .Where(sample => sample.ExpiresAtUtc <= expiresAtOrBeforeUtc)
+            .Where(sample => !sample.IsRetainedForReplay && sample.ExpiresAtUtc <= expiresAtOrBeforeUtc)
             .ExecuteDeleteAsync(cancellationToken);
+
+    public Task DeleteAsync(Guid assetId, CancellationToken cancellationToken = default) =>
+        dbContext.VoiceSamples.Where(sample => sample.Id == assetId).ExecuteDeleteAsync(cancellationToken);
 }

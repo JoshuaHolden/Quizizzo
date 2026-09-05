@@ -15,6 +15,8 @@ public interface IVoiceSampleStore
         CancellationToken cancellationToken = default);
 
     Task DeleteAsync(string key, CancellationToken cancellationToken = default);
+
+    Task RetainAsync(string key, CancellationToken cancellationToken = default);
 }
 
 public sealed record VoiceSampleUpload(ReadOnlyMemory<byte> Content, string ContentType);

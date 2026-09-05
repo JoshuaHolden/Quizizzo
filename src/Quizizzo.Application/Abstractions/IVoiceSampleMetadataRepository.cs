@@ -15,7 +15,14 @@ public interface IVoiceSampleMetadataRepository
 
     Task<bool> TryAddAsync(VoiceSampleMetadata asset, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<VoiceSampleMetadata>> RetainForReplayAsync(
+        IReadOnlyCollection<Guid> assetIds,
+        Guid gameInstanceId,
+        CancellationToken cancellationToken = default);
+
     Task<int> DeleteExpiredAsync(
         DateTimeOffset expiresAtOrBeforeUtc,
         CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(Guid assetId, CancellationToken cancellationToken = default);
 }

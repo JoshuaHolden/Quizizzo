@@ -1,8 +1,28 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { encodeWave, findAudibleBounds, normalizeAndFade } from
+import { encodeWave, findAudibleBounds, microphonePermissionState, normalizeAndFade } from
     "../../src/Quizizzo.Web/wwwroot/js/voiceRecorder.js";
+
+test("microphone permission state distinguishes a saved grant from a fresh prompt", async () => {
+    const navigatorDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    const secureDescriptor = Object.getOwnPropertyDescriptor(globalThis, "isSecureContext");
+    try {
+        Object.defineProperty(globalThis, "isSecureContext", { configurable: true, value: true });
+        Object.defineProperty(globalThis, "navigator", { configurable: true, value: {
+            mediaDevices: { getUserMedia() {} },
+            permissions: { query: async () => ({ state: "granted" }) }
+        } });
+        assert.equal(await microphonePermissionState(), "granted");
+        globalThis.navigator.permissions.query = async () => ({ state: "prompt" });
+        assert.equal(await microphonePermissionState(), "prompt");
+    } finally {
+        if (navigatorDescriptor) Object.defineProperty(globalThis, "navigator", navigatorDescriptor);
+        else delete globalThis.navigator;
+        if (secureDescriptor) Object.defineProperty(globalThis, "isSecureContext", secureDescriptor);
+        else delete globalThis.isSecureContext;
+    }
+});
 import { dueAutoplayNotes, nearestLaneNote, songPositionSeconds, visibleNotes } from
     "../../src/Quizizzo.Web/wwwroot/js/rhythmController.js";
 

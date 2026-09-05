@@ -17,6 +17,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<DrawingAssetMetadata> DrawingAssets => Set<DrawingAssetMetadata>();
     public DbSet<VoiceSampleMetadata> VoiceSamples => Set<VoiceSampleMetadata>();
     public DbSet<VoiceChoonSong> VoiceChoonSongs => Set<VoiceChoonSong>();
+    public DbSet<VoiceChoonReplay> VoiceChoonReplays => Set<VoiceChoonReplay>();
     internal DbSet<GameRuntimeSnapshotRecord> GameRuntimeSnapshots => Set<GameRuntimeSnapshotRecord>();
 
     protected override void OnModelCreating(ModelBuilder builder)

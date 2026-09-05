@@ -3,6 +3,30 @@
 @inject IJSRuntime JavaScript
 
 <section class="voice-recording-controller" aria-label="VoiceChoon sound recorder">
+    @if (pendingPermissionPromptKey is not null)
+    {
+        <div class="microphone-permission-backdrop" role="presentation">
+            <section class="microphone-permission-dialog" role="dialog" aria-modal="true"
+                     aria-labelledby="microphone-permission-title" aria-describedby="microphone-permission-description">
+                <span class="microphone-permission-icon" aria-hidden="true">🎤</span>
+                <p>One quick thing</p>
+                <h2 id="microphone-permission-title">VoiceChoon needs your microphone</h2>
+                <p id="microphone-permission-description">
+                    We only listen while you are recording a sound. Tap <strong>Allow microphone</strong>,
+                    then choose <strong>Allow</strong> in your browser's permission message.
+                </p>
+                <div class="microphone-permission-actions">
+                    <button type="button" class="microphone-permission-allow" @onclick="AllowMicrophoneAsync">
+                        Allow microphone
+                    </button>
+                    <button type="button" class="microphone-permission-cancel" @onclick="CancelMicrophonePermission">
+                        Not now
+                    </button>
+                </div>
+                <small>Your recording is used only to build this VoiceChoon performance.</small>
+            </section>
+        </div>
+    }
     <header class="voice-recording-header">
         <div>
             <span>Build your instrument</span>
@@ -84,6 +108,8 @@
     private string? recordingKey;
     private string? error;
     private bool confirming;
+    private string? pendingPermissionPromptKey;
+    private bool microphonePermissionExplained;
     private int AcceptedCount => Configuration.Prompts.Count(prompt => StateFor(prompt).AssetId is not null);
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -128,6 +154,44 @@
             return;
         }
         error = null;
+        var permission = await module!.InvokeAsync<string>("microphonePermissionState");
+        if (permission == "denied")
+        {
+            error = "Microphone access is blocked. Allow Microphone for Quizizzo in your browser settings, then try again.";
+            return;
+        }
+        if (permission == "unavailable")
+        {
+            error = "Microphone recording needs a modern browser and a secure HTTPS connection.";
+            return;
+        }
+        if (permission != "granted" && !microphonePermissionExplained)
+        {
+            pendingPermissionPromptKey = promptKey;
+            return;
+        }
+        await StartRecordingAsync(promptKey);
+    }
+
+    private async Task AllowMicrophoneAsync()
+    {
+        var promptKey = pendingPermissionPromptKey;
+        pendingPermissionPromptKey = null;
+        microphonePermissionExplained = true;
+        if (promptKey is not null)
+        {
+            await StartRecordingAsync(promptKey);
+        }
+    }
+
+    private void CancelMicrophonePermission() => pendingPermissionPromptKey = null;
+
+    private async Task StartRecordingAsync(string promptKey)
+    {
+        if (controller is null)
+        {
+            return;
+        }
         try
         {
             recordingKey = promptKey;

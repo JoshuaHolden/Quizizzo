@@ -12,6 +12,11 @@ public sealed class LandingPageContractTests
         Assert.Contains("@layout Quizizzo.Web.Components.Layout.LandingLayout", home,
             StringComparison.Ordinal);
         Assert.Contains("Big-screen chaos.", home, StringComparison.Ordinal);
+        Assert.Contains("VOICECHOON", home, StringComparison.Ordinal);
+        Assert.Contains("Pile-Up", home, StringComparison.Ordinal);
+        Assert.Contains("AniMates", home, StringComparison.Ordinal);
+        Assert.Contains("Laptop + browser", home, StringComparison.Ordinal);
+        Assert.Contains("Friends + phones", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/join\"", home, StringComparison.Ordinal);
         Assert.Contains("href=\"/host\"", home, StringComparison.Ordinal);
         Assert.DoesNotContain("href=\"/display\"", home, StringComparison.Ordinal);
@@ -733,15 +738,53 @@ public sealed class LandingPageContractTests
         Assert.Contains("beatSeconds", presentation, StringComparison.Ordinal);
         Assert.Contains("TOTAL BAND POINTS", presentation, StringComparison.Ordinal);
         Assert.Contains("TOP SCORED!", presentation, StringComparison.Ordinal);
-        Assert.Contains("showingResults && rank === 1 ? \"celebrate\"", presentation,
+        Assert.Contains("showingResults && rank === topRank ? \"celebrate\"", presentation,
             StringComparison.Ordinal);
-        Assert.Contains("rank === lastRank && lastRank > 1 ? \"cry\"", presentation,
+        Assert.Contains("rank === lastRank && hasLosingRank ? \"cry\"", presentation,
             StringComparison.Ordinal);
+        Assert.Contains("podiumSlotByPlayer", presentation, StringComparison.Ordinal);
+        Assert.Equal(1, CountOccurrences(presentation, "TOTAL BAND POINTS"));
         Assert.Contains("missedJudgementIds", presentation, StringComparison.Ordinal);
         Assert.Contains("sourDirection * 175", presentation, StringComparison.Ordinal);
         Assert.Contains("source.detune.value", presentation, StringComparison.Ordinal);
         Assert.Contains("VoiceChoonDisplayPerformer", state, StringComparison.Ordinal);
         Assert.Contains("JudgedNoteIds", state, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void VoiceChoon_replays_are_compact_permanent_and_native_shareable()
+    {
+        var display = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/DisplayRealtime.razor");
+        var replay = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/VoiceChoonReplay.razor");
+        var presentation = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/js/phaserPresentation.js");
+        var migration = ReadRepositoryFile(
+            "src/Quizizzo.Infrastructure/Identity/Migrations/20260905183000_AddVoiceChoonReplays.cs");
+
+        Assert.Contains("Watch permanent replay", display, StringComparison.Ordinal);
+        Assert.Contains("Share link on Facebook", display, StringComparison.Ordinal);
+        Assert.Contains("Delete replay", display, StringComparison.Ordinal);
+        Assert.Contains("navigator.share", presentation, StringComparison.Ordinal);
+        Assert.Contains("canvas.captureStream(30)", presentation, StringComparison.Ordinal);
+        Assert.Contains("videoBitsPerSecond: 1_600_000", presentation, StringComparison.Ordinal);
+        Assert.Contains("VoiceSampleBaseUrl", replay, StringComparison.Ordinal);
+        Assert.Contains("VoiceChoonReplays", migration, StringComparison.Ordinal);
+        Assert.DoesNotContain("videoData", migration, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void VoiceChoon_explains_microphone_access_only_before_a_new_permission_prompt()
+    {
+        var controller = ReadRepositoryFile(
+            "src/Quizizzo.Web/Components/Shared/RecordingController.razor");
+        var recorder = ReadRepositoryFile("src/Quizizzo.Web/wwwroot/js/voiceRecorder.js");
+
+        Assert.Contains("microphonePermissionState", controller, StringComparison.Ordinal);
+        Assert.Contains("permission != \"granted\"", controller, StringComparison.Ordinal);
+        Assert.Contains("VoiceChoon needs your microphone", controller, StringComparison.Ordinal);
+        Assert.Contains("We only listen while you are recording", controller, StringComparison.Ordinal);
+        Assert.Contains("navigator.permissions.query({ name: \"microphone\" })", recorder,
+            StringComparison.Ordinal);
+        Assert.Contains("navigator.mediaDevices.getUserMedia", recorder, StringComparison.Ordinal);
     }
 
     private static string ReadRepositoryFile(string relativePath)
