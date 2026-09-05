@@ -27,6 +27,8 @@ public sealed class VoiceChoonSongRepository(ApplicationDbContext db) : IVoiceCh
     }
     public async Task AddAsync(VoiceChoonSong song, CancellationToken cancellationToken = default)
     { db.VoiceChoonSongs.Add(song); await db.SaveChangesAsync(cancellationToken); }
+    public async Task UpdateAsync(VoiceChoonSong song, CancellationToken cancellationToken = default)
+    { db.VoiceChoonSongs.Update(song); await db.SaveChangesAsync(cancellationToken); }
     public async Task DeleteAsync(VoiceChoonSong song, CancellationToken cancellationToken = default)
     { db.VoiceChoonSongs.Remove(song); await db.SaveChangesAsync(cancellationToken); }
 

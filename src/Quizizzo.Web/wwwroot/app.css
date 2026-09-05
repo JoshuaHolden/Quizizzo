@@ -203,7 +203,7 @@
     gap: 0.35rem 1rem;
 }
 
-.admin-song-card div {
+.admin-song-card>div:first-child {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-between;
@@ -215,11 +215,20 @@
     color: #a9bfd0;
 }
 
-.admin-song-card button,
+.admin-song-actions,
 .admin-song-built-in {
     grid-column: 2;
     grid-row: 1 / span 2;
 }
+
+.admin-song-actions {
+    align-items: center;
+    display: grid;
+    gap: .5rem;
+    grid-template-columns: minmax(12rem, 1fr) auto auto;
+}
+
+.admin-song-actions input { min-height: 44px; min-width: 0; }
 
 .admin-song-message {
     margin: 0;
@@ -228,8 +237,10 @@
 
 @media (max-width: 520px) {
     .admin-song-card { grid-template-columns: 1fr; }
-    .admin-song-card button,
+    .admin-song-actions,
     .admin-song-built-in { grid-column: 1; grid-row: auto; }
+    .admin-song-actions { grid-template-columns: 1fr 1fr; }
+    .admin-song-actions input { grid-column: 1 / -1; }
 }
 
 .rhythm-controller {
@@ -1015,19 +1026,23 @@ fieldset {
     box-shadow: 0 1.5rem 5rem rgb(5 2 18 / 55%);
     color: #fff;
     font-family: "Quizizzo Sans", "Segoe UI", sans-serif;
-    max-height: min(88dvh, 52rem);
-    max-width: 76rem;
+    max-height: min(92dvh, 56rem);
+    max-width: 82rem;
     overflow-y: auto;
     padding: clamp(1rem, 3vw, 1.75rem);
     text-align: left;
     text-shadow: none;
-    width: min(100%, 76rem);
+    scrollbar-color: rgb(103 232 249 / 45%) transparent;
+    width: min(100%, 82rem);
 }
 
 .display-host-controls>header {
-    align-items: flex-start;
+    align-items: center;
+    border-bottom: 1px solid rgb(255 255 255 / 10%);
     display: flex;
+    gap: 1rem;
     justify-content: space-between;
+    padding-bottom: .85rem;
 }
 
 .display-host-controls>header p {
@@ -1045,7 +1060,37 @@ fieldset {
 }
 
 .display-host-controls h2 {
-    margin: .15rem 0 1rem;
+    font-size: clamp(1.35rem, 2.4vw, 2rem);
+    margin: .1rem 0 0;
+}
+
+.display-host-controls-summary {
+    align-items: center;
+    display: flex;
+    gap: .55rem;
+}
+
+.display-host-controls-summary>span {
+    align-items: baseline;
+    background: rgb(255 255 255 / 7%);
+    border: 1px solid rgb(255 255 255 / 11%);
+    border-radius: .75rem;
+    display: flex;
+    gap: .45rem;
+    padding: .5rem .7rem;
+}
+
+.display-host-controls-summary small {
+    color: #aa9cbe;
+    font-size: .65rem;
+    font-weight: 850;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+
+.display-host-controls-summary strong {
+    color: #fff;
+    font-family: "Quizizzo Display", "Arial Rounded MT Bold", sans-serif;
 }
 
 .display-host-controls-close {
@@ -1156,11 +1201,11 @@ fieldset {
     border-radius: 1.15rem;
     color: #fff;
     display: grid;
-    gap: .9rem;
-    grid-template-columns: 4rem minmax(0, 1fr);
-    min-height: 11.5rem;
+    gap: .7rem;
+    grid-template-columns: 3.25rem minmax(0, 1fr);
+    min-height: 9.25rem;
     overflow: hidden;
-    padding: 1rem;
+    padding: .8rem;
     position: relative;
     text-align: left;
     transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
@@ -1188,7 +1233,7 @@ fieldset {
 
 .display-host-game-copy h4 {
     font-family: "Quizizzo Display", "Arial Rounded MT Bold", sans-serif;
-    font-size: 1.2rem;
+    font-size: 1.08rem;
     margin: .1rem 0 0;
 }
 
@@ -1196,7 +1241,11 @@ fieldset {
     color: #d8cfea;
     font-size: .88rem;
     line-height: 1.4;
-    margin: .55rem 0 .75rem;
+    display: -webkit-box;
+    margin: .35rem 0 .55rem;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 
 .display-host-game-art {
@@ -1206,9 +1255,9 @@ fieldset {
     border-radius: .9rem;
     box-shadow: inset 0 1px rgb(255 255 255 / 22%);
     display: flex;
-    height: 4rem;
+    height: 3.25rem;
     justify-content: center;
-    width: 4rem;
+    width: 3.25rem;
 }
 
 .display-host-game-art span {
@@ -1268,7 +1317,7 @@ fieldset {
     font: inherit;
     font-size: .78rem;
     font-weight: 900;
-    min-height: 2.75rem;
+    min-height: 2.5rem;
     padding: .55rem .7rem;
 }
 
@@ -1394,7 +1443,7 @@ fieldset {
 }
 
 .display-host-game-picker {
-    margin-top: 1rem;
+    margin-top: .8rem;
 }
 
 .display-host-picker-intro {
@@ -1427,8 +1476,8 @@ fieldset {
 .display-host-picker-layout {
     align-items: start;
     display: grid;
-    gap: 1rem;
-    grid-template-columns: minmax(0, 2fr) minmax(16rem, .9fr);
+    gap: .85rem;
+    grid-template-columns: minmax(0, 2.25fr) minmax(17rem, .85fr);
 }
 
 .display-host-game-catalogue {

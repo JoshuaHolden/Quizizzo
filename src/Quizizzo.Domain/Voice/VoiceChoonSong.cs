@@ -2,6 +2,8 @@ namespace Quizizzo.Domain.Voice;
 
 public sealed class VoiceChoonSong
 {
+    public const int MaximumDisplayNameLength = 80;
+
     private VoiceChoonSong() { }
 
     private VoiceChoonSong(Guid id, string key, string displayName, string fileName, byte[] midiData,
@@ -10,7 +12,7 @@ public sealed class VoiceChoonSong
     {
         Id = id;
         Key = key;
-        DisplayName = displayName;
+        DisplayName = NormalizeDisplayName(displayName);
         FileName = fileName;
         MidiData = midiData;
         MinimumPlayers = minimumPlayers;
@@ -48,5 +50,17 @@ public sealed class VoiceChoonSong
         if (durationSeconds <= 0 || trackCount <= 0) throw new ArgumentOutOfRangeException(nameof(durationSeconds));
         return new(Guid.NewGuid(), key, displayName, fileName, midiData, minimumPlayers, maximumPlayers,
             durationSeconds, trackCount, createdAtUtc, createdByUserId);
+    }
+
+    public void Rename(string displayName) => DisplayName = NormalizeDisplayName(displayName);
+
+    private static string NormalizeDisplayName(string displayName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(displayName);
+        var normalized = displayName.Trim();
+        if (normalized.Length > MaximumDisplayNameLength)
+            throw new ArgumentOutOfRangeException(nameof(displayName),
+                $"Song names can be at most {MaximumDisplayNameLength} characters.");
+        return normalized;
     }
 }

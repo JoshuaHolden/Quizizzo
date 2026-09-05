@@ -9,5 +9,6 @@ public interface IVoiceChoonSongRepository
     Task<bool> KeyExistsAsync(string key, CancellationToken cancellationToken = default);
     Task<bool> IsReferencedAsync(string key, CancellationToken cancellationToken = default);
     Task AddAsync(VoiceChoonSong song, CancellationToken cancellationToken = default);
+    Task UpdateAsync(VoiceChoonSong song, CancellationToken cancellationToken = default);
     Task DeleteAsync(VoiceChoonSong song, CancellationToken cancellationToken = default);
 }

@@ -51,8 +51,15 @@
                     <p>@song.FileName</p>
                     @if (song.UploadedSongId is { } id)
                     {
-                        <button type="button" class="btn btn-outline-danger" disabled="@busy"
-                                @onclick="() => RemoveAsync(id, song.Key)">Remove</button>
+                        <div class="admin-song-actions">
+                            <label class="visually-hidden" for="song-name-@id">Rename @song.DisplayName</label>
+                            <input id="song-name-@id" maxlength="@VoiceChoonSong.MaximumDisplayNameLength"
+                                   @bind="editNames[id]" aria-label="Song name" />
+                            <button type="button" class="btn btn-outline-light" disabled="@busy"
+                                    @onclick="() => RenameAsync(id)">Save name</button>
+                            <button type="button" class="btn btn-outline-danger" disabled="@busy"
+                                    @onclick="() => RemoveAsync(id, song.Key)">Remove</button>
+                        </div>
                     }
                     else
                     {
@@ -68,6 +75,7 @@
     private IReadOnlyList<VoiceChoonSongDefinition> songs = [];
     private IBrowserFile? selectedFile;
     private string displayName = string.Empty;
+    private readonly Dictionary<Guid, string> editNames = [];
     private string? message;
     private bool busy;
 
@@ -136,11 +144,40 @@
         finally { busy = false; }
     }
 
+    private async Task RenameAsync(Guid id)
+    {
+        if (!editNames.TryGetValue(id, out var requestedName)) return;
+        busy = true;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var repository = scope.ServiceProvider.GetRequiredService<IVoiceChoonSongRepository>();
+            var record = await repository.GetAsync(id);
+            if (record is null) { message = "That uploaded tune no longer exists."; return; }
+            record.Rename(requestedName);
+            await repository.UpdateAsync(record);
+            VoiceChoonSongCatalog.RegisterUploaded(ToDefinition(record), record.MidiData);
+            message = $"Renamed the tune to {record.DisplayName}.";
+            Refresh();
+        }
+        catch (ArgumentException exception)
+        { message = exception.Message; }
+        finally { busy = false; }
+    }
+
     private static VoiceChoonSongDefinition ToDefinition(VoiceChoonSong song) => new(
         song.Key, song.DisplayName, song.MinimumPlayers, song.FileName,
         $"Turn {song.DisplayName} into a ridiculous mouth-noise performance.",
         "Record clear short hits and steady vowels suited to your assigned tracks.",
         UploadedSongId: song.Id, MaximumPlayers: song.MaximumPlayers);
 
-    private void Refresh() => songs = VoiceChoonSongCatalog.Available;
+    private void Refresh()
+    {
+        songs = VoiceChoonSongCatalog.Available;
+        var uploaded = songs.Where(song => song.UploadedSongId is not null).ToArray();
+        foreach (var song in uploaded)
+            editNames.TryAdd(song.UploadedSongId!.Value, song.DisplayName);
+        foreach (var id in editNames.Keys.Except(uploaded.Select(song => song.UploadedSongId!.Value)).ToArray())
+            editNames.Remove(id);
+    }
 }
