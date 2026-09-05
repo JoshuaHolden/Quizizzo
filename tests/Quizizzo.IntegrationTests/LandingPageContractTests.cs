@@ -31,6 +31,7 @@ public sealed class LandingPageContractTests
     public void Landing_motion_is_progressive_and_respects_user_preferences()
     {
         var app = ReadRepositoryFile("src/Quizizzo.Web/Components/App.razor");
+        var home = ReadRepositoryFile("src/Quizizzo.Web/Components/Pages/Home.razor");
         var homeCss = ReadRepositoryFile(
             "src/Quizizzo.Web/Components/Pages/Home.razor.css");
         var motion = ReadRepositoryFile(
@@ -54,6 +55,11 @@ public sealed class LandingPageContractTests
         Assert.Contains("headOffsetY: 18", motion, StringComparison.Ordinal);
         Assert.Contains("target.bringToTop(parts.armLeft)", rig, StringComparison.Ordinal);
         Assert.Contains(".scroll-confetti", homeCss, StringComparison.Ordinal);
+        Assert.True(CountOccurrences(home, "<i style=\"--x:") >= 20);
+        Assert.Contains("--depth:", home, StringComparison.Ordinal);
+        Assert.Contains("--confetti-x", motion, StringComparison.Ordinal);
+        Assert.Contains("window.scrollY * (depth - .58) * .2", motion,
+            StringComparison.Ordinal);
     }
 
     [Fact]

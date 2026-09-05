@@ -23,7 +23,8 @@
                     layer.style.removeProperty("--parallax-transform");
                 }
                 for (const item of confetti) {
-                    item.style.removeProperty("--confetti-shift");
+                    item.style.removeProperty("--confetti-x");
+                    item.style.removeProperty("--confetti-y");
                     item.style.removeProperty("--confetti-turn");
                 }
                 return;
@@ -44,11 +45,13 @@
                     `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0)`);
             }
 
-            const scrollProgress = window.scrollY / Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
             for (const item of confetti) {
-                const drift = Number.parseFloat(item.style.getPropertyValue("--drift") || "1");
-                item.style.setProperty("--confetti-shift", `${(scrollProgress * 150 * drift).toFixed(2)}px`);
-                item.style.setProperty("--confetti-turn", `${(scrollProgress * 240 * drift).toFixed(2)}deg`);
+                const depth = Number.parseFloat(item.style.getPropertyValue("--depth") || ".5");
+                const x = pointerX * 54 * depth;
+                const y = pointerY * 38 * depth + window.scrollY * (depth - .58) * .2;
+                item.style.setProperty("--confetti-x", `${x.toFixed(2)}px`);
+                item.style.setProperty("--confetti-y", `${y.toFixed(2)}px`);
+                item.style.setProperty("--confetti-turn", `${(window.scrollY * depth * .14).toFixed(2)}deg`);
             }
         };
 
