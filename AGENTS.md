@@ -814,6 +814,14 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Seed palette order, symmetry, direction, centre, speed, depth, and transition timing from the game instance so each performance differs while reconnects remain visually stable.
 - [x] Crossfade continuously between marbling and fractals without covering the dancers, score, streak callouts, or stage lighting.
 
+### VoiceChoon grounded dances and playable permanent replays (completed 2026-09-05)
+
+- [x] Replace whole-character squash, lift, and head-origin rotation with constant-scale movement mathematically anchored at the feet.
+- [x] Give every dance connected sine-wave shoulder, sleeve, hand, and wrist motion with full-body arms rendered in front of the torso.
+- [x] Preserve beat-derived dance timing, distinct dance personalities, dazed misses, podium cheering, and losing-player crying.
+- [x] Run permanent replay pages as interactive Blazor views so their Phaser scene and retained voice samples actually play.
+- [x] Extend the full Greensleeves browser journey to require a visible replay canvas and scheduled replay audio.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

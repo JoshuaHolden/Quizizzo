@@ -170,6 +170,8 @@ test("injected WAV sounds play Greensleeves in solo autoplay without refresh bur
     const replayResponse = await replayPage.goto(replayUrl);
     expect(replayResponse?.status()).toBe(200);
     await expect(replayPage.getByText("VoiceChoon replay", { exact: true })).toBeVisible();
-    await replayPage.waitForTimeout(3000);
+    await expect(replayPage.locator("canvas")).toBeVisible({ timeout: 10000 });
+    await expect.poll(async () => replayPage.evaluate(() => globalThis.__voiceStarts.length),
+        { timeout: 15000 }).toBeGreaterThan(0);
     expect(failures).toEqual([]);
 });

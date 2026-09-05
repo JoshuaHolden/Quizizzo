@@ -2836,7 +2836,9 @@ window.quizizzoPresentation = (() => {
         drawCharacter(avatar, character, mode = "portrait") {
             avatar.rig ??= window.quizizzoCharacterRig.create(this, {
                 container: avatar.character,
-                atlasPrefix: "player-"
+                atlasPrefix: "player-",
+                armsInFront: true,
+                handInset: 14
             });
             const variants = avatar.rig.render(character, mode);
 

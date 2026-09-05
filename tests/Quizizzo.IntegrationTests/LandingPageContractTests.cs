@@ -756,6 +756,11 @@ public sealed class LandingPageContractTests
         Assert.Contains("rubberRobot", presentation, StringComparison.Ordinal);
         Assert.Contains("action === \"dazed\"", rig, StringComparison.Ordinal);
         Assert.Contains("const motion = beat * 1.25", rig, StringComparison.Ordinal);
+        Assert.Contains("const footPivotY = 523", rig, StringComparison.Ordinal);
+        Assert.Contains("Phaser.Math.DegToRad(pose.angle)", rig, StringComparison.Ordinal);
+        Assert.Contains("1 - Math.cos(radians)", rig, StringComparison.Ordinal);
+        Assert.DoesNotContain("scaleX: { from: origin.scaleX * .9", rig,
+            StringComparison.Ordinal);
         Assert.Contains("targets: parts.handLeft", rig, StringComparison.Ordinal);
         Assert.Contains("targets: parts.handRight", rig, StringComparison.Ordinal);
         Assert.Contains("targets: parts.armLeft, y:", rig, StringComparison.Ordinal);
@@ -810,6 +815,7 @@ public sealed class LandingPageContractTests
         Assert.Contains("canvas.captureStream(30)", presentation, StringComparison.Ordinal);
         Assert.Contains("videoBitsPerSecond: 1_600_000", presentation, StringComparison.Ordinal);
         Assert.Contains("VoiceSampleBaseUrl", replay, StringComparison.Ordinal);
+        Assert.Contains("@rendermode InteractiveServer", replay, StringComparison.Ordinal);
         Assert.Contains("VoiceChoonReplays", migration, StringComparison.Ordinal);
         Assert.DoesNotContain("videoData", migration, StringComparison.OrdinalIgnoreCase);
     }
