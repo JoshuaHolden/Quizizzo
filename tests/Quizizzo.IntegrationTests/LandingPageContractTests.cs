@@ -823,6 +823,15 @@ public sealed class LandingPageContractTests
         Assert.Contains("missedJudgementIds", presentation, StringComparison.Ordinal);
         Assert.Contains("sourDirection * 175", presentation, StringComparison.Ordinal);
         Assert.Contains("source.detune.value", presentation, StringComparison.Ordinal);
+        Assert.Contains("const highPitchGain = 1 + raisedOctaves * 0.2", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("brightness.type = \"highshelf\"", presentation, StringComparison.Ordinal);
+        Assert.Contains("const percussionGain = percussion ? 1.3 : 1", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("transient.gain.value = percussion ? 3.5 : 0", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("source.connect(brightness).connect(transient).connect(gain).connect(output)", presentation,
+            StringComparison.Ordinal);
         Assert.Contains("recoverPlayback", presentation, StringComparison.Ordinal);
         Assert.Contains("generation !== playbackGeneration", presentation, StringComparison.Ordinal);
         Assert.Contains("quizizzo:realtime-reconnected", presentation, StringComparison.Ordinal);

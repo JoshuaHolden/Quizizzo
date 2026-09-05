@@ -86,7 +86,8 @@ public sealed record VoiceChoonDisplayPlayback(
     Guid? PlayerId = null,
     Guid? JudgementNoteId = null,
     double? JudgementTimeSeconds = null,
-    int Velocity = 100);
+    int Velocity = 100,
+    bool Percussion = false);
 
 public sealed record ArcadeControl(
     string Input,

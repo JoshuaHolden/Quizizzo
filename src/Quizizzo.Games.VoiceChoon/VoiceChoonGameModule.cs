@@ -561,7 +561,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                         participant.PlayerId,
                         judgementNote?.Id,
                         judgementNote?.StartTimeSeconds,
-                        note.Velocity);
+                        note.Velocity,
+                        note.SourceRole == VoiceChoonTrackRole.Drums);
                 })).Where(note => note.SampleAssetId != Guid.Empty).ToArray()
                 : null,
             current.Phase is PlayingPhase or ResultsPhase
