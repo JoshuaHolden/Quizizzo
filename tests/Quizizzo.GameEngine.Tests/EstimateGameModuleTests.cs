@@ -157,7 +157,8 @@ public sealed class EstimateGameModuleTests
 
         public static async Task<EstimateFixture> StartAsync(TimeProvider? clock = null)
         {
-            var module = new EstimateGameModule();
+            var module = new EstimateGameModule(
+                questionOverride: EstimateGameModule.LegacyThreeQuestions);
             var manager = new GameRuntimeManager(
                 new GameModuleCatalog([module]),
                 new InMemoryGameStateStore(),
