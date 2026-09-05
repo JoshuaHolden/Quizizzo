@@ -169,7 +169,9 @@ window.quizizzoPresentation = (() => {
                 source.loopStart = loopStart;
                 source.loopEnd = loopEnd > loopStart + 0.01 ? loopEnd : buffer.duration;
             }
-            const level = Math.min(0.42, sampleGain(buffer) * 0.35);
+            const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
+            const expression = Math.max(.28, Math.sqrt(velocity / 127));
+            const level = Math.min(0.42, sampleGain(buffer) * 0.35 * expression);
             const startAt = Math.max(context.currentTime + 0.005, when);
             gain.gain.setValueAtTime(0, startAt);
             gain.gain.linearRampToValueAtTime(level, startAt + 0.015);
@@ -246,6 +248,7 @@ window.quizizzoPresentation = (() => {
                         loop: note.loop ?? note.Loop,
                         loopStartSeconds: note.loopStartSeconds ?? note.LoopStartSeconds,
                         loopEndSeconds: note.loopEndSeconds ?? note.LoopEndSeconds,
+                        velocity: note.velocity ?? note.Velocity,
                         type: note.type ?? note.Type
                     }, audioOrigin + Math.max(start, songPosition), Math.max(0, songPosition - start),
                     offKey ? sourDirection * 175 : 0);

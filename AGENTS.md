@@ -848,6 +848,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Render a large animated countdown directly from the authoritative UTC phase deadline on the main display.
 - [x] Make the five-beat countdown expand and fade with a synchronized main-display WAV blip.
 - [x] Keep VoiceChoon heads attached, cap extreme shoulder poses, and add floppy sine-wave limb motion.
+- [x] Detect classical/legato MIDI tracks, preserve velocity dynamics, sustain their full notes, and retry realtime connections continuously.
 
 ## Verification requirements
 

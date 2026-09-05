@@ -49,7 +49,8 @@ public sealed record RawMidiTrack(
     string Name,
     VoiceChoonTrackRole Role,
     bool IsPercussion,
-    IReadOnlyList<RawMidiNote> Notes);
+    IReadOnlyList<RawMidiNote> Notes,
+    int? ProgramNumber = null);
 
 public sealed record RawMidiNote(
     long StartTicks,
@@ -93,7 +94,8 @@ public sealed record RhythmNote(
     int Velocity,
     string SourceTrack,
     VoiceChoonTrackRole SourceRole,
-    RhythmNoteType Type);
+    RhythmNoteType Type,
+    RecordingStyle PlaybackStyle = RecordingStyle.OneShot);
 
 public sealed record ChartGenerationOptions
 {

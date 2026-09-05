@@ -116,6 +116,9 @@ public sealed class ChartGenerator(ChartGenerationOptions? options = null)
     private IEnumerable<RhythmNote> CreateCandidates(int playerIndex, RawMidiTrack track)
     {
         var pitches = track.Notes.Select(note => note.MidiNote).Distinct().Order().ToArray();
+        var playbackStyle = track.IsPercussion ? RecordingStyle.Percussion
+            : TrackArticulation.IsLegato(track) ? RecordingStyle.Sustained
+            : RecordingStyle.OneShot;
         var lastLane = -1;
         var repeatedLaneCount = 0;
         foreach (var (note, noteIndex) in track.Notes.Select((note, index) => (note, index)))
@@ -141,7 +144,8 @@ public sealed class ChartGenerator(ChartGenerationOptions? options = null)
                 note.Velocity,
                 track.Name,
                 track.Role,
-                note.DurationSeconds >= options.HoldThresholdSeconds ? RhythmNoteType.Hold : RhythmNoteType.Tap);
+                note.DurationSeconds >= options.HoldThresholdSeconds ? RhythmNoteType.Hold : RhythmNoteType.Tap,
+                playbackStyle);
         }
     }
 

@@ -26,7 +26,12 @@ window.quizizzoRealtime = (() => {
 
         const connection = new signalR.HubConnectionBuilder()
             .withUrl("/hubs/party")
-            .withAutomaticReconnect([0, 2000, 5000, 10000])
+            .withServerTimeout(60000)
+            .withKeepAliveInterval(10000)
+            .withAutomaticReconnect({
+                nextRetryDelayInMilliseconds: context =>
+                    context.previousRetryCount === 0 ? 0 : Math.min(10000, 1000 * 2 ** Math.min(4, context.previousRetryCount))
+            })
             .build();
 
         connection.on("StateChanged", async message => {

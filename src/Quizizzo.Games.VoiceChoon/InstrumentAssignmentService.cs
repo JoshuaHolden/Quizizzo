@@ -35,7 +35,9 @@ public sealed class InstrumentAssignmentService
 
         return assigned.Select((tracks, playerIndex) =>
         {
-            var prompts = tracks.SelectMany(track => (promptFactory ?? InstrumentSoundGuide.For)(track.Role))
+            var prompts = tracks.SelectMany(track => promptFactory is null
+                    ? InstrumentSoundGuide.For(track)
+                    : promptFactory(track.Role))
                 .DistinctBy(prompt => prompt.Key);
             return new InstrumentAssignment(
                 playerIndex,
@@ -100,6 +102,15 @@ public sealed class InstrumentAssignmentService
 
 public static class InstrumentSoundGuide
 {
+    public static IReadOnlyList<SoundRecordingPrompt> For(RawMidiTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        return track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track)
+            ? MelodicPair("legato", "AAAAH", "OOOOH", RecordingStyle.Sustained, 55, 67,
+                "Hold a smooth, steady vowel with no wobble; this will be looped for long classical notes.")
+            : For(track.Role);
+    }
+
     public static IReadOnlyList<SoundRecordingPrompt> For(VoiceChoonTrackRole role) => role switch
     {
         VoiceChoonTrackRole.Drums =>
@@ -142,4 +153,51 @@ public static class InstrumentSoundGuide
         new($"{key}-low", "Low sound", low, style, lowRoot, guidance),
         new($"{key}-high", "High sound", high, style, highRoot, guidance)
     ];
+}
+
+public static class TrackArticulation
+{
+    private static readonly string[] LegatoInstrumentNames =
+    [
+        "piano", "string", "violin", "viola", "cello", "horn", "flute",
+        "clarinet", "oboe", "orchestra", "ensemble", "choir"
+    ];
+
+    public static bool IsLegato(RawMidiTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        if (track.IsPercussion || track.Role is VoiceChoonTrackRole.Drums or
+            VoiceChoonTrackRole.PercussionFx or VoiceChoonTrackRole.Arp or
+            VoiceChoonTrackRole.VocalStabs)
+        {
+            return false;
+        }
+        if (track.Role is VoiceChoonTrackRole.Bass or VoiceChoonTrackRole.Chords)
+        {
+            return true;
+        }
+        if (track.Role is VoiceChoonTrackRole.LeadA or VoiceChoonTrackRole.LeadB)
+        {
+            return false;
+        }
+
+        // General MIDI: pianos/organs and orchestral families need a continuous
+        // source; guitars, chromatic percussion and synth/effect banks retain
+        // their sharper one-shot articulation.
+        if (track.ProgramNumber is >= 0 and <= 7 or >= 16 and <= 23 or >= 40 and <= 79)
+        {
+            return true;
+        }
+
+        var normalized = new string(track.Name.Where(char.IsLetterOrDigit)
+            .Select(char.ToLowerInvariant).ToArray());
+        if (LegatoInstrumentNames.Any(normalized.Contains))
+        {
+            return true;
+        }
+        if (track.Notes.Count == 0) return false;
+        var longNotes = track.Notes.Count(note => note.DurationSeconds >= 0.65);
+        return longNotes >= Math.Ceiling(track.Notes.Count * 0.45) ||
+               track.Notes.Average(note => note.DurationSeconds) >= 0.8;
+    }
 }

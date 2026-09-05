@@ -73,7 +73,10 @@ public sealed class MidiParser
             .ThenBy(note => note.MidiNote)
             .ToArray();
         var isPercussion = notes.Any(note => note.Channel == 9);
-        return new RawMidiTrack(index, name, InferRole(name, isPercussion, notes), isPercussion, notes);
+        var programEvent = chunk.Events.OfType<ProgramChangeEvent>().FirstOrDefault();
+        var programNumber = programEvent is null ? (int?)null : (int)programEvent.ProgramNumber;
+        return new RawMidiTrack(index, name, InferRole(name, isPercussion, notes), isPercussion, notes,
+            programNumber);
     }
 
     private static double SecondsAt(long ticks, TempoMap tempoMap) =>

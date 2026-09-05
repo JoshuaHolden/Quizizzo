@@ -283,6 +283,35 @@ public sealed class VoiceChoonPipelineTests
     }
 
     [Fact]
+    public void Classical_piano_tracks_request_sustained_samples_and_loop_their_long_notes()
+    {
+        var piano = new RawMidiTrack(0, "Clair de Lune Piano", VoiceChoonTrackRole.Other, false,
+            [new RawMidiNote(0, 192, 0, 1.8, 72, 52, 0)], 0);
+        var assignment = Assert.Single(InstrumentAssignmentService.Assign(
+            new RawMidiSong("clair-de-lune.mid", 96, 1.8, [piano], []), 1));
+        var note = Assert.Single(new ChartGenerator().Generate([assignment]).Single().PlaybackNotes);
+
+        Assert.True(TrackArticulation.IsLegato(piano));
+        Assert.All(assignment.RecordingPrompts,
+            prompt => Assert.Equal(RecordingStyle.Sustained, prompt.Style));
+        Assert.Equal(RecordingStyle.Sustained, note.PlaybackStyle);
+        Assert.True(PitchShiftPlanner.Plan(note.TargetMidiNote, note.DurationSeconds,
+            [new RecordedSample("legato", 67, note.PlaybackStyle, 1)]).Loop);
+    }
+
+    [Fact]
+    public void Short_generic_electronic_tracks_keep_one_shot_articulation()
+    {
+        var synth = new RawMidiTrack(0, "Track 1", VoiceChoonTrackRole.Other, false,
+            Enumerable.Range(0, 8).Select(index =>
+                new RawMidiNote(index * 24, 12, index * .2, .12, 60 + index, 110, 0)).ToArray(), 81);
+
+        Assert.False(TrackArticulation.IsLegato(synth));
+        Assert.All(InstrumentSoundGuide.For(synth),
+            prompt => Assert.Equal(RecordingStyle.OneShot, prompt.Style));
+    }
+
+    [Fact]
     public void Uploaded_song_analysis_derives_a_bounded_player_range_and_safe_key()
     {
         using var stream = typeof(VoiceChoonSongCatalog).Assembly.GetManifestResourceStream(

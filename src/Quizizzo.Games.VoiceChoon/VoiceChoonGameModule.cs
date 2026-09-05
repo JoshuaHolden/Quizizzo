@@ -560,7 +560,8 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
                         playback.LoopEndSeconds,
                         participant.PlayerId,
                         judgementNote?.Id,
-                        judgementNote?.StartTimeSeconds);
+                        judgementNote?.StartTimeSeconds,
+                        note.Velocity);
                 })).Where(note => note.SampleAssetId != Guid.Empty).ToArray()
                 : null,
             current.Phase is PlayingPhase or ResultsPhase
@@ -633,9 +634,12 @@ public sealed class VoiceChoonGameModule(VoiceChoonFlowOptions? flowOptions = nu
         PlayerChart chart,
         IReadOnlyDictionary<string, Guid> sampleAssets)
     {
-        var rolePromptKeys = InstrumentSoundGuide.For(note.SourceRole)
-            .Select(prompt => prompt.Key)
-            .ToHashSet(StringComparer.Ordinal);
+        var rolePromptKeys = note.SourceRole == VoiceChoonTrackRole.Other &&
+                             note.PlaybackStyle == RecordingStyle.Sustained
+            ? chart.RecordingPrompts.Where(prompt => prompt.Key.StartsWith("legato-", StringComparison.Ordinal))
+                .Select(prompt => prompt.Key).ToHashSet(StringComparer.Ordinal)
+            : InstrumentSoundGuide.For(note.SourceRole).Select(prompt => prompt.Key)
+                .ToHashSet(StringComparer.Ordinal);
         var rolePrompts = chart.RecordingPrompts
             .Where(prompt => rolePromptKeys.Contains(prompt.Key))
             .ToArray();

@@ -720,6 +720,9 @@ public sealed class LandingPageContractTests
     {
         var realtime = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/partyRealtime.js");
+        Assert.Contains("withServerTimeout(60000)", realtime, StringComparison.Ordinal);
+        Assert.Contains("withKeepAliveInterval(10000)", realtime, StringComparison.Ordinal);
+        Assert.Contains("nextRetryDelayInMilliseconds", realtime, StringComparison.Ordinal);
 
         Assert.Contains(
             "role === \"Display\" && message.reason === \"DisplayPaired\"",
