@@ -675,6 +675,8 @@ public sealed class LandingPageContractTests
         Assert.Contains("duckedMusicMultiplier: .4", audio, StringComparison.Ordinal);
         Assert.Contains("quizizzo.display.audio-muted", audio, StringComparison.Ordinal);
         Assert.Contains("controller.audio?.update(controller.snapshot)", presentation, StringComparison.Ordinal);
+        Assert.Contains("Math.max(0.72, requestedDuration)", presentation, StringComparison.Ordinal);
+        Assert.Contains("gain.connect(pianoResonance)", presentation, StringComparison.Ordinal);
         Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);
         Assert.Contains("data-room-code=\"@Snapshot.RoomCode\"", component, StringComparison.Ordinal);
         Assert.Contains("Enable sound", component, StringComparison.Ordinal);

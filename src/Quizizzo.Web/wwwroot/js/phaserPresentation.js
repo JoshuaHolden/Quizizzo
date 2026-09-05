@@ -36,6 +36,7 @@ window.quizizzoPresentation = (() => {
     function createVoiceChoonDisplayAudio() {
         let audioContext = null;
         let output = null;
+        let pianoResonance = null;
         let recordingDestination = null;
         let snapshot = null;
         let muted = localStorage.getItem("quizizzo.display.audio-muted") === "true";
@@ -65,6 +66,21 @@ window.quizizzoPresentation = (() => {
                 output.connect(audioContext.destination);
                 recordingDestination = audioContext.createMediaStreamDestination();
                 output.connect(recordingDestination);
+                const impulse = audioContext.createBuffer(2, Math.floor(audioContext.sampleRate * 1.15),
+                    audioContext.sampleRate);
+                for (let channelIndex = 0; channelIndex < impulse.numberOfChannels; channelIndex++) {
+                    const channel = impulse.getChannelData(channelIndex);
+                    for (let index = 0; index < channel.length; index++) {
+                        const decay = Math.pow(1 - index / channel.length, 3.2);
+                        channel[index] = (Math.random() * 2 - 1) * decay;
+                    }
+                }
+                const convolver = audioContext.createConvolver();
+                const resonanceGain = audioContext.createGain();
+                convolver.buffer = impulse;
+                resonanceGain.gain.value = 0.16;
+                convolver.connect(resonanceGain).connect(output);
+                pianoResonance = convolver;
             }
             return audioContext;
         }
@@ -160,7 +176,14 @@ window.quizizzoPresentation = (() => {
             if (!context || !buffer || muted || generation !== playbackGeneration) return;
             const source = context.createBufferSource();
             const gain = context.createGain();
-            const duration = Math.max(0.05, Number(note.durationSeconds) - offset);
+            const articulation = String(note.articulation ?? note.Articulation ?? "").toLowerCase();
+            const requestedDuration = Math.max(0.05, Number(note.durationSeconds) - offset);
+            // MIDI note-off closes the key, not the acoustic resonance. Very short piano
+            // gates (some duet files use ~33 ms) still need enough body to avoid dry clicks.
+            const duration = articulation === "piano" ? Math.max(0.72, requestedDuration)
+                : articulation === "bell" ? Math.max(0.58, requestedDuration)
+                    : articulation === "plucked" ? Math.max(0.26, requestedDuration)
+                        : requestedDuration;
             source.buffer = buffer;
             const playbackRate = Math.max(0.125, Number(note.playbackRate || 1));
             source.playbackRate.value = playbackRate;
@@ -177,7 +200,6 @@ window.quizizzoPresentation = (() => {
             const velocity = Math.max(1, Math.min(127, Number(note.velocity ?? note.Velocity ?? 100)));
             const expression = Math.max(.28, Math.sqrt(velocity / 127));
             const percussion = Boolean(note.percussion ?? note.Percussion);
-            const articulation = String(note.articulation ?? note.Articulation ?? "").toLowerCase();
             const decaying = articulation === "piano" || articulation === "bell" || articulation === "plucked";
             const attackSeconds = articulation === "softsustain" ? 0.06
                 : articulation === "woodwind" ? 0.045
@@ -203,6 +225,7 @@ window.quizizzoPresentation = (() => {
             }
             gain.gain.linearRampToValueAtTime(0.0001, startAt + duration);
             source.connect(gain).connect(output);
+            if (articulation === "piano" && pianoResonance) gain.connect(pianoResonance);
             const voice = { source, gain };
             sources.add(voice);
             source.addEventListener("ended", () => sources.delete(voice), { once: true });
