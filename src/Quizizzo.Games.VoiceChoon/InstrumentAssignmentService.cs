@@ -121,6 +121,9 @@ public static class InstrumentSoundGuide
                 "Start with a firm lip buzz or B/P attack, then hold a bold steady vowel."),
             VoiceChoonInstrumentFamily.Woodwind => MelodicPair("woodwind", "DOOO", "FWEEE", RecordingStyle.Woodwind, 60, 76,
                 "Use a gentle breathy D or F attack and a smooth narrow vowel, like blowing across a tube."),
+            _ when TrackArticulation.IsSustainedSynthLead(track) =>
+                MelodicPair("synth-lead", "WAAAA", "NEEEOOW", RecordingStyle.Sustained, 55, 72,
+                    "Hold a steady tone with no vibrato — smooth and stable so it can loop cleanly. Think synthesiser vowel."),
             _ when track.Role == VoiceChoonTrackRole.Other && TrackArticulation.IsLegato(track) =>
                 MelodicPair("legato", "AAAAH", "OOOOH", RecordingStyle.Sustained, 55, 67,
                     "Hold a smooth, steady vowel with no wobble; this will be looped for long classical notes."),
@@ -220,6 +223,7 @@ public static class TrackArticulation
         VoiceChoonInstrumentFamily.Brass => RecordingStyle.Brass,
         VoiceChoonInstrumentFamily.Woodwind => RecordingStyle.Woodwind,
         _ when track.IsPercussion => RecordingStyle.Percussion,
+        _ when IsSustainedSynthLead(track) => RecordingStyle.Sustained,
         _ when IsLegato(track) => RecordingStyle.Sustained,
         _ => RecordingStyle.OneShot
     };
@@ -239,6 +243,8 @@ public static class TrackArticulation
         }
         if (track.Role is VoiceChoonTrackRole.LeadA or VoiceChoonTrackRole.LeadB)
         {
+            // Lead roles keep one-shot articulation unless the synth-lead duration
+            // check promotes them; IsLegato does not promote lead tracks.
             return false;
         }
 
@@ -259,6 +265,30 @@ public static class TrackArticulation
         if (track.Notes.Count == 0) return false;
         var longNotes = track.Notes.Count(note => note.DurationSeconds >= 0.65);
         return longNotes >= Math.Ceiling(track.Notes.Count * 0.45) ||
+               track.Notes.Average(note => note.DurationSeconds) >= 0.8;
+    }
+
+    // Returns true when a track whose GM program is a synth-lead (80-95) or whose
+    // role is LeadA/LeadB has predominantly long notes: at least 40 % of notes last
+    // 0.65 s or more, or the average duration is at least 0.8 s.
+    // Short arpeggios, dubstep stabs, and one-shot leads remain unaffected.
+    public static bool IsSustainedSynthLead(RawMidiTrack track)
+    {
+        ArgumentNullException.ThrowIfNull(track);
+        if (track.IsPercussion) return false;
+
+        // Only apply to GM synth-lead programs (80-95) or tracks already assigned
+        // a lead role whose family resolves to Generic.
+        var isSynthLeadProgram = track.ProgramNumber is >= 80 and <= 95;
+        var isLeadRole = track.Role is VoiceChoonTrackRole.LeadA or VoiceChoonTrackRole.LeadB;
+        if (!isSynthLeadProgram && !isLeadRole) return false;
+
+        // Non-generic families (piano, strings, etc.) already have their own paths.
+        if (!isSynthLeadProgram && FamilyFor(track) != VoiceChoonInstrumentFamily.Generic) return false;
+
+        if (track.Notes.Count == 0) return false;
+        var longNotes = track.Notes.Count(note => note.DurationSeconds >= 0.65);
+        return (double)longNotes / track.Notes.Count >= 0.40 ||
                track.Notes.Average(note => note.DurationSeconds) >= 0.8;
     }
 

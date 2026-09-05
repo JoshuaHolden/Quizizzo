@@ -411,4 +411,119 @@ public sealed class VoiceChoonPipelineTests
         Assert.Throws<InvalidDataException>(() =>
             VoiceChoonSongAnalyzer.Analyze(new byte[32], "fake.txt", "Fake"));
     }
+
+    // ---  Sustained synth-lead tests  ---
+
+    private static RawMidiTrack SynthLeadTrack(
+        VoiceChoonTrackRole role,
+        int program,
+        IReadOnlyList<double> noteDurationsSeconds) =>
+        new(0, "Synth Lead", role, false,
+            noteDurationsSeconds.Select((duration, index) =>
+                new RawMidiNote(index * 960L, (long)(duration * 960), index * duration, duration,
+                    60 + index % 12, 100, 0)).ToArray(),
+            program);
+
+    [Fact]
+    public void Synth_lead_program_with_predominantly_long_notes_becomes_sustained()
+    {
+        // 6 of 8 notes >= 0.65 s  =>  75 % >= 40 % threshold
+        var durations = new double[] { 1.0, 0.8, 0.9, 0.7, 1.2, 0.1, 0.95, 0.85 };
+        var track = SynthLeadTrack(VoiceChoonTrackRole.Other, 81, durations);
+
+        Assert.True(TrackArticulation.IsSustainedSynthLead(track));
+        Assert.Equal(RecordingStyle.Sustained, TrackArticulation.RecordingStyleFor(track));
+
+        var prompts = InstrumentSoundGuide.For(track);
+        Assert.Equal(2, prompts.Count);
+        Assert.All(prompts, p => Assert.Equal(RecordingStyle.Sustained, p.Style));
+        Assert.Equal("WAAAA", prompts[0].Example);
+        Assert.Equal("NEEEOOW", prompts[1].Example);
+        Assert.Equal(55, prompts[0].RootMidiNote);
+        Assert.Equal(72, prompts[1].RootMidiNote);
+    }
+
+    [Fact]
+    public void Synth_lead_program_with_short_notes_remains_one_shot()
+    {
+        // All notes short — 0 of 8 >= 0.65 s; average well below 0.8 s
+        var durations = Enumerable.Repeat(0.1, 8).ToArray();
+        var track = SynthLeadTrack(VoiceChoonTrackRole.Other, 81, durations);
+
+        Assert.False(TrackArticulation.IsSustainedSynthLead(track));
+        Assert.Equal(RecordingStyle.OneShot, TrackArticulation.RecordingStyleFor(track));
+        Assert.All(InstrumentSoundGuide.For(track),
+            p => Assert.Equal(RecordingStyle.OneShot, p.Style));
+    }
+
+    [Fact]
+    public void Lead_role_with_long_notes_and_generic_family_becomes_sustained()
+    {
+        // LeadA with no program number; all notes long  =>  average > 0.8 s
+        var durations = Enumerable.Repeat(1.0, 6).ToArray<double>();
+        var track = new RawMidiTrack(0, "Lead", VoiceChoonTrackRole.LeadA, false,
+            durations.Select((dur, i) => new RawMidiNote(i * 960L, 960L, i * dur, dur, 60, 100, 0)).ToArray());
+
+        Assert.True(TrackArticulation.IsSustainedSynthLead(track));
+        Assert.Equal(RecordingStyle.Sustained, TrackArticulation.RecordingStyleFor(track));
+    }
+
+    [Fact]
+    public void Lead_role_with_named_non_generic_family_is_not_classified_as_sustained_synth()
+    {
+        // LeadA but the name resolves to Strings family — should not be claimed by synth path
+        var durations = Enumerable.Repeat(1.0, 6).ToArray<double>();
+        var track = new RawMidiTrack(0, "String Lead", VoiceChoonTrackRole.LeadA, false,
+            durations.Select((dur, i) => new RawMidiNote(i * 960L, 960L, i * dur, dur, 60, 100, 0)).ToArray());
+
+        Assert.False(TrackArticulation.IsSustainedSynthLead(track));
+    }
+
+    [Fact]
+    public void Sustained_synth_note_long_enough_loops_and_short_note_does_not()
+    {
+        // A sustained-style sample with a long note => loop; short note => no loop
+        RecordedSample[] samples =
+        [
+            new("synth-low", 55, RecordingStyle.Sustained, 1.5),
+            new("synth-high", 72, RecordingStyle.Sustained, 1.5)
+        ];
+
+        var longPlan = PitchShiftPlanner.Plan(60, 1.0, samples);
+        var shortPlan = PitchShiftPlanner.Plan(60, 0.3, samples);
+
+        Assert.True(longPlan.Loop);
+        Assert.NotNull(longPlan.LoopStartSeconds);
+        Assert.NotNull(longPlan.LoopEndSeconds);
+        Assert.False(shortPlan.Loop);
+        Assert.Null(shortPlan.LoopStartSeconds);
+        Assert.Null(shortPlan.LoopEndSeconds);
+    }
+
+    [Fact]
+    public void Sustained_synth_chart_notes_carry_sustained_playback_style_through_to_chart()
+    {
+        // Build a minimal chart from a synth-lead track with long notes
+        var durations = Enumerable.Repeat(1.0, 6).ToArray<double>();
+        var track = SynthLeadTrack(VoiceChoonTrackRole.Other, 81, durations);
+        var song = new RawMidiSong("synth-test.mid", 960, 6, [track], []);
+        var assignment = Assert.Single(InstrumentAssignmentService.Assign(song, 1));
+        var chart = Assert.Single(new ChartGenerator().Generate([assignment]));
+
+        Assert.All(chart.PlaybackNotes,
+            note => Assert.Equal(RecordingStyle.Sustained, note.PlaybackStyle));
+    }
+
+    [Fact]
+    public void Piano_tracks_remain_unaffected_by_synth_lead_classification()
+    {
+        var piano = new RawMidiTrack(0, "Piano", VoiceChoonTrackRole.Other, false,
+            Enumerable.Repeat(1.0, 6).Select((dur, i) =>
+                new RawMidiNote(i * 960L, 960L, i * dur, dur, 60, 100, 0)).ToArray(), 0);
+
+        Assert.False(TrackArticulation.IsSustainedSynthLead(piano));
+        Assert.Equal(RecordingStyle.Piano, TrackArticulation.RecordingStyleFor(piano));
+        Assert.All(InstrumentSoundGuide.For(piano),
+            p => Assert.Equal(RecordingStyle.Piano, p.Style));
+    }
 }

@@ -1,7 +1,12 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\Quizizzo.GameContracts\Quizizzo.GameContracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/estimate-questions.json"
+                      LogicalName="Quizizzo.Games.Estimate.Assets.estimate-questions.json" />
   </ItemGroup>
 
   <PropertyGroup>
