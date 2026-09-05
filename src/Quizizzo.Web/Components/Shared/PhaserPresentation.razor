@@ -13,9 +13,9 @@
             aria-label="@AudioButtonLabel"
             aria-pressed="@(!audioMuted && !audioBlocked)"
             title="@AudioButtonLabel"
-            @onclick="ToggleAudioAsync">
+        @onclick="ToggleAudioAsync">
         <span aria-hidden="true">@(audioMuted || audioBlocked ? "🔇" : "🔊")</span>
-        <span>@AudioButtonLabel</span>
+        <span class="display-audio-label">@AudioButtonLabel</span>
     </button>
 }
 

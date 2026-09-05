@@ -149,6 +149,7 @@ test("one human supplies a bot-backed Greensleeves band without refresh bursts",
 
     const sharePanel = host.locator(".voicechoon-share-panel");
     await expect(sharePanel).toBeVisible({ timeout: 150000 });
+    await sharePanel.getByText("Save or share this replay").click();
     await expect(sharePanel.getByText("Your music video is ready")).toBeVisible();
     await expect(sharePanel.getByRole("button", { name: /Share video|Download video/ }))
         .toBeVisible({ timeout: 15000 });

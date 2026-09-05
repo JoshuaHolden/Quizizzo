@@ -963,35 +963,51 @@ fieldset {
 .display-audio-toggle {
     align-items: center;
     backdrop-filter: blur(.75rem);
-    background: linear-gradient(110deg, rgb(255 79 163 / 92%), rgb(124 60 255 / 94%));
-    border: 1px solid rgb(255 255 255 / 38%);
+    background: rgb(22 12 50 / 68%);
+    border: 1px solid rgb(255 255 255 / 20%);
     border-radius: 999px;
-    box-shadow: 0 .65rem 1.6rem rgb(5 2 18 / 32%), inset 0 1px rgb(255 255 255 / 22%);
+    box-shadow: 0 .4rem 1rem rgb(5 2 18 / 22%);
     color: white;
     display: inline-flex;
     font-family: "Quizizzo Sans", "Segoe UI", sans-serif;
     font-size: clamp(.82rem, 1.3vw, .95rem);
     font-weight: 800;
     gap: .45rem;
-    min-height: 3rem;
-    padding: .6rem .9rem;
+    bottom: max(1rem, env(safe-area-inset-bottom));
+    height: 2.75rem;
+    justify-content: center;
+    min-height: 2.75rem;
+    padding: .45rem;
     pointer-events: auto;
     position: fixed;
     left: max(1rem, env(safe-area-inset-left));
-    top: max(1rem, env(safe-area-inset-top));
+    width: 2.75rem;
     z-index: 120;
 }
 
 .display-audio-toggle:hover,
 .display-audio-toggle:focus-visible {
-    background: linear-gradient(110deg, #ff4fa3, #6d28d9 72%);
+    background: rgb(65 39 112 / 94%);
     border-color: white;
-    transform: translateY(-2px);
+}
+
+.display-audio-toggle:not(.needs-permission) .display-audio-label {
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    height: 1px;
+    overflow: hidden;
+    position: absolute;
+    white-space: nowrap;
+    width: 1px;
 }
 
 .display-audio-toggle.needs-permission {
     animation: display-audio-pulse 1.8s ease-in-out infinite;
+    background: rgb(22 12 50 / 88%);
     border-color: #67e8f9;
+    height: auto;
+    padding: .55rem .8rem;
+    width: auto;
 }
 
 @keyframes display-audio-pulse {
@@ -4157,25 +4173,45 @@ body:has(.phone-controller-shell) {
     z-index: 30;
     right: max(1rem, env(safe-area-inset-right));
     bottom: max(1rem, env(safe-area-inset-bottom));
-    width: min(28rem, calc(100vw - 2rem));
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .55rem;
-    padding: .8rem;
-    border: 2px solid rgba(255,255,255,.72);
-    border-radius: 1.15rem;
+    width: min(25rem, calc(100vw - 2rem));
+    border: 1px solid rgba(255,255,255,.36);
+    border-radius: .9rem;
     color: #fff;
     background: rgba(20, 9, 45, .88);
     box-shadow: 0 1rem 3rem rgba(0,0,0,.34);
     backdrop-filter: blur(14px);
     text-align: left;
+    overflow: hidden;
 }
 
-.voicechoon-share-panel strong,
-.voicechoon-share-panel small { flex-basis: 100%; }
-.voicechoon-share-panel a,
-.voicechoon-share-panel button {
+.voicechoon-share-panel.with-host-controls {
+    bottom: max(4.75rem, calc(env(safe-area-inset-bottom) + 4.25rem));
+}
+
+.voicechoon-share-panel>summary {
+    cursor: pointer;
+    font-weight: 850;
+    list-style: none;
+    padding: .7rem .9rem;
+}
+
+.voicechoon-share-panel>summary::-webkit-details-marker { display: none; }
+.voicechoon-share-panel>summary::after { content: "＋"; float: right; color: #67e8f9; }
+.voicechoon-share-panel[open]>summary { border-bottom: 1px solid rgba(255,255,255,.14); }
+.voicechoon-share-panel[open]>summary::after { content: "−"; }
+
+.voicechoon-share-actions {
+    align-items: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    padding: .8rem;
+}
+
+.voicechoon-share-actions strong,
+.voicechoon-share-actions small { flex-basis: 100%; }
+.voicechoon-share-actions a,
+.voicechoon-share-actions button {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
@@ -4187,8 +4223,8 @@ body:has(.phone-controller-shell) {
     font-weight: 750;
     text-decoration: none;
 }
-.voicechoon-share-panel .share-primary { background: #db2777; }
-.voicechoon-share-panel .share-delete { color: #fecaca; }
+.voicechoon-share-actions .share-primary { background: #db2777; }
+.voicechoon-share-actions .share-delete { color: #fecaca; }
 
 .microphone-recovery {
     display: grid;

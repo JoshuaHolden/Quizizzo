@@ -678,9 +678,9 @@ public sealed class LandingPageContractTests
         Assert.Contains("display-audio-toggle", component, StringComparison.Ordinal);
         Assert.Contains("data-room-code=\"@Snapshot.RoomCode\"", component, StringComparison.Ordinal);
         Assert.Contains("Enable sound", component, StringComparison.Ordinal);
-        Assert.Contains("left: max(1rem, env(safe-area-inset-left))", css,
+        Assert.Contains("bottom: max(1rem, env(safe-area-inset-bottom))", css,
             StringComparison.Ordinal);
-        Assert.Contains("linear-gradient(110deg, rgb(255 79 163 / 92%)", css,
+        Assert.Contains(".display-audio-toggle:not(.needs-permission) .display-audio-label", css,
             StringComparison.Ordinal);
         Assert.True(
             app.IndexOf("presentationAudio.js", StringComparison.Ordinal) <

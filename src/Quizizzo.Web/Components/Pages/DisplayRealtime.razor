@@ -62,7 +62,9 @@
 
     @if (IsVoiceChoonResult)
     {
-        <section class="voicechoon-share-panel" aria-label="Save and share this VoiceChoon performance">
+        <details class="voicechoon-share-panel @(HasHostControls ? "with-host-controls" : null)">
+            <summary>Save or share this replay</summary>
+            <div class="voicechoon-share-actions" aria-label="Save and share this VoiceChoon performance">
             <strong>Your music video is ready</strong>
             @if (savedReplay is not null)
             {
@@ -97,7 +99,8 @@
             {
                 <small role="status">@replayStatus</small>
             }
-        </section>
+            </div>
+        </details>
     }
 </main>
 
