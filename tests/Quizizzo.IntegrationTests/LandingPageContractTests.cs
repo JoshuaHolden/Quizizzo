@@ -767,6 +767,14 @@ public sealed class LandingPageContractTests
         Assert.Contains("★", rig, StringComparison.Ordinal);
         Assert.Contains("drawVoiceChoonMarbling", presentation, StringComparison.Ordinal);
         Assert.Contains("drawVoiceChoonFractal", presentation, StringComparison.Ordinal);
+        Assert.Contains("drawVoiceChoonMandelbrot", presentation, StringComparison.Ordinal);
+        Assert.Contains("const fractalStyle", presentation, StringComparison.Ordinal);
+        Assert.Contains("texture.getSourceImage()", presentation, StringComparison.Ordinal);
+        Assert.Contains("context.createImageData", presentation, StringComparison.Ordinal);
+        Assert.Contains("const continuousZoom = Math.pow(34, zoomPhase)", presentation,
+            StringComparison.Ordinal);
+        Assert.Contains("const rotation = elapsed", presentation, StringComparison.Ordinal);
+        Assert.Contains("Math.floor(visualElapsed * 6)", presentation, StringComparison.Ordinal);
         Assert.Contains("stableVisualSeed(snapshot.gameInstanceId)", presentation,
             StringComparison.Ordinal);
         Assert.Contains("const fractalMix", presentation, StringComparison.Ordinal);

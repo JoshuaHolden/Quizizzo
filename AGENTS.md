@@ -822,6 +822,13 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Run permanent replay pages as interactive Blazor views so their Phaser scene and retained voice samples actually play.
 - [x] Extend the full Greensleeves browser journey to require a visible replay canvas and scheduled replay audio.
 
+### VoiceChoon rotating Mandelbrot backgrounds (completed 2026-09-05)
+
+- [x] Add a seeded Mandelbrot renderer as an alternate music-video fractal style so performances do not all use the same branching geometry.
+- [x] Continuously rotate and zoom both branching and Mandelbrot fractals while retaining beat-reactive expansion and colour chasing.
+- [x] Render Mandelbrot frames on a deliberately small canvas at six frames per second and scale smoothly for TV output without burdening the display CPU.
+- [x] Keep the chosen fractal, landmark, direction, speed, colour phase, and zoom timing stable across refresh and replay for each game instance.
+
 ## Verification requirements
 
 Every milestone ends with restore/build/tests. Tests ultimately cover room codes, transitions, scoring, invalid/late/duplicate actions, submissions, connection states, recovery, completion, and the full host/display/player integration path. AniMates additionally covers frame count, ownership, phase/deadline, fallback frames, self-vote rejection, scoring, payload limits, and reconnect both before and after submission. Canvas interaction should gain browser/E2E coverage.

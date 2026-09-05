@@ -381,6 +381,8 @@ window.quizizzoPresentation = (() => {
         const centreX = width * (.5 + Math.sin(seed * .000013) * .08);
         const centreY = height * (.48 + Math.cos(seed * .000017) * .06);
         const beatExpansion = 1 + pulse * .075;
+        const zoomPhase = (elapsed * (.045 + ((seed >>> 13) % 5) * .004)) % 1;
+        const continuousZoom = .72 + zoomPhase * .82;
         const baseAngle = elapsed * speed * direction + songProgress * Math.PI * .8;
         const hueBase = (elapsed * .035 * direction + (seed % 997) / 997 + songProgress * .42) % 1;
         const colourAt = (branch, level) => Phaser.Display.Color.HSVToRGB(
@@ -408,10 +410,71 @@ window.quizizzoPresentation = (() => {
 
         for (let arm = 0; arm < symmetry; arm++) {
             const angle = baseAngle + arm * Math.PI * 2 / symmetry;
-            branch(centreX, centreY, 116 + ((seed >>> 10) % 44), angle, depth, arm);
+            branch(centreX, centreY,
+                (116 + ((seed >>> 10) % 44)) * continuousZoom, angle, depth, arm);
         }
         graphics.lineStyle(3 + pulse * 5, colourAt(0, 0), .5);
         graphics.strokeCircle(centreX, centreY, 26 + pulse * 20);
+    }
+
+    function drawVoiceChoonMandelbrot(texture, elapsed, pulse = 0, songProgress = 0, seed = 0) {
+        const canvas = texture.getSourceImage();
+        const context = canvas.getContext("2d", { alpha: false });
+        const image = context.createImageData(canvas.width, canvas.height);
+        const pixels = image.data;
+        const landmarks = [
+            [-.743643887037151, .13182590420533],
+            [-1.25066, .02012],
+            [-.7453, .1127],
+            [-.1011, .9563]
+        ];
+        const landmark = landmarks[(seed >>> 5) % landmarks.length];
+        const direction = (seed & 1) ? 1 : -1;
+        const rotation = elapsed * (.055 + ((seed >>> 9) % 7) * .006) * direction;
+        const cosRotation = Math.cos(rotation);
+        const sinRotation = Math.sin(rotation);
+        const zoomDuration = 24 + ((seed >>> 16) % 12);
+        const zoomPhase = (elapsed % zoomDuration) / zoomDuration;
+        const continuousZoom = Math.pow(34, zoomPhase);
+        const viewWidth = 3.15 / continuousZoom;
+        const aspect = canvas.height / canvas.width;
+        const iterations = 38 + Math.round(pulse * 8);
+        const hueChase = elapsed * .045 * direction + songProgress * .55 + (seed % 997) / 997;
+
+        for (let y = 0; y < canvas.height; y++) {
+            const normalizedY = (y / (canvas.height - 1) - .5) * viewWidth * aspect;
+            for (let x = 0; x < canvas.width; x++) {
+                const normalizedX = (x / (canvas.width - 1) - .5) * viewWidth;
+                const real = landmark[0] + normalizedX * cosRotation - normalizedY * sinRotation;
+                const imaginary = landmark[1] + normalizedX * sinRotation + normalizedY * cosRotation;
+                let zr = 0;
+                let zi = 0;
+                let iteration = 0;
+                while (zr * zr + zi * zi <= 4 && iteration < iterations) {
+                    const nextReal = zr * zr - zi * zi + real;
+                    zi = 2 * zr * zi + imaginary;
+                    zr = nextReal;
+                    iteration++;
+                }
+                const offset = (y * canvas.width + x) * 4;
+                if (iteration === iterations) {
+                    pixels[offset] = 10;
+                    pixels[offset + 1] = 3;
+                    pixels[offset + 2] = 25;
+                } else {
+                    const colour = Phaser.Display.Color.HSVToRGB(
+                        (hueChase + iteration / iterations * .82 + 1) % 1,
+                        .72,
+                        .62 + pulse * .25);
+                    pixels[offset] = colour.r;
+                    pixels[offset + 1] = colour.g;
+                    pixels[offset + 2] = colour.b;
+                }
+                pixels[offset + 3] = 255;
+            }
+        }
+        context.putImageData(image, 0, 0);
+        texture.refresh();
     }
 
     class PartyPresentationScene extends Phaser.Scene {
@@ -1086,6 +1149,10 @@ window.quizizzoPresentation = (() => {
             this.voiceTimer = null;
             this.voiceContainer?.destroy(true);
             this.voiceContainer = null;
+            if (this.voiceFractalTextureKey && this.textures.exists(this.voiceFractalTextureKey)) {
+                this.textures.remove(this.voiceFractalTextureKey);
+            }
+            this.voiceFractalTextureKey = null;
             if (!snapshot) {
                 this.restorePileAvatars();
                 return;
@@ -1119,15 +1186,26 @@ window.quizizzoPresentation = (() => {
             const beatSeconds = intervals.length ? intervals[Math.floor(intervals.length / 2)] : .48;
             const beatMs = Math.round(beatSeconds * 1000);
             const visualSeed = stableVisualSeed(snapshot.gameInstanceId);
+            const fractalStyle = (visualSeed >>> 3) % 2 === 0 ? "branches" : "mandelbrot";
             const psychedelic = this.add.graphics().setDepth(0);
             const fractal = this.add.graphics().setDepth(1).setAlpha(0);
+            let mandelbrotTexture = null;
+            let mandelbrot = null;
+            if (playing && fractalStyle === "mandelbrot") {
+                this.voiceFractalTextureKey = `voice-mandelbrot-${snapshot.gameInstanceId}`;
+                mandelbrotTexture = this.textures.createCanvas(this.voiceFractalTextureKey, 192, 108);
+                mandelbrot = this.add.image(width / 2, height / 2, this.voiceFractalTextureKey)
+                    .setDisplaySize(width, height).setDepth(1).setAlpha(0);
+            }
             const beams = this.add.graphics().setBlendMode(Phaser.BlendModes.ADD).setDepth(2);
             const stageShade = this.add.graphics().setDepth(3);
             stageShade.fillStyle(0x03030d, .18);
             stageShade.fillRect(0, 0, width, height);
             stageShade.fillStyle(0x090516, .55);
             stageShade.fillRect(0, 655, width, 65);
-            items.push(psychedelic, fractal, beams, stageShade);
+            items.push(psychedelic, fractal);
+            if (mandelbrot) items.push(mandelbrot);
+            items.push(beams, stageShade);
             if (!showingResults) items.push(
                 this.add.text(38, 28, playing ? "VOICECHOON · LIVE" : "VOICECHOON", {
                     color: "#ffffff", fontFamily: displayFont, fontSize: "27px", fontStyle: "bold",
@@ -1271,6 +1349,7 @@ window.quizizzoPresentation = (() => {
                         ease: "Back.easeOut", yoyo: true, hold: 850,
                         onComplete: () => banner.destroy() });
                 };
+                let lastMandelbrotFrame = -1;
                 const update = () => {
                     const duration = Number(field(state, "songDurationSeconds", 1));
                     const elapsed = Math.max(0, (Date.now() - started) / 1000);
@@ -1287,10 +1366,20 @@ window.quizizzoPresentation = (() => {
                     const fractalMix = transitionWave * transitionWave * (3 - 2 * transitionWave);
                     drawVoiceChoonMarbling(
                         psychedelic, visualElapsed, visualPulse, songProgress, visualSeed);
-                    drawVoiceChoonFractal(
-                        fractal, visualElapsed, visualPulse, songProgress, visualSeed);
+                    if (fractalStyle === "mandelbrot" && mandelbrotTexture) {
+                        const mandelbrotFrame = Math.floor(visualElapsed * 6);
+                        if (mandelbrotFrame !== lastMandelbrotFrame) {
+                            lastMandelbrotFrame = mandelbrotFrame;
+                            drawVoiceChoonMandelbrot(
+                                mandelbrotTexture, visualElapsed, visualPulse, songProgress, visualSeed);
+                        }
+                    } else {
+                        drawVoiceChoonFractal(
+                            fractal, visualElapsed, visualPulse, songProgress, visualSeed);
+                    }
                     psychedelic.setAlpha(1 - fractalMix * .92);
-                    fractal.setAlpha(fractalMix);
+                    fractal.setAlpha(fractalStyle === "branches" ? fractalMix : 0);
+                    mandelbrot?.setAlpha(fractalMix);
                     const spotlightColours = [0xfff1a8, 0xf9a8d4, 0x93c5fd, 0xffffff];
                     beams.clear();
                     [0, 1, 2, 3].forEach(index => {
