@@ -35,6 +35,8 @@ public sealed class LandingPageContractTests
             "src/Quizizzo.Web/Components/Pages/Home.razor.css");
         var motion = ReadRepositoryFile(
             "src/Quizizzo.Web/wwwroot/js/landingMotion.js");
+        var rig = ReadRepositoryFile(
+            "src/Quizizzo.Web/wwwroot/js/playerCharacterRig.js");
 
         Assert.Contains("js/landingMotion.js", app, StringComparison.Ordinal);
         Assert.Contains("prefers-reduced-motion: reduce", homeCss, StringComparison.Ordinal);
@@ -48,6 +50,9 @@ public sealed class LandingPageContractTests
             StringComparison.Ordinal);
         Assert.Contains("opacity:1", homeCss, StringComparison.Ordinal);
         Assert.Contains("quizizzoCharacterRig", motion, StringComparison.Ordinal);
+        Assert.Contains("armsInFront: true", motion, StringComparison.Ordinal);
+        Assert.Contains("headOffsetY: 18", motion, StringComparison.Ordinal);
+        Assert.Contains("target.bringToTop(parts.armLeft)", rig, StringComparison.Ordinal);
         Assert.Contains(".scroll-confetti", homeCss, StringComparison.Ordinal);
     }
 

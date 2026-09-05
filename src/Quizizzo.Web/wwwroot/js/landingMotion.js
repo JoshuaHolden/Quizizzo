@@ -115,7 +115,12 @@
                             const container = this.add.container(150 + index * 170, index === 1 ? 150 : 168)
                                 .setScale(index === 1 ? .34 : .3)
                                 .setDepth(index === 1 ? 2 : 1);
-                            const dancer = rig.create(this, { container, atlasPrefix: "landing-" });
+                            const dancer = rig.create(this, {
+                                container,
+                                atlasPrefix: "landing-",
+                                armsInFront: true,
+                                headOffsetY: 18
+                            });
                             dancer.render(character, "full");
                             if (reducedMotion.matches) dancer.play("idle");
                             else dancer.play(dances[index], { beatMs: 650 });

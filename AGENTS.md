@@ -804,6 +804,7 @@ Central MVP defaults: 12 players, 24-character player names, and 200-character t
 - [x] Make landing content visible by default and remount motion on browser page restoration so Back/forward navigation can never strand the page behind reveal styles.
 - [x] Rewrite the landing page around the concrete VoiceChoon mechanic while retaining the established visual design and reducing interchangeable marketing slogans.
 - [x] Replace the hero's placeholder figures with three animated full-body characters assembled from the production Kenney atlas rig.
+- [x] Give the small hero rigs a landing-only head seating and foreground arm layer so exaggerated poses stay anatomically connected without changing in-game avatars.
 - [x] Pass the clean-page, scrolling, and browser-Back Edge journeys, 30 client tests, all 364 .NET tests, a clean production container build, and a live guest-host smoke test.
 
 ### VoiceChoon generative fractal backgrounds (completed 2026-09-05)

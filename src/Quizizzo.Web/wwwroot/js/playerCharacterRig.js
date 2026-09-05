@@ -80,7 +80,13 @@ window.quizizzoCharacterRig = (() => {
         };
     }
 
-    function create(scene, { container, atlasPrefix, includeGroundShadow = false } = {}) {
+    function create(scene, {
+        container,
+        atlasPrefix,
+        includeGroundShadow = false,
+        armsInFront = false,
+        headOffsetY = 0
+    } = {}) {
         const target = container || scene.add.container(0, 0);
         const animationTweens = [];
         const effects = [];
@@ -171,15 +177,21 @@ window.quizizzoCharacterRig = (() => {
                     part.scaleX *= variants.bodyWidth;
                 });
             }
-            parts.head = add(0, 0, "skin", `tint${variants.skin}_head.png`, .5, 0)
+            parts.head = add(0, headOffsetY, "skin", `tint${variants.skin}_head.png`, .5, 0)
                 .setScale(variants.faceWidth, 1);
-            parts.hair = add(0, -25, "hair", variants.hair, .5, 0);
-            parts.eyeLeft = add(-27 * variants.faceWidth, 75, "face", variants.eye);
-            parts.eyeRight = add(27 * variants.faceWidth, 75, "face", variants.eye);
-            parts.browLeft = add(-28 * variants.faceWidth, 55, "face", variants.brow);
-            parts.browRight = add(28 * variants.faceWidth, 55, "face", variants.brow).setFlipX(true);
-            parts.nose = add(0, 98, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
-            parts.mouth = add(0, 132, "face", variants.mouth);
+            parts.hair = add(0, -25 + headOffsetY, "hair", variants.hair, .5, 0);
+            parts.eyeLeft = add(-27 * variants.faceWidth, 75 + headOffsetY, "face", variants.eye);
+            parts.eyeRight = add(27 * variants.faceWidth, 75 + headOffsetY, "face", variants.eye);
+            parts.browLeft = add(-28 * variants.faceWidth, 55 + headOffsetY, "face", variants.brow);
+            parts.browRight = add(28 * variants.faceWidth, 55 + headOffsetY, "face", variants.brow).setFlipX(true);
+            parts.nose = add(0, 98 + headOffsetY, "face", `tint${variants.skin}Nose${variants.noseShape}.png`);
+            parts.mouth = add(0, 132 + headOffsetY, "face", variants.mouth);
+            if (armsInFront && mode === "full") {
+                target.bringToTop(parts.armLeft);
+                target.bringToTop(parts.armRight);
+                [parts.head, parts.hair, parts.eyeLeft, parts.eyeRight, parts.browLeft,
+                    parts.browRight, parts.nose, parts.mouth].forEach(part => target.bringToTop(part));
+            }
             return variants;
         };
 
